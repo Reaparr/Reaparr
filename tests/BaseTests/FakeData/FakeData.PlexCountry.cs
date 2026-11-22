@@ -14,6 +14,5 @@ public static partial class FakeData
         .Ignore(x => x.PlexMovieCountries)
         .Ignore(x => x.PlexTvShowCountries);
 
-    public static Faker<PlexCountry> GetPlexCountries(Seed seed, Action<FakeDataConfig>? options = null) =>
-        _plexCountry.UseSeed(seed.Next());
+    public static Faker<PlexCountry> GetPlexCountries(Seed seed) => _plexCountry.UseSeed(seed.Next());
 }

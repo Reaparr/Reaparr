@@ -129,9 +129,19 @@ import { sum, meanBy } from 'lodash-es';
 import { useLibraryStore, useServerStore } from '@store';
 import { useI18n } from '#imports';
 
-const { t } = useI18n();
-const serverStore = useServerStore();
-const libraryStore = useLibraryStore();
+interface IPlexMediaSyncServerNode {
+	id: number;
+	title: string;
+	index: number;
+	type: 'server' | 'library';
+	percentage: number;
+	completed: boolean;
+	status?: LibrarySyncJobStatus;
+	errorMessage?: string | null;
+	progress?: Partial<LibrarySyncProgressDTO>;
+	mediaType?: PlexMediaType;
+	children: IPlexMediaSyncServerNode[];
+}
 
 const expanded = ref<number[]>([]);
 /**
@@ -141,10 +151,13 @@ const expanded = ref<number[]>([]);
 const plexServerId = ref<number | null>(null);
 const openedAt = ref<Date | null>(null);
 
+const { t } = useI18n();
+const serverStore = useServerStore();
+const libraryStore = useLibraryStore();
+
 const libraryNodes = computed(() => get(plexServerNodes).flatMap((x) => x.children));
 const hasProcessingNodes = computed(() => get(libraryNodes).some((x) => x.status === LibrarySyncJobStatus.Processing));
 const hasQueuedNodes = computed(() => get(libraryNodes).some((x) => x.status === LibrarySyncJobStatus.Queued));
-
 const totalPercentage = computed(() => {
 	const nodes = get(plexServerNodes);
 	if (nodes.length === 0) {
@@ -152,9 +165,7 @@ const totalPercentage = computed(() => {
 	}
 	return sum(nodes.map((x) => x.percentage)) / nodes.length;
 });
-
 const plexServers = computed(() => serverStore.getServers(get(plexServerNodes).map((x) => x.id)));
-
 const getProgressText = computed(() => {
 	if (get(openedAt) && get(libraryNodes).length === 0) {
 		return t('components.sync-server-media-dialog.no-active-syncs');
@@ -181,7 +192,6 @@ const getProgressText = computed(() => {
 		total: nodes.length,
 	});
 });
-
 const plexServerNodes = computed((): IPlexMediaSyncServerNode[] => {
 	let uniqueIndex = 0;
 
@@ -228,7 +238,6 @@ function shouldShowProgress(node: IPlexMediaSyncServerNode): boolean {
 
 	return node.status !== LibrarySyncJobStatus.Queued;
 }
-
 function getStatusText(status?: LibrarySyncJobStatus, libraryId?: number): string {
 	if (status === LibrarySyncJobStatus.Queued && libraryId !== undefined) {
 		const reason = libraryStore.getLibrarySyncWaitingReason(libraryId);
@@ -267,29 +276,13 @@ function getStatusText(status?: LibrarySyncJobStatus, libraryId?: number): strin
 			return t('components.sync-server-media-dialog.status.unknown');
 	}
 }
-
 function onOpened(serverId?: number): void {
 	set(openedAt, new Date());
 	set(plexServerId, serverId ?? null);
 }
-
 function onClosed(): void {
 	set(openedAt, null);
 	set(plexServerId, null);
 	set(expanded, []);
-}
-
-interface IPlexMediaSyncServerNode {
-	id: number;
-	title: string;
-	index: number;
-	type: 'server' | 'library';
-	percentage: number;
-	completed: boolean;
-	status?: LibrarySyncJobStatus;
-	errorMessage?: string | null;
-	progress?: Partial<LibrarySyncProgressDTO>;
-	mediaType?: PlexMediaType;
-	children: IPlexMediaSyncServerNode[];
 }
 </script>

@@ -171,41 +171,38 @@ import { useGlobalStore, useDialogStore, useUpdateStore } from '@store';
 import { DialogType } from '@enums';
 import { useClipboard } from '@vueuse/core';
 
+const props = defineProps<{
+	showNavigationDrawerState?: boolean;
+}>();
+
+const githubLabel = 'GitHub';
+const discordLabel = 'Discord';
+
 const telemetry = useTelemetry();
 const globalStore = useGlobalStore();
 const dialogStore = useDialogStore();
 const updateStore = useUpdateStore();
 const $q = useQuasar();
-
 const { copy } = useClipboard({ legacy: true });
-const githubLabel = 'GitHub';
-const discordLabel = 'Discord';
-
-const props = defineProps<{
-	showNavigationDrawerState?: boolean;
-}>();
-
-const emit = defineEmits<{
-	(e: 'show-navigation' | 'show-notifications'): void;
-}>();
 
 function showNavigationDrawer(): void {
 	telemetry.navigationDrawerToggled(props.showNavigationDrawerState === true);
 	emit('show-navigation');
 }
-
 function showNotificationsDrawer(): void {
 	emit('show-notifications');
 }
-
 function openUpdateDialog(): void {
 	telemetry.updateOpened();
 	dialogStore.openDialog(DialogType.UpdateAvailableDialog);
 }
-
 function openGithub(): void {
 	telemetry.githubOpened();
 }
+
+const emit = defineEmits<{
+	(e: 'show-navigation' | 'show-notifications'): void;
+}>();
 </script>
 
 <style lang="scss">

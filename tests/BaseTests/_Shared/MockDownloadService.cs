@@ -28,10 +28,10 @@ public static class MockDownloadService
             .Returns<string, string, CancellationToken>((_, targetPath, _) => Complete(mock, file, targetPath));
         mock.Setup(x => x.DownloadFileTaskAsync(It.IsAny<DownloadPackage>(), It.IsAny<CancellationToken>()))
             .Returns<DownloadPackage, CancellationToken>(
-                (package, _) =>
+                async (package, _) =>
                 {
-                    Complete(mock, file, package.FileName);
-                    return Task.FromResult(Stream.Null);
+                    await Complete(mock, file, package.FileName);
+                    return Stream.Null;
                 }
             );
 
@@ -104,11 +104,11 @@ public static class MockDownloadService
         return mock;
     }
 
-    private static Task Complete(Mock<IDownloadService> mock, IFile file, string targetPath)
+    private static async Task Complete(Mock<IDownloadService> mock, IFile file, string targetPath)
     {
         // DirectPlexDownloadClient verifies the final, non-.reaptemp path after completion.
         var finalPath = targetPath.RemoveReapTempSuffix();
-        file.WriteAllBytes(finalPath, FakeData.GetDownloadFile(DOWNLOAD_FILE_SIZE_IN_MIB));
+        await file.WriteAllBytesAsync(finalPath, FakeData.GetDownloadFile(DOWNLOAD_FILE_SIZE_IN_MIB));
         mock.Raise(
             x => x.DownloadProgressChanged += null,
             mock.Object,
@@ -124,6 +124,5 @@ public static class MockDownloadService
             mock.Object,
             new AsyncCompletedEventArgs(null, false, mock.Object.Package)
         );
-        return Task.CompletedTask;
     }
 }

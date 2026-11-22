@@ -66,7 +66,7 @@ public abstract class DownloadTaskParentBase : DownloadTaskBase, IDownloadTaskPr
 
     private DownloadTaskDirectory? GetDirectoryMeta()
     {
-        IEnumerable<DownloadTaskBase> children = this switch
+        var children = this switch
         {
             DownloadTaskMovie x => x.Children,
             DownloadTaskTvShow x => x.Children,
@@ -77,7 +77,7 @@ public abstract class DownloadTaskParentBase : DownloadTaskBase, IDownloadTaskPr
             DownloadTaskMusicAlbum x => x.Children,
             DownloadTaskMusicTrack x => x.Children,
             DownloadTaskOtherVideo x => x.Children,
-            _ => throw new ArgumentOutOfRangeException(nameof(DownloadTaskType)),
+            _ => throw new InvalidOperationException($"Unsupported download task parent type: {GetType().Name}"),
         };
         foreach (var child in children)
         {
@@ -85,7 +85,7 @@ public abstract class DownloadTaskParentBase : DownloadTaskBase, IDownloadTaskPr
             {
                 DownloadTaskFileBase file => file.DirectoryMeta,
                 DownloadTaskParentBase parent => parent.GetDirectoryMeta(),
-                _ => throw new ArgumentOutOfRangeException(nameof(child)),
+                _ => throw new InvalidOperationException($"Unsupported child type: {child.GetType().Name}"),
             };
             if (directoryMeta is not null)
                 return directoryMeta;

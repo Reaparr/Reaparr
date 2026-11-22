@@ -42,7 +42,7 @@ public class BootUnitTests : BaseUnitTest<Boot>
 
         // Act
         _ = Sut;
-        applicationStarted.Cancel();
+        await applicationStarted.CancelAsync();
         await completed.Task.WaitAsync(TimeSpan.FromSeconds(2));
 
         // Assert

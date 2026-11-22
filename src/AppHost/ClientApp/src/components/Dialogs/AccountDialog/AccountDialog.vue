@@ -115,7 +115,6 @@ const getDialogHeader = computed(() => {
 	// Remove the colon if the display name is empty
 	return displayName ? title : title.replace(':', '');
 });
-
 const validationStyle = computed(
 	(): {
 		color: 'default' | 'positive' | 'warning' | 'negative';
@@ -147,15 +146,12 @@ const validationStyle = computed(
 function validatePlexAccount() {
 	useSubscription(accountDialogStore.validatePlexAccount().subscribe());
 }
-
 function validatePlexToken() {
 	useSubscription(accountDialogStore.validatePlexToken().subscribe());
 }
-
 function deleteAccount() {
 	useSubscription(accountDialogStore.deleteAccount().subscribe());
 }
-
 function saveAccount() {
 	useSubscription(accountDialogStore.saveAccount().subscribe());
 }

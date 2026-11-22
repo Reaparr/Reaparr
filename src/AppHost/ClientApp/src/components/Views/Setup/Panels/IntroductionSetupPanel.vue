@@ -15,11 +15,12 @@
 import { discordInviteLink } from '@composables';
 import type { SetupPanelType } from '@enums';
 
-const { t } = useI18n();
-
 defineProps<{
 	name: SetupPanelType;
 }>();
+
+const { t } = useI18n();
+
 const list = computed((): { text: string; link?: string }[] => {
 	return [
 		{

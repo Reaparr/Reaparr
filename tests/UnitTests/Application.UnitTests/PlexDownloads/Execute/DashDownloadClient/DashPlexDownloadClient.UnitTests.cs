@@ -1463,7 +1463,7 @@ public class DashPlexDownloadClientUnitTests : BaseUnitTest<DashPlexDownloadClie
         // Act
         var startTask = sut.Start(downloadTask.ToKey(), cancellationTokenSource.Token);
         await dashStartEntered.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        cancellationTokenSource.Cancel();
+        await cancellationTokenSource.CancelAsync();
         await runnerStopEntered.Task.WaitAsync(TimeSpan.FromSeconds(5));
         startTask.IsCompleted.ShouldBeFalse();
         runnerStopRelease.TrySetResult();

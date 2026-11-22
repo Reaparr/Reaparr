@@ -691,7 +691,7 @@ public class DownloadQueueRetryCooldownUnitTests : BaseUnitTest<DownloadQueue>
 
         public ValueTask DisposeAsync()
         {
-            Dispose();
+            Disposed.TrySetResult();
             return ValueTask.CompletedTask;
         }
     }

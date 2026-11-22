@@ -106,7 +106,7 @@ public class DownloadQueueCheckDownloadQueueForAllServersUnitTests : BaseUnitTes
         }
         finally
         {
-            workerCancellation.Cancel();
+            await workerCancellation.CancelAsync();
         }
 
         // Assert

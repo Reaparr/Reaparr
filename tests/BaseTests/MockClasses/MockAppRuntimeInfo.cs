@@ -10,7 +10,8 @@ public class MockAppRuntimeInfo : IAppRuntimeInfo
     public int PGID { get; set; }
     public string? GitHubToken { get; set; }
 
-    public Dictionary<string, string?> GetAllEnvironmentVariables { get; set; } = new Dictionary<string, string?>();
+    public IReadOnlyDictionary<string, string?> GetAllEnvironmentVariables { get; set; } =
+        new Dictionary<string, string?>();
 
     /// <inheritdoc/>
     public string? DataPath { get; set; }

@@ -163,6 +163,7 @@
 </template>
 
 <script lang="ts" setup>
+import Log from 'consola';
 import { get, set, useClipboard } from '@vueuse/core';
 import { useSubscription } from '@vueuse/rxjs';
 import { useVirtualizer, type VirtualItem } from '@tanstack/vue-virtual';
@@ -175,24 +176,15 @@ import { translateDownloadStatus, showSuccessNotification } from '@composables';
 import { DialogType } from '@enums';
 import { useDialogStore } from '@store';
 
-const INITIAL_TAKE = 50;
-const NEW_LOG_ANIMATION_MS = 2200;
-
-const { t } = useI18n();
-const { copy } = useClipboard({ legacy: true });
-const dialogStore = useDialogStore();
-const telemetry = useTelemetry();
-
 const props = defineProps<{
 	downloadTaskId: string;
 	downloadTask?: DownloadTaskDTO;
 	initialLogs?: DownloadTaskLogDTO[];
 }>();
 
-const emit = defineEmits<{
-	(e: 'logs-deleted'): void;
-	(e: 'logs-refreshed', logs: DownloadTaskLogDTO[]): void;
-}>();
+const INITIAL_TAKE = 50;
+const NEW_LOG_ANIMATION_MS = 2200;
+const allLevels = Object.values(NotificationLevel).filter((v) => v !== NotificationLevel.None && v !== NotificationLevel.Verbose);
 
 const scrollEl = ref<HTMLElement | null>(null);
 const sortAsc = ref(true);
@@ -201,22 +193,12 @@ const logs = ref<DownloadTaskLogDTO[]>([]);
 const logsLoading = ref(false);
 const highestSeenId = ref<number | undefined>(undefined);
 const freshLogIds = ref<number[]>([]);
+
+const { t } = useI18n();
+const { copy } = useClipboard({ legacy: true });
+const dialogStore = useDialogStore();
+const telemetry = useTelemetry();
 const logRefreshTimer = useIntervalFn(() => refreshLogs(), 1000, { immediate: false });
-
-// Sync initial logs from parent pre-fetch (first 50)
-watch(
-	() => props.initialLogs,
-	(newLogs) => {
-		if (newLogs && newLogs.length > 0 && get(logs).length === 0) {
-			set(logs, [...newLogs]);
-			const maxId = Math.max(...newLogs.map((l) => l.id));
-			set(highestSeenId, maxId);
-		}
-	},
-	{ immediate: true },
-);
-
-const allLevels = Object.values(NotificationLevel).filter((v) => v !== NotificationLevel.None && v !== NotificationLevel.Verbose);
 
 const logLevelLabels = computed<Record<NotificationLevel, string>>(() => ({
 	[NotificationLevel.None]: t('general.commands.unknown'),
@@ -228,7 +210,6 @@ const logLevelLabels = computed<Record<NotificationLevel, string>>(() => ({
 	[NotificationLevel.Error]: t('general.logs.level.error'),
 	[NotificationLevel.Fatal]: t('general.logs.level.fatal'),
 }));
-
 const filteredLogs = computed(() => {
 	const filtered = get(logs).filter((item) => get(activeFilters).includes(item.logLevel));
 	return [...filtered].sort((a, b) => {
@@ -245,15 +226,25 @@ const virtualizer = useVirtualizer(computed(() => ({
 	overscan: 5,
 	getItemKey: (i: number) => filteredLogs.value[i]!.id,
 })));
+// Sync initial logs from parent pre-fetch (first 50)
+watch(
+	() => props.initialLogs,
+	(newLogs) => {
+		if (newLogs && newLogs.length > 0 && get(logs).length === 0) {
+			set(logs, [...newLogs]);
+			const maxId = Math.max(...newLogs.map((l) => l.id));
+			set(highestSeenId, maxId);
+		}
+	},
+	{ immediate: true },
+);
 
 function getLogAtIndex(index: number) {
 	return filteredLogs.value[index]!;
 }
-
 function isFreshLog(id: number) {
 	return freshLogIds.value.includes(id);
 }
-
 function trackFreshLogs(ids: number[]) {
 	if (ids.length === 0) {
 		return;
@@ -264,13 +255,11 @@ function trackFreshLogs(ids: number[]) {
 		set(freshLogIds, freshLogIds.value.filter((id) => !ids.includes(id)));
 	}, NEW_LOG_ANIMATION_MS);
 }
-
 function measureRow(el: Element | null, _row: VirtualItem) {
 	if (el) {
 		get(virtualizer).measureElement(el);
 	}
 }
-
 function toggleSort() {
 	const nextSortAsc = !get(sortAsc);
 	set(sortAsc, nextSortAsc);
@@ -278,31 +267,28 @@ function toggleSort() {
 	// After sort flip, scroll to top so the user sees the reordered list
 	get(scrollEl)?.scrollTo({ top: 0 });
 }
-
 function copyLogs() {
 	const logCount = get(logs).length;
 	const text = get(logs)
 		.map((item) => formatLogCopyText(item))
 		.join('\n');
-	copy(text);
-	telemetry.downloadLogsCopied(props.downloadTaskId, logCount);
-	showSuccessNotification(t('components.download-details-dialog.logs.copied-to-clipboard'));
+	copy(text).then(() => {
+		telemetry.downloadLogsCopied(props.downloadTaskId, logCount);
+		showSuccessNotification(t('components.download-details-dialog.logs.copied-to-clipboard'));
+	}).catch((error) => Log.error('Failed to copy download logs', error));
 }
-
 function copyLogEntry(item: DownloadTaskLogDTO) {
-	copy(formatLogCopyText(item));
-	telemetry.downloadLogCopied(props.downloadTaskId, item.logLevel);
-	showSuccessNotification(t('components.download-details-dialog.logs.entry-copied-to-clipboard'));
+	copy(formatLogCopyText(item)).then(() => {
+		telemetry.downloadLogCopied(props.downloadTaskId, item.logLevel);
+		showSuccessNotification(t('components.download-details-dialog.logs.entry-copied-to-clipboard'));
+	}).catch((error) => Log.error('Failed to copy download log entry', error));
 }
-
 function formatLogCopyText(item: DownloadTaskLogDTO) {
 	return `[${format(new Date(item.createdAt), 'yyyy-MM-dd HH:mm:ss')}] [${item.logLevel}] ${item.message}`;
 }
-
 function logIconTooltipTarget(logId: number) {
 	return `#download-log-entry-${logId} .q-timeline__dot .q-icon`;
 }
-
 function deleteLogs() {
 	if (!props.downloadTaskId || !props.downloadTask) {
 		return;
@@ -341,7 +327,6 @@ function deleteLogs() {
 		}),
 	);
 }
-
 function toggleLevel(level: NotificationLevel) {
 	const current = get(activeFilters);
 	const enabled = !current.includes(level);
@@ -352,12 +337,10 @@ function toggleLevel(level: NotificationLevel) {
 	}
 	telemetry.downloadLogLevelChanged(props.downloadTaskId, level, enabled);
 }
-
 function reset() {
 	set(sortAsc, false);
 	set(activeFilters, [...Object.values(NotificationLevel).filter((v) => v !== NotificationLevel.None)]);
 }
-
 function refreshLogs() {
 	if (!props.downloadTaskId || !props.downloadTask) {
 		return;
@@ -399,13 +382,17 @@ onMounted(() => {
 	}
 	logRefreshTimer.resume();
 });
-
 onUnmounted(() => {
 	logRefreshTimer.pause();
 	set(logs, []);
 	set(freshLogIds, []);
 	set(highestSeenId, undefined);
 });
+
+const emit = defineEmits<{
+	(e: 'logs-deleted'): void;
+	(e: 'logs-refreshed', logs: DownloadTaskLogDTO[]): void;
+}>();
 
 defineExpose({ reset });
 </script>

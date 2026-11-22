@@ -324,7 +324,9 @@ public sealed class DeleteTorrentEndpoint : Endpoint<DeleteTorrentRequest>
 
         await Task.WhenAll(movieTask, episodeTask);
 
-        var all = movieTask.Result.Concat(episodeTask.Result).ToList();
+        var movieFiles = await movieTask;
+        var episodeFiles = await episodeTask;
+        var all = movieFiles.Concat(episodeFiles).ToList();
         return (
             all.Where(x => IsActive(x.DownloadStatus)).Select(x => x.Key).ToList(),
             all.Where(x => !IsActive(x.DownloadStatus)).Select(x => x.Key).ToList(),

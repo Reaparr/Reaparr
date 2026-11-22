@@ -90,6 +90,8 @@ public class GetPlexLibraryAccessTimelineEndpoint : EndpointWithoutRequest<PlexL
         if (latestEvent.State != PlexAccessState.Granted)
             return null;
 
+        var grantedAt = new DateTimeOffset(DateTime.SpecifyKind(latestEvent.CreatedAt, DateTimeKind.Utc));
+
         return new PlexLibraryAccessCurrentStateLibraryDTO
         {
             PlexServerId = latestEvent.PlexServerId,
@@ -98,8 +100,8 @@ public class GetPlexLibraryAccessTimelineEndpoint : EndpointWithoutRequest<PlexL
             PlexLibraryName = latestEvent.PlexLibraryName,
             PlexAccountId = latestEvent.PlexAccountId,
             PlexAccountName = latestEvent.PlexAccountName,
-            GrantedAt = latestEvent.CreatedAt,
-            LastChangedAt = latestEvent.CreatedAt,
+            GrantedAt = grantedAt,
+            LastChangedAt = grantedAt,
         };
     }
 }

@@ -161,7 +161,11 @@ import { createDefaultMediaOverviewSort, parseFlexSortDsl, serializeFlexSortDsl 
 import type { IPhotoBrowseActivation, IPhotoSelector, PhotoBrowseView, PhotoOverviewItem } from '@/store/photoBrowsingStore';
 import { useDialogStore, useDownloadStore, useGlobalStore, useLibraryStore, usePhotoBrowsingStore, useSettingsStore } from '@store';
 
-const telemetry = useTelemetry();
+type FocusableOverviewList = {
+	focusItem: (index: number) => Promise<boolean>;
+	focusFallback: () => void;
+};
+
 const props = withDefaults(defineProps<{
 	libraryId?: number;
 	albumId?: number;
@@ -169,7 +173,13 @@ const props = withDefaults(defineProps<{
 	libraryId: 0,
 	albumId: undefined,
 });
+const owner = {};
+let focusRestoreGeneration = 0;
 
+const overviewListRef = ref<FocusableOverviewList | null>(null);
+const ready = shallowRef(false);
+
+const telemetry = useTelemetry();
 const route = useRoute();
 const router = useRouter();
 const { t } = useI18n();
@@ -179,13 +189,7 @@ const dialogStore = useDialogStore();
 const downloadStore = useDownloadStore();
 const settingsStore = useSettingsStore();
 const globalStore = useGlobalStore();
-type FocusableOverviewList = {
-	focusItem: (index: number) => Promise<boolean>;
-	focusFallback: () => void;
-};
-const overviewListRef = ref<FocusableOverviewList | null>(null);
-const ready = shallowRef(false);
-const owner = {};
+const restoreScrollIndex = shallowRef(photoStore.scrollIndex);
 useSubscription(globalStore.getPageSetupReady.subscribe((value) => set(ready, value)));
 
 const queue = computed(() => props.libraryId > 0 ? libraryStore.getLibrarySyncQueue(props.libraryId) : null);
@@ -198,12 +202,6 @@ const showQueuedPanel = computed(() => get(isQueued)
 	&& libraryStore.getLibrary(props.libraryId)?.isEnabled === true
 	&& !photoStore.disabledLibrary);
 const hasNoAlbums = computed(() => libraryStore.getLibrary(props.libraryId)?.photoAlbumCount === 0);
-
-function scalarQuery(name: string): string | undefined {
-	const value = route.query[name];
-	return typeof value === 'string' ? value : undefined;
-}
-
 const parsedRoute = computed<IPhotoBrowseActivation | null>(() => {
 	const viewValue = scalarQuery('view') ?? 'albums';
 	const view = (['albums', 'folders', 'assets'] as const).find((choice) => choice === viewValue);
@@ -258,9 +256,39 @@ const rangeContextKey = computed(() => [
 	photoStore.searchQuery,
 	serializeFlexSortDsl(photoStore.sort),
 ].join(':'));
-const restoreScrollIndex = shallowRef(photoStore.scrollIndex);
 const showFolderBreadcrumbs = computed(() => photoStore.mode === 'library' && photoStore.view === 'folders' && !photoStore.searchQuery && photoStore.breadcrumbs.length > 0);
 
+watch(() => [get(ready), route.fullPath, props.libraryId, props.albumId, get(hasNoAlbums)], syncRoute, { immediate: true });
+watch(() => settingsStore.displaySettings.photoAlbumViewMode, () => {
+	set(restoreScrollIndex, photoStore.focusIndex ?? photoStore.scrollIndex);
+});
+watch(() => [photoStore.focusIndex, get(rangeContextKey)], ([index]) => {
+	const generation = ++focusRestoreGeneration;
+	if (typeof index !== 'number')
+		return;
+	void nextTick(async () => {
+		const list = get(overviewListRef);
+		if (!list || generation !== focusRestoreGeneration)
+			return;
+		const focused = await list.focusItem(index);
+		if (generation !== focusRestoreGeneration)
+			return;
+		if (!focused)
+			list.focusFallback();
+		photoStore.acknowledgeFocus();
+	});
+});
+
+onBeforeRouteLeave((to) => {
+	const remainsInPhotos = to.path === '/photos' || to.path.startsWith('/photos/')
+		|| (to.path === '/' && settingsStore.displaySettings.allOverviewViewMode === PlexMediaType.PhotoAlbum);
+	if (!remainsInPhotos) photoStore.leavePhotos(owner);
+});
+
+function scalarQuery(name: string): string | undefined {
+	const value = route.query[name];
+	return typeof value === 'string' ? value : undefined;
+}
 function syncRoute(): void {
 	const context = get(parsedRoute);
 	const cleanQuery = cleanPhotoQuery();
@@ -282,7 +310,6 @@ function syncRoute(): void {
 	set(restoreScrollIndex, photoStore.scrollIndex);
 	useSubscription(activation.subscribe());
 }
-
 function updateQuery(updates: Record<string, string | number | null | undefined>, replace = false): void {
 	const query: Record<string, string | (string | null)[] | null | undefined> = cleanPhotoQuery();
 	for (const [key, value] of Object.entries(updates)) {
@@ -292,7 +319,6 @@ function updateQuery(updates: Record<string, string | number | null | undefined>
 	const navigate = replace ? router.replace : router.push;
 	void navigate({ query }).catch(() => undefined);
 }
-
 function cleanPhotoQuery(): Record<string, string | (string | null)[] | null | undefined> {
 	const query: Record<string, string | (string | null)[] | null | undefined> = { ...route.query };
 	for (const key of ['view', 'folderId', 'albumPage', 'assetPage', 'folderPage', 'searchPage', 'sort', 'q']) Reflect.deleteProperty(query, key);
@@ -302,7 +328,6 @@ function cleanPhotoQuery(): Record<string, string | (string | null)[] | null | u
 	}
 	return query;
 }
-
 function changeView(view: PhotoBrowseView): void {
 	const currentSort = get(parsedRoute)?.sort ?? photoStore.sort;
 	const searchQuery = scalarQuery('q')?.trim() ?? '';
@@ -313,7 +338,6 @@ function changeView(view: PhotoBrowseView): void {
 		...(resetSort ? { sort: null } : {}),
 	});
 }
-
 function changeSearch(value: string): void {
 	const query = value.trim();
 	const context = get(parsedRoute);
@@ -321,32 +345,27 @@ function changeSearch(value: string): void {
 	telemetry.photoSearchChanged(query, props.libraryId);
 	updateQuery({ q: query || null, ...(resetSort ? { sort: null } : {}) }, true);
 }
-
 function changeSort(sort: IMediaOverviewSort): void {
 	const defaultSort = createDefaultMediaOverviewSort();
 	const isDefault = sort.field === defaultSort.field && sort.sort === defaultSort.sort;
 	telemetry.photoSortChanged(sort, props.libraryId, isDefault);
 	updateQuery({ sort: isDefault ? null : serializeFlexSortDsl(sort) });
 }
-
 function openFolder(folderId: number): void {
 	const library = libraryStore.getLibrary(props.libraryId);
 	telemetry.photoFolderOpened(folderId, props.libraryId, library?.plexServerId);
 	void router.push(folderLocation(folderId)).catch(() => undefined);
 }
-
 function folderLocation(folderId: number | null) {
 	return {
 		path: route.path,
 		query: { ...cleanPhotoQuery(), view: 'folders', folderId: folderId?.toString() },
 	};
 }
-
 function openAlbum(album: { plexLibraryId: number; plexServerId: number; id: number }): void {
 	telemetry.photoAlbumOpened(album);
 	void router.push(`/photos/${album.plexLibraryId}/details/${album.id}`);
 }
-
 function backToAlbums(): void {
 	const previous = window.history.state?.back;
 	const path = typeof previous === 'string' ? previous.split('?')[0] ?? '' : '';
@@ -356,7 +375,6 @@ function backToAlbums(): void {
 	}
 	void router.push({ path: `/photos/${props.libraryId}`, query: { view: 'albums' } });
 }
-
 async function changeFamily(type: PlexMediaType): Promise<void> {
 	if (type === PlexMediaType.PhotoAlbum) return;
 	photoStore.leavePhotos(owner);
@@ -364,7 +382,6 @@ async function changeFamily(type: PlexMediaType): Promise<void> {
 	settingsStore.displaySettings.allOverviewViewMode = type;
 	if (route.path !== '/') await router.push({ path: '/', query: cleanPhotoQuery() });
 }
-
 function overviewSource(item: PhotoOverviewItem): PhotoAlbumBrowseDTO | PhotoFolderBrowseDTO | PhotoAssetBrowseDTO {
 	switch (item.kind) {
 		case PhotoItemKind.Album: return item.album;
@@ -372,12 +389,10 @@ function overviewSource(item: PhotoOverviewItem): PhotoAlbumBrowseDTO | PhotoFol
 		case PhotoItemKind.Asset: return item.asset;
 	}
 }
-
 function isOverviewItemSelected(item: PhotoOverviewItem): boolean {
 	const source = overviewSource(item);
 	return photoStore.isSelected({ id: source.id, plexServerId: source.plexServerId, plexLibraryId: source.plexLibraryId, kind: item.kind });
 }
-
 function selectOverviewItem(payload: { item: PhotoOverviewItem; selected: boolean }): void {
 	if (payload.item.kind === PhotoItemKind.Album) photoStore.toggleAlbum(payload.item.album, payload.selected);
 	else if (payload.item.kind === PhotoItemKind.Folder) photoStore.toggleFolder(payload.item.folder, payload.selected);
@@ -385,7 +400,6 @@ function selectOverviewItem(payload: { item: PhotoOverviewItem; selected: boolea
 	const source = overviewSource(payload.item);
 	telemetry.photoSelectionChanged(source, { kind: payload.item.kind, selected: payload.selected, count: photoStore.selectedCount });
 }
-
 function openOverviewItem(payload: { item: PhotoOverviewItem; event: Event }): void {
 	if (payload.item.kind === PhotoItemKind.Folder) {
 		openFolder(payload.item.folder.id);
@@ -398,7 +412,6 @@ function openOverviewItem(payload: { item: PhotoOverviewItem; event: Event }): v
 	telemetry.photoAssetOpened(payload.item.asset);
 	useSubscription(photoStore.openAsset(payload.item.asset, payload.item.index).subscribe());
 }
-
 function selectorForItem(item: PhotoOverviewItem): IPhotoSelector {
 	const source = overviewSource(item);
 	const kind = item.kind;
@@ -412,15 +425,12 @@ function selectorForItem(item: PhotoOverviewItem): IPhotoSelector {
 		stale: false,
 	};
 }
-
 function downloadOverviewItem(item: PhotoOverviewItem): void {
 	confirmDownload(photoStore.getDownloadSelectors([selectorForItem(item)]));
 }
-
 function downloadSelection(): void {
 	confirmDownload(photoStore.getDownloadSelectors());
 }
-
 function confirmDownload(command: DownloadMediaDTO[]): void {
 	if (command.length === 0) return;
 	if (settingsStore.isConfirmationEnabled(command[0]?.type ?? PlexMediaType.PhotoImage)) {
@@ -429,64 +439,32 @@ function confirmDownload(command: DownloadMediaDTO[]): void {
 	}
 	downloadStore.downloadMedia({ downloadMedias: command, customDestinationFolderPath: '', destinationFolderPathId: null });
 }
-
 function selectAll(selected: boolean): void {
 	telemetry.photosSelectAllRequested(selected, photoStore.overviewCount, props.libraryId);
 	useSubscription(photoStore.selectAll(selected).subscribe());
 }
-
 function clearSelection(): void {
 	if (photoStore.selectedCount <= 0) return;
 	telemetry.photoSelectionCleared(photoStore.selectedCount, props.libraryId);
 	photoStore.clearSelection();
 }
-
 function handleOverviewAction(action: IMediaOverviewBarActions): void {
 	if (action === 'refresh-library') openRefreshDialog();
 	else if (action === 'back') backToAlbums();
 }
-
 function openRefreshDialog(): void {
 	if (get(refreshDisabled)) return;
 	dialogStore.openDialog(DialogType.RefreshMediaDialog);
 }
-
 function refreshLibrary(forceMediaRefresh: boolean): void {
 	if (props.libraryId <= 0 || get(refreshDisabled)) return;
 	useSubscription(libraryStore.reSyncLibrary(props.libraryId, forceMediaRefresh).subscribe());
 }
-
 function retry(): void {
 	telemetry.photoOverviewRetryRequested(photoStore.view, props.libraryId);
 	useSubscription(photoStore.loadCurrent(true).subscribe());
 }
 
-watch(() => [get(ready), route.fullPath, props.libraryId, props.albumId, get(hasNoAlbums)], syncRoute, { immediate: true });
-watch(() => settingsStore.displaySettings.photoAlbumViewMode, () => {
-	set(restoreScrollIndex, photoStore.focusIndex ?? photoStore.scrollIndex);
-});
-let focusRestoreGeneration = 0;
-watch(() => [photoStore.focusIndex, get(rangeContextKey)], ([index]) => {
-	const generation = ++focusRestoreGeneration;
-	if (typeof index !== 'number')
-		return;
-	void nextTick(async () => {
-		const list = get(overviewListRef);
-		if (!list || generation !== focusRestoreGeneration)
-			return;
-		const focused = await list.focusItem(index);
-		if (generation !== focusRestoreGeneration)
-			return;
-		if (!focused)
-			list.focusFallback();
-		photoStore.acknowledgeFocus();
-	});
-});
-onBeforeRouteLeave((to) => {
-	const remainsInPhotos = to.path === '/photos' || to.path.startsWith('/photos/')
-		|| (to.path === '/' && settingsStore.displaySettings.allOverviewViewMode === PlexMediaType.PhotoAlbum);
-	if (!remainsInPhotos) photoStore.leavePhotos(owner);
-});
 onBeforeUnmount(() => photoStore.deactivate(owner));
 </script>
 

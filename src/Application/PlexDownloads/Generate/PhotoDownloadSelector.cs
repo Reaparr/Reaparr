@@ -1,3 +1,5 @@
+using System.Runtime.InteropServices;
+
 namespace Reaparr.Application;
 
 internal sealed class PhotoDownloadSelector
@@ -653,6 +655,7 @@ internal sealed class PhotoDownloadSelector
             );
     }
 
+    [StructLayout(LayoutKind.Auto)]
     private readonly record struct PhotoIdentity(int ServerId, int LibraryId, int RatingKey, int MediaId, int PartId);
 }
 

@@ -133,26 +133,23 @@
 <script setup lang="ts">
 import { useAccountDialogStore } from '@store';
 
-const { t } = useI18n();
-const accountDialogStore = useAccountDialogStore();
-
 const tokenTab = 'token';
 const credentialsTab = 'credentials';
+
+const { t } = useI18n();
+const accountDialogStore = useAccountDialogStore();
 
 const tab = computed({
 	get: () => accountDialogStore.isAuthTokenMode ? tokenTab : credentialsTab,
 	set: (value: string) => accountDialogStore.switchInputMode(value === tokenTab),
 });
-
 const getDisplayNameRules = computed(() => [
 	(v: string): boolean | string => !!v || t('components.account-form.validation.display-name-required'),
 	(v: string): boolean | string => (v && v.length >= 4) || t('components.account-form.validation.display-name-length', {
 		count: 4,
 	}),
 ]);
-
 const getUsernameRules = computed(() => [(v: string): boolean | string => !!v || t('components.account-form.validation.username-is-required')]);
-
 const getAuthTokenRules = computed(() => [
 	(v: string): boolean | string => !!v || t('components.account-form.validation.auth-token-required'),
 	(v: string): boolean | string => (v && v.length == 20) || t('components.account-form.validation.auth-token-length', {

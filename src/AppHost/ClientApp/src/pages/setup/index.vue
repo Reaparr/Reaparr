@@ -77,12 +77,12 @@ import { switchMap, tap } from 'rxjs/operators';
 import { useRouter, useI18n } from '#imports';
 import { useSubscription } from '@vueuse/rxjs';
 
+const stepIndex = ref(1);
 const telemetry = useTelemetry();
 const { t } = useI18n();
 const router = useRouter();
 const settingsStore = useSettingsStore();
 const globalStore = useGlobalStore();
-const stepIndex = ref(1);
 
 const headers = ref([
 	{ name: t('pages.setup.disclaimer.header') },
@@ -101,7 +101,7 @@ function finishSetup() {
 	});
 	useSubscription(settingsStore.saveSettings().pipe(switchMap(() => globalStore.setup()), tap(() => {
 		Log.info('Setup process is finished, redirecting to home page now and refreshing data');
-		router.push('/');
+		void router.push('/').catch((error) => Log.error('Failed to navigate home after setup', error));
 	})).subscribe());
 }
 </script>

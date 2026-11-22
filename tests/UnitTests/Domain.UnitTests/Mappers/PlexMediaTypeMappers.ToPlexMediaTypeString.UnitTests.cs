@@ -27,10 +27,10 @@ public partial class PlexMediaTypeMappersUnitTests
 
     [Test]
     [MethodDataSource(nameof(GetInvalidEnumValues))]
-    public void ShouldThrowNotImplementedException_WhenInvalidEnumValueProvided(PlexMediaType input)
+    public void ShouldThrowNotSupportedException_WhenInvalidEnumValueProvided(PlexMediaType input)
     {
         // Act & Assert
-        Should.Throw<NotImplementedException>(() => input.ToPlexMediaTypeString());
+        Should.Throw<NotSupportedException>(() => input.ToPlexMediaTypeString());
     }
 
     public static IEnumerable<PlexMediaType> GetInvalidEnumValues()

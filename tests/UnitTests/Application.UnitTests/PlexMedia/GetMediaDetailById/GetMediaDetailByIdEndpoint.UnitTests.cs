@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
-using Autofac;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace Reaparr.Application.UnitTests;

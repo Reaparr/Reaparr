@@ -33,6 +33,54 @@ public class GetDirectDownloadUrlCommandUnitTests : BaseUnitTest<GetDirectDownlo
     }
 
     [Test]
+    public async Task ShouldReturnInitialUrlAndCancelFallbackProbe_WhenInitialProbeSucceeds()
+    {
+        // Arrange
+        await SetupDatabase(90209, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
+
+        var downloadTask = await IDbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
+        var handler = new ParallelProbeHandler();
+        var retryHandler = new DefaultHttpClientRetryHandler(new LoggerConfiguration().CreateLogger())
+        {
+            InnerHandler = handler,
+        };
+        var httpClient = new HttpClient(retryHandler);
+        Mock.Mock<IHttpClientFactory>()
+            .Setup(x => x.CreateClient(It.IsAny<string>()))
+            .Returns(httpClient)
+            .Verifiable(Times.Once());
+
+        var sut = CreateSut();
+
+        // Act
+        var executeTask = sut.ExecuteAsync(
+            new GetDirectDownloadUrlCommand(downloadTask.PlexServerId, downloadTask.FileLocationUrl),
+            CancellationToken
+        );
+
+        await Task.WhenAll(
+            handler.DefaultProbeStarted.Task.WaitAsync(TimeSpan.FromSeconds(1), CancellationToken),
+            handler.FallbackProbeStarted.Task.WaitAsync(TimeSpan.FromSeconds(1), CancellationToken)
+        );
+        handler.DefaultProbeResult.SetResult(HttpStatusCode.OK);
+
+        var result = await executeTask;
+        await handler.FallbackProbeCancelled.Task.WaitAsync(TimeSpan.FromSeconds(1), CancellationToken);
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        handler.DefaultProbeUrl.ShouldNotBeNull();
+        result.Value.ShouldBe(handler.DefaultProbeUrl);
+        Mock.Mock<IHttpClientFactory>().Verify();
+    }
+
+    [Test]
     public async Task ShouldAppendDownloadQuery_WhenInitialProbeIsForbidden()
     {
         // Arrange
@@ -309,10 +357,13 @@ public class GetDirectDownloadUrlCommandUnitTests : BaseUnitTest<GetDirectDownlo
             new(TaskCreationOptions.RunContinuationsAsynchronously);
         public TaskCompletionSource FallbackProbeStarted { get; } =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource FallbackProbeCancelled { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
         public TaskCompletionSource<HttpStatusCode> DefaultProbeResult { get; } =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
         public TaskCompletionSource<HttpStatusCode> FallbackProbeResult { get; } =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public string? DefaultProbeUrl { get; private set; }
 
         protected override async Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
@@ -324,10 +375,20 @@ public class GetDirectDownloadUrlCommandUnitTests : BaseUnitTest<GetDirectDownlo
             if (hasDownloadFlag)
             {
                 FallbackProbeStarted.TrySetResult();
-                var statusCode = await FallbackProbeResult.Task.WaitAsync(cancellationToken);
+                HttpStatusCode statusCode;
+                try
+                {
+                    statusCode = await FallbackProbeResult.Task.WaitAsync(cancellationToken);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    FallbackProbeCancelled.TrySetResult();
+                    throw;
+                }
                 return new HttpResponseMessage(statusCode) { RequestMessage = request };
             }
 
+            DefaultProbeUrl = request.RequestUri?.ToString();
             DefaultProbeStarted.TrySetResult();
             var defaultStatusCode = await DefaultProbeResult.Task.WaitAsync(cancellationToken);
             return new HttpResponseMessage(defaultStatusCode) { RequestMessage = request };

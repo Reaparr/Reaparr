@@ -551,6 +551,7 @@ public class GetGitHubReleasesCommandUnitTests : BaseUnitTest<GetGitHubReleasesC
     {
         // Arrange
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(CancellationToken);
+        var secondPageRequested = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var firstPage = Enumerable
             .Range(1, 100)
             .Select(index => CreateRelease($"v0.40.0-dev.{index}", isPrerelease: true))
@@ -564,13 +565,13 @@ public class GetGitHubReleasesCommandUnitTests : BaseUnitTest<GetGitHubReleasesC
             .Verifiable(Times.Once());
         handler
             .SetupRequest(HttpMethod.Get, "https://api.github.com/repos/Reaparr/Reaparr/releases?per_page=100&page=2")
-            .ReturnsAsync(
-                (HttpRequestMessage request, CancellationToken token) =>
+            .Returns(
+                async (HttpRequestMessage request, CancellationToken token) =>
                 {
                     if (cancelRequest)
                     {
-                        cancellation.Cancel();
-                        token.ThrowIfCancellationRequested();
+                        secondPageRequested.SetResult();
+                        await Task.Delay(Timeout.InfiniteTimeSpan, token);
                     }
                     return new HttpResponseMessage(HttpStatusCode.ServiceUnavailable) { RequestMessage = request };
                 }
@@ -587,7 +588,14 @@ public class GetGitHubReleasesCommandUnitTests : BaseUnitTest<GetGitHubReleasesC
             .Verifiable(Times.Once());
 
         // Act
-        var result = await Sut.ExecuteAsync(new GetGitHubReleasesCommand(), cancellation.Token);
+        var execution = Sut.ExecuteAsync(new GetGitHubReleasesCommand(), cancellation.Token);
+        if (cancelRequest)
+        {
+            await Task.WhenAny(execution, secondPageRequested.Task).WaitAsync(CancellationToken);
+            secondPageRequested.Task.IsCompleted.ShouldBeTrue();
+            await cancellation.CancelAsync();
+        }
+        var result = await execution;
 
         // Assert
         result.IsFailed.ShouldBeTrue();

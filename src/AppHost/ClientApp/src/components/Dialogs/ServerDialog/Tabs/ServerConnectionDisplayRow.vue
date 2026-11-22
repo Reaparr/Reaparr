@@ -60,19 +60,18 @@ import { useSubscription } from '@vueuse/rxjs';
 import { useDialogStore, useServerConnectionStore, useServerStore, useSignalrStore } from '@store';
 import { map } from 'rxjs/operators';
 
+const props = defineProps<{
+	connection: PlexServerConnectionDTO;
+}>();
+
+const progressData = ref<ServerConnectionCheckStatusProgressDTO | null>(null);
+
 const serverStore = useServerStore();
 const signalrStore = useSignalrStore();
 const dialogStore = useDialogStore();
 const serverConnectionStore = useServerConnectionStore();
 
-const progressData = ref<ServerConnectionCheckStatusProgressDTO | null>(null);
-
-const props = defineProps<{
-	connection: PlexServerConnectionDTO;
-}>();
-
 const plexServerId = computed<number>(() => props.connection.plexServerId);
-
 const loading = computed(() => serverConnectionStore.getConnectionLoading(props.connection.id));
 const preferredConnectionId = computed<number>({
 	get: () => serverStore.getServer(get(plexServerId))?.preferredConnectionId ?? -1,
@@ -86,6 +85,7 @@ function checkPlexConnection(plexServerConnectionId: number) {
 		serverConnectionStore.checkServerConnection(plexServerConnectionId).subscribe(),
 	);
 }
+
 onMounted(() => useSubscription(
 	signalrStore
 		.getServerConnectionProgressByPlexServerId(get(plexServerId))

@@ -138,7 +138,6 @@ public class Program
         var services = app.Services;
         var singleInstanceCoordinator = services.GetRequiredService<IDesktopSingleInstanceCoordinator>();
 
-
         await app.StartAsync(cancellationToken);
         // Observe host shutdown before entering the blocking native window loop.
         var hostShutdownTask = app.WaitForShutdownAsync(cancellationToken);

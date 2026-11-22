@@ -327,7 +327,7 @@ public class RefreshPlexPhotoLibraryCommandUnitTests : BaseCommandUnitTest<Refre
         var metadata = CreateMetadata(library, includePhoto: true);
         var report = new CrudPhotosReport { CreatedPhotoAlbums = 1, CreatedPhotos = 1 };
         using var progressCancellation = new CancellationTokenSource();
-        progressCancellation.Cancel();
+        await progressCancellation.CancelAsync();
 
         Mock.Mock<ILibrarySyncProgressStore>()
             .Setup(x => x.StartAsync(library.Id, PlexMediaType.PhotoAlbum, null))

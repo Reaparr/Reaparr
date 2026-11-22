@@ -40,7 +40,7 @@ public class CleanUpDownloadTaskFoldersMusicUnitTests : BaseCommandUnitTest<Clea
         fs.Directory.Exists(file.DownloadDirectory).ShouldBe(containsFile);
         fs.Directory.Exists(Path.GetDirectoryName(file.DownloadDirectory)!).ShouldBe(containsFile);
         if (containsFile)
-            fs.File.ReadAllText(file.DownloadFilePath).ShouldBe("target bytes");
+            (await fs.File.ReadAllTextAsync(file.DownloadFilePath, CancellationToken)).ShouldBe("target bytes");
         (await dbContext.DownloadTaskMusicTrackFiles.Select(x => x.Id).SingleAsync(CancellationToken)).ShouldBe(
             file.Id
         );

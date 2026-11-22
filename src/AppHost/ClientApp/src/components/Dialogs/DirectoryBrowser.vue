@@ -168,12 +168,14 @@ import { useDialogStore } from '@store';
 import { cloneDeep } from 'lodash-es';
 import { finalize, Subscription } from 'rxjs';
 
-const { t } = useI18n();
 const props = defineProps<{
 	saving: boolean;
 	errorMessage: string;
 }>();
-const dialogStore = useDialogStore();
+
+const directoryRequests = new Subscription();
+let currentRequest: Subscription | undefined;
+
 const path = ref<FolderPathDTO | null>(null);
 const currentPath = ref('');
 const currentPathModel = ref<FileSystemModelDTO | null>(null);
@@ -181,9 +183,6 @@ const parentPath = ref('');
 const isLoading = ref(true);
 const isLookupPending = ref(false);
 const items = ref<FileSystemModelDTO[]>([]);
-const directoryRequests = new Subscription();
-let currentRequest: Subscription | undefined;
-useSubscription(directoryRequests);
 const returnRow = ref<FileSystemModelDTO>({
 	name: '...',
 	path: '..',
@@ -194,17 +193,15 @@ const returnRow = ref<FileSystemModelDTO>({
 	hasReadPermission: true,
 	hasWritePermission: false,
 });
-const pathField = useTemplateRef<HTMLElement | { $el: HTMLElement }>('pathField');
 
-const emit = defineEmits<{
-	(e: 'confirm' | 'opened', path: FolderPathDTO): void;
-	(e: 'cancel' | 'closed'): void;
-}>();
+const { t } = useI18n();
+const dialogStore = useDialogStore();
+useSubscription(directoryRequests);
+const pathField = useTemplateRef<HTMLElement | { $el: HTMLElement }>('pathField');
 
 const isCurrentWritable = computed(() => {
 	return get(currentPathModel)?.hasWritePermission ?? false;
 });
-
 const dialogTitle = computed(() => {
 	const folderPath = get(path);
 	if (folderPath?.id !== 0) {
@@ -229,7 +226,6 @@ function rowClass(hasReadPermission: boolean) {
 		'q-tr--no-hover': hasReadPermission,
 	};
 }
-
 const getIcon = (type: FileSystemEntityType): string => {
 	switch (type) {
 		case FileSystemEntityType.Parent:
@@ -244,9 +240,8 @@ const getIcon = (type: FileSystemEntityType): string => {
 			return 'mdi-crosshairs-question';
 	}
 };
-
 function open(data: FolderPathDTO): void {
-	let selectedPath = data as FolderPathDTO;
+	let selectedPath = data;
 	if (!selectedPath) {
 		Log.error('parameter was null when opening DirectoryBrowser');
 		return;
@@ -259,7 +254,6 @@ function open(data: FolderPathDTO): void {
 	emit('opened', selectedPath);
 	requestDirectories(selectedPath.directory);
 }
-
 function invalidateLookup(): void {
 	currentRequest?.unsubscribe();
 	currentRequest = undefined;
@@ -267,19 +261,16 @@ function invalidateLookup(): void {
 	set(items, []);
 	set(parentPath, '');
 }
-
 function onClosed(): void {
 	invalidateLookup();
 	set(isLoading, false);
 	emit('closed');
 }
-
 function cancel(): void {
 	invalidateLookup();
 	emit('cancel');
 	dialogStore.closeDialog(DialogType.DirectoryBrowserDialog);
 }
-
 function confirm(): void {
 	if (props.saving || !get(isCurrentWritable)) {
 		return;
@@ -293,7 +284,6 @@ function confirm(): void {
 
 	emit('confirm', cloneDeep(selectedPath));
 }
-
 function updateCurrentPath(newPath: string | undefined): void {
 	if (props.saving) {
 		return;
@@ -303,7 +293,6 @@ function updateCurrentPath(newPath: string | undefined): void {
 	set(currentPath, pathValue);
 	requestDirectories(pathValue);
 }
-
 function requestDirectories(newPath?: string, restoreFocus = false): void {
 	invalidateLookup();
 	set(isLookupPending, true);
@@ -348,7 +337,6 @@ function requestDirectories(newPath?: string, restoreFocus = false): void {
 		});
 	directoryRequests.add(currentRequest);
 }
-
 function directoryNavigate(dataRow: FileSystemModelDTO): void {
 	if (props.saving || !dataRow.hasReadPermission) {
 		return;
@@ -364,6 +352,11 @@ function directoryNavigate(dataRow: FileSystemModelDTO): void {
 		set(currentPath, dataRow.path);
 	}
 }
+
+const emit = defineEmits<{
+	(e: 'confirm' | 'opened', path: FolderPathDTO): void;
+	(e: 'cancel' | 'closed'): void;
+}>();
 </script>
 
 <style lang="scss">

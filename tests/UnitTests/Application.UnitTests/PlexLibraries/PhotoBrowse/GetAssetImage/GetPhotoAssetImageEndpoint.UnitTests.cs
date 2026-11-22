@@ -243,7 +243,7 @@ public class GetPhotoAssetImageEndpointUnitTests
                 AssetId = asset.Id,
                 Representation = PhotoImageRepresentation.Original,
             },
-            services => services.AddMemoryCache().AddSingleton<IHttpClientFactory>(clientFactory.Object)
+            services => services.AddMemoryCache().AddSingleton(clientFactory.Object)
         );
 
         // Assert
@@ -285,7 +285,7 @@ public class GetPhotoAssetImageEndpointUnitTests
                 AssetId = asset.Id,
                 Representation = PhotoImageRepresentation.Original,
             },
-            services => services.AddMemoryCache().AddSingleton<IHttpClientFactory>(clientFactory.Object)
+            services => services.AddMemoryCache().AddSingleton(clientFactory.Object)
         );
 
         // Assert
@@ -340,7 +340,7 @@ public class GetPhotoAssetImageEndpointUnitTests
                 Width = 320,
                 Height = 240,
             },
-            services => services.AddMemoryCache().AddSingleton<IHttpClientFactory>(clientFactory.Object)
+            services => services.AddMemoryCache().AddSingleton(clientFactory.Object)
         );
 
         // Assert
@@ -439,7 +439,7 @@ public class GetPhotoAssetImageEndpointUnitTests
         });
         var dbContext = IDbContext;
         var asset = await dbContext.PlexPhotoMediaData.SingleAsync(CancellationToken);
-        byte[] attackerPayload = System.Text.Encoding.UTF8.GetBytes("<svg><script>alert('active')</script></svg>");
+        var attackerPayload = "<svg><script>alert('active')</script></svg>"u8.ToArray();
         var response = new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(attackerPayload) };
         response.Content.Headers.ContentType = new(upstreamContentType);
         var handler = new StubHttpMessageHandler(response);
@@ -455,7 +455,7 @@ public class GetPhotoAssetImageEndpointUnitTests
 
         // Act
         var result = await TestEndpointHandleAsync(request, services =>
-            services.AddMemoryCache().AddSingleton<IHttpClientFactory>(clientFactory.Object)
+            services.AddMemoryCache().AddSingleton(clientFactory.Object)
         );
 
         // Assert
@@ -548,7 +548,7 @@ public class GetPhotoAssetImageEndpointUnitTests
             .PlexPhotoMediaData.Where(x => x.Id == asset.Id)
             .ExecuteUpdateAsync(x => x.SetProperty(y => y.Container, container), CancellationToken);
         dbContext.ClearChangeTracker();
-        byte[] attackerPayload = System.Text.Encoding.UTF8.GetBytes("<svg><script>alert('active')</script></svg>");
+        var attackerPayload = "<svg><script>alert('active')</script></svg>"u8.ToArray();
         var response = new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(attackerPayload) };
         if (upstreamContentType is not null)
             response.Content.Headers.ContentType = new(upstreamContentType);
@@ -563,7 +563,7 @@ public class GetPhotoAssetImageEndpointUnitTests
                 AssetId = asset.Id,
                 Representation = PhotoImageRepresentation.Original,
             },
-            services => services.AddMemoryCache().AddSingleton<IHttpClientFactory>(clientFactory.Object)
+            services => services.AddMemoryCache().AddSingleton(clientFactory.Object)
         );
 
         // Assert
@@ -777,7 +777,7 @@ public class GetPhotoAssetImageEndpointUnitTests
             Representation = PhotoImageRepresentation.Original,
         };
         var initial = await TestEndpointHandleAsync(request, services =>
-            services.AddMemoryCache().AddSingleton<IHttpClientFactory>(clientFactory.Object)
+            services.AddMemoryCache().AddSingleton(clientFactory.Object)
         );
         initial.StatusCode.ShouldBe(StatusCodes.Status200OK);
         var versionedETag = initial.Endpoint.HttpContext.Response.Headers.ETag.ToString();

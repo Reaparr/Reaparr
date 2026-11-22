@@ -61,9 +61,9 @@
 				</MediaOverviewTable>
 			</div>
 			<PosterTable
+				v-else
 				ref="posterRef"
 				class="poster-table"
-				v-else
 				:item-count="props.itemCount"
 				:request-range="props.requestRange"
 				:range-context-key="props.rangeContextKey"
@@ -96,6 +96,10 @@ import { useSettingsStore } from '@store';
 import { PhotoItemKind, ViewMode } from '@dto';
 import type { PhotoOverviewItem } from '@/store/photoBrowsingStore';
 
+type FocusableViewport = {
+	focusItem: (index: number) => Promise<boolean>;
+};
+
 const props = withDefaults(defineProps<{
 	context: 'albums' | 'folders' | 'assets' | 'album' | 'search';
 	itemCount: number;
@@ -125,22 +129,13 @@ const props = withDefaults(defineProps<{
 	onScrollIndex: undefined,
 });
 
-const emit = defineEmits<{
-	(e: 'open', payload: { item: PhotoOverviewItem; event: Event }): void;
-	(e: 'download', item: PhotoOverviewItem): void;
-	(e: 'select', payload: { item: PhotoOverviewItem; selected: boolean }): void;
-	(e: 'select-all', selected: boolean): void;
-	(e: 'retry'): void;
-}>();
-
-const { t } = useI18n();
-type FocusableViewport = {
-	focusItem: (index: number) => Promise<boolean>;
-};
 const overviewRoot = ref<HTMLElement | null>(null);
 const tableRef = ref<FocusableViewport | null>(null);
 const posterRef = ref<FocusableViewport | null>(null);
+
+const { t } = useI18n();
 const settingsStore = useSettingsStore();
+
 const isTableView = computed(() => settingsStore.displaySettings.photoAlbumViewMode === ViewMode.Table);
 const emptyLabel = computed(() => {
 	switch (props.context) {
@@ -152,7 +147,6 @@ const emptyLabel = computed(() => {
 			return t('components.photo-browser.empty-assets');
 	}
 });
-
 const tableColumns = computed(() => {
 	if (props.context === 'albums') {
 		return [
@@ -183,15 +177,12 @@ function rowTitle(item: PhotoOverviewItem): string {
 	if (item.kind === PhotoItemKind.Folder) return item.folder.title;
 	return item.asset.title;
 }
-
 function isItemSelected(item: PhotoOverviewItem): boolean {
 	return props.isSelected?.(item) ?? false;
 }
-
 function onRowSelection(payload: { row: PhotoOverviewItem; selected: boolean }): void {
 	emit('select', { item: payload.row, selected: payload.selected });
 }
-
 function onOpen(item: PhotoOverviewItem, event: Event): void {
 	emit('open', { item, event });
 }
@@ -200,12 +191,19 @@ async function focusItem(index: number): Promise<boolean> {
 	const viewport = get(isTableView) ? get(tableRef) : get(posterRef);
 	return viewport?.focusItem?.(index) ?? false;
 }
-
 function focusFallback(): void {
 	const root = get(overviewRoot);
 	const target = root?.querySelector<HTMLElement>('[data-photo-overview-focus], [data-cy="photo-select-all"]');
 	(target ?? root)?.focus({ preventScroll: true });
 }
+
+const emit = defineEmits<{
+	(e: 'open', payload: { item: PhotoOverviewItem; event: Event }): void;
+	(e: 'download', item: PhotoOverviewItem): void;
+	(e: 'select', payload: { item: PhotoOverviewItem; selected: boolean }): void;
+	(e: 'select-all', selected: boolean): void;
+	(e: 'retry'): void;
+}>();
 
 defineExpose({ focusItem, focusFallback });
 </script>

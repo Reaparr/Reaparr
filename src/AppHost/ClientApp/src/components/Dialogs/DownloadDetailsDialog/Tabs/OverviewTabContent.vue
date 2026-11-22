@@ -61,12 +61,12 @@
 <script lang="ts" setup>
 import type { DownloadTaskDTO, ErrorDTO } from '@dto';
 
-const { t } = useI18n();
-
 defineProps<{
 	downloadTask: DownloadTaskDTO | undefined;
 	errors: ErrorDTO[];
 }>();
+
+const { t } = useI18n();
 </script>
 
 <style lang="scss">

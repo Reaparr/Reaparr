@@ -120,7 +120,7 @@ public partial class FakePlexApiData
             PlexMediaType.TvShow => config.TvShowsPerLibraryCount
                 * config.SeasonsPerTvShowCount
                 * config.EpisodesPerSeasonCount,
-            _ => throw new ArgumentOutOfRangeException(),
+            _ => throw new ArgumentOutOfRangeException(nameof(library), type, null),
         };
 
         return new MediaContainerWithMetadata
@@ -130,7 +130,7 @@ public partial class FakePlexApiData
                 .FinishWith(
                     (_, x) =>
                     {
-                        x.Metadata = GetLibraryMediaMetadata(seed, type, options).Generate(mediaCount);
+                        x.Metadata = GetLibraryMediaMetadata(seed, type).Generate(mediaCount);
                         x.Size = x.Metadata!.Count;
                         x.TotalSize = totalSize;
                     }
@@ -139,34 +139,29 @@ public partial class FakePlexApiData
         };
     }
 
-    public static Faker<Metadata> GetLibraryMediaMetadata(
-        Seed seed,
-        PlexMediaType type,
-        Action<PlexApiDataConfig>? options = null
-    ) =>
+    public static Faker<Metadata> GetLibraryMediaMetadata(Seed seed, PlexMediaType type) =>
         _getLibraryItemsMetadata
             .UseSeed(seed.Next())
             .FinishWith(
                 (f, x) =>
                 {
                     x.Type = type.ToPlexApiString();
-                    x.Media = [GetPlexMedium(seed, options).Generate()];
+                    x.Media = [GetPlexMedium(seed).Generate()];
                     x.Guid = f.PlexMedia().Guid(type);
                 }
             );
 
-    public static Faker<Media> GetPlexMedium(Seed seed, Action<PlexApiDataConfig>? options = null)
+    public static Faker<Media> GetPlexMedium(Seed seed)
     {
         return _getLibraryItemsMedia
             .UseSeed(seed.Next())
             .FinishWith(
                 (_, x) =>
                 {
-                    x.Part = [GetPlexPart(seed, options).Generate()];
+                    x.Part = [GetPlexPart(seed).Generate()];
                 }
             );
     }
 
-    public static Faker<Part> GetPlexPart(Seed seed, Action<PlexApiDataConfig>? options = null) =>
-        _getLibraryItemsPartFaker.UseSeed(seed.Next());
+    public static Faker<Part> GetPlexPart(Seed seed) => _getLibraryItemsPartFaker.UseSeed(seed.Next());
 }

@@ -8,7 +8,8 @@ import type IAppConfig from '@class/IAppConfig';
 export * from '@hirez_io/observer-spy';
 
 export function baseVars(): { ctx: Context; mock: MockAdapter; config: Partial<MockConfig>; appConfig: IAppConfig } {
-	let ctx, mock;
+	let ctx!: Context;
+	let mock!: MockAdapter;
 	return {
 		ctx,
 		mock,

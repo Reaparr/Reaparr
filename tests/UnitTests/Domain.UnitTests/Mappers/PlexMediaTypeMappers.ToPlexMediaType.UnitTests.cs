@@ -58,20 +58,20 @@ public partial class PlexMediaTypeMappersUnitTests
     [Arguments("Album")]
     [Arguments("Track")]
     [Arguments("Photos")]
-    public void ShouldThrowNotImplementedException_WhenInvalidStringProvided(string input)
+    public void ShouldThrowFormatException_WhenInvalidStringProvided(string input)
     {
         // Act & Assert
-        Should.Throw<NotImplementedException>(() => input.ToPlexMediaType());
+        Should.Throw<FormatException>(() => input.ToPlexMediaType());
     }
 
     [Test]
-    public void ShouldThrowNotImplementedException_WhenNullStringProvided()
+    public void ShouldThrowFormatException_WhenNullStringProvided()
     {
         // Arrange
         string? input = null;
 
         // Act & Assert
-        Should.Throw<NotImplementedException>(() => input!.ToPlexMediaType());
+        Should.Throw<FormatException>(() => input!.ToPlexMediaType());
     }
 
     [Test]

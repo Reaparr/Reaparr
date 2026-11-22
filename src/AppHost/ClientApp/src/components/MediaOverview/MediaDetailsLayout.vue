@@ -44,13 +44,13 @@ const props = defineProps<{
 	summaryLabel: string;
 }>();
 
-const emit = defineEmits<{
-	(e: 'action', event: IMediaOverviewBarActions): void;
-}>();
-
 function onAction(event: IMediaOverviewBarActions): void {
 	emit('action', event);
 }
+
+const emit = defineEmits<{
+	(e: 'action', event: IMediaOverviewBarActions): void;
+}>();
 </script>
 
 <style lang="scss">

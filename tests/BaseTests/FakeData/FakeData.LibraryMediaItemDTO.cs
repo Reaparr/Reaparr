@@ -366,10 +366,7 @@ public static partial class FakeData
             .RuleFor(x => x.Container, f => f.PickRandom("mp4", "mkv", "avi", "m4v"))
             .RuleFor(x => x.Stream, _ => []);
 
-    public static Faker<LibraryMediaItemPartDTO> GetLibraryMediaItemPartDTO(
-        Seed seed,
-        Action<FakeDataConfig>? options = null
-    ) =>
+    public static Faker<LibraryMediaItemPartDTO> GetLibraryMediaItemPartDTO(Seed seed) =>
         _libraryMediaItemPartDTO
             .RuleFor(
                 x => x.Stream,
@@ -426,7 +423,7 @@ public static partial class FakeData
             .RuleFor(x => x.OptimizedForStreaming, f => f.Random.Bool())
             .RuleFor(
                 x => x.Parts,
-                _ => GetLibraryMediaItemPartDTO(seed, options).Generate(config.IncludeMultiPartMovies ? 2 : 1)
+                _ => GetLibraryMediaItemPartDTO(seed).Generate(config.IncludeMultiPartMovies ? 2 : 1)
             )
             .RuleFor(x => x.Duration, f => f.Random.Int(50000, 55124400))
             .UseSeed(seed.Next());

@@ -1,8 +1,8 @@
 <template>
 	<q-card
+		ref="card"
 		class="media-poster-card"
 		:class="{ 'media-poster-card--without-overlay': !overlay }"
-		ref="card"
 		flat
 		@click="onClick"
 		@contextmenu="onContextMenu"
@@ -139,6 +139,17 @@
 import type { PlexMediaType } from '@dto';
 import { get } from '@vueuse/core';
 
+defineSlots<{
+	image?: () => unknown;
+	metadata?: (props: { compact: boolean }) => unknown;
+	actions?: (props: { compact: boolean; activate: () => void }) => unknown;
+	'image-actions'?: () => unknown;
+	badge?: () => unknown;
+	sort?: () => unknown;
+	footer?: () => unknown;
+	menu?: () => unknown;
+}>();
+
 const props = withDefaults(defineProps<{
 	title: string;
 	mediaType: PlexMediaType;
@@ -150,41 +161,28 @@ const props = withDefaults(defineProps<{
 	loading: false,
 	overlay: true,
 });
+
+const mobileMenuVisible = ref(false);
+const card = ref<{ $el: HTMLElement } | null>(null);
+
+const $q = useQuasar();
+
 const titleSize = computed(() => {
 	const len = props.title?.length ?? 0;
 	if (len <= 25) return 'h5';
 	if (len <= 50) return 'h6';
 	return 'subtitle1';
 });
-const $q = useQuasar();
-const mobileMenuVisible = ref(false);
-const card = ref<{ $el: HTMLElement } | null>(null);
 
 function activateCard(): void {
 	get(card)?.$el.click();
 }
-
-defineSlots<{
-	image?: () => unknown;
-	metadata?: (props: { compact: boolean }) => unknown;
-	actions?: (props: { compact: boolean; activate: () => void }) => unknown;
-	'image-actions'?: () => unknown;
-	badge?: () => unknown;
-	sort?: () => unknown;
-	footer?: () => unknown;
-	menu?: () => unknown;
-}>();
-const emit = defineEmits<{
-	(e: 'click' | 'contextmenu', event: MouseEvent): void;
-}>();
 function onClick(event: MouseEvent) {
 	emit('click', event);
 }
-
 function onContextMenu(event: MouseEvent) {
 	emit('contextmenu', event);
 }
-
 function onKeydown(event: KeyboardEvent) {
 	if (event.target !== event.currentTarget)
 		return;
@@ -196,6 +194,10 @@ function onKeydown(event: KeyboardEvent) {
 	if (event.currentTarget instanceof HTMLElement)
 		event.currentTarget.click();
 }
+
+const emit = defineEmits<{
+	(e: 'click' | 'contextmenu', event: MouseEvent): void;
+}>();
 </script>
 
 <style lang="scss">

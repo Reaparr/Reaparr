@@ -131,6 +131,7 @@
 </template>
 
 <script setup lang="ts">
+import Log from 'consola';
 import type { QTableProps } from 'quasar';
 import { get } from '@vueuse/core';
 import Convert from '@class/Convert';
@@ -146,19 +147,15 @@ import {
 import { getPlexMediaComparisonState, toDownloadMedia } from '@composables/conversion';
 import QDateTime from '@components/Common/QDateTime.vue';
 
-const mediaTableColumns = getMediaTableColumns();
-const router = useRouter();
-
 const props = defineProps<{
 	rows: PlexMediaSlimDTO[];
 	selection: ISelection | null;
 	downloadMediaFactory?: (row: PlexMediaSlimDTO) => DownloadMediaDTO[];
 }>();
 
-const emit = defineEmits<{
-	(e: 'selection', payload: ISelection): void;
-	(e: 'row-click', payload: PlexMediaSlimDTO): void;
-}>();
+const mediaTableColumns = getMediaTableColumns();
+
+const router = useRouter();
 
 /**
  * The selected rows cannot be returned as just keys, they need to be the same object as the rows.
@@ -166,7 +163,6 @@ const emit = defineEmits<{
 const getSelected = computed((): PlexMediaSlimDTO[] => {
 	return props.rows.filter((row) => (props.selection?.keys ?? []).includes(row.id));
 });
-
 const qTableProps = computed((): QTableProps => {
 	return {
 		rows: [],
@@ -192,22 +188,18 @@ const qTableProps = computed((): QTableProps => {
 function supportsFileQuality(type: PlexMediaType): boolean {
 	return [PlexMediaType.Movie, PlexMediaType.TvShow, PlexMediaType.Season, PlexMediaType.Episode, PlexMediaType.OtherVideos, PlexMediaType.MusicArtist, PlexMediaType.MusicAlbum, PlexMediaType.MusicTrack].includes(type);
 }
-
 function supportsComparison(type: PlexMediaType): boolean {
 	return [PlexMediaType.Movie, PlexMediaType.TvShow, PlexMediaType.Season, PlexMediaType.Episode, PlexMediaType.MusicArtist, PlexMediaType.MusicTrack].includes(type);
 }
-
 function isRowSelected(rowId: number): boolean {
 	return (props.selection?.keys ?? []).includes(rowId);
 }
-
 function updateRowSelected(row: PlexMediaSlimDTO, selected: boolean): void {
 	const nextSelected = selected
 		? [...get(getSelected), row]
 		: get(getSelected).filter((selectedRow) => selectedRow.id !== row.id);
 	updateSelected(nextSelected);
 }
-
 function onRowAction(row: PlexMediaSlimDTO, action: IMediaOverviewCommands) {
 	switch (action.command) {
 		case 'download':
@@ -220,18 +212,22 @@ function onRowAction(row: PlexMediaSlimDTO, action: IMediaOverviewCommands) {
 					libraryId: row.plexLibraryId.toString(),
 					tvShowId: row.id.toString(),
 				},
-			});
+			}).catch((error) => Log.error('Failed to navigate to TV show details', error));
 			break;
 		default:
 			throw new Error(`Unknown action: ${action.command} in MediaQTable.vue`);
 	}
 }
-
 function updateSelected(selected: readonly PlexMediaSlimDTO[]) {
 	emit('selection', {
-		keys: selected.map((x) => x.id) as number[],
+		keys: selected.map((x) => x.id),
 		allSelected: selected.length === props.rows.length ? true : selected.length === 0 ? false : null,
 		indexKey: 0,
 	});
 }
+
+const emit = defineEmits<{
+	(e: 'selection', payload: ISelection): void;
+	(e: 'row-click', payload: PlexMediaSlimDTO): void;
+}>();
 </script>

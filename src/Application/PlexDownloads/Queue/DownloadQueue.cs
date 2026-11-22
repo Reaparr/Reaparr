@@ -128,10 +128,7 @@ public class DownloadQueue : IDownloadQueue
     /// <summary>
     /// Check the DownloadQueue for downloadTasks which can be started.
     /// </summary>
-    public Task<Result> CheckDownloadQueue(List<int> plexServerIds) =>
-        CheckDownloadQueue(plexServerIds, CancellationToken.None);
-
-    public async Task<Result> CheckDownloadQueue(List<int> plexServerIds, CancellationToken cancellationToken)
+    public async Task<Result> CheckDownloadQueue(List<int> plexServerIds, CancellationToken cancellationToken = default)
     {
         if (!plexServerIds.Any())
             return ResultExtensions.IsEmpty(nameof(plexServerIds)).LogWarning();
@@ -149,7 +146,7 @@ public class DownloadQueue : IDownloadQueue
     }
 
     /// <inheritdoc />
-    public async Task<Result> CheckDownloadQueueForAllServers(CancellationToken cancellationToken = default)
+    public async Task<Result> CheckDownloadQueueForAllServers(CancellationToken cancellationToken)
     {
         using var dbContext = await _dbContextFactory.CreateAsync();
 

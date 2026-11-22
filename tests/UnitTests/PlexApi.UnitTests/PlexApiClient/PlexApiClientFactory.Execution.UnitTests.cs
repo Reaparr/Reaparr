@@ -2,7 +2,6 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net;
 using System.Text;
-using LukeHagar.PlexAPI.SDK.Models.Requests;
 using Reaparr.Application.Contracts;
 using Reaparr.Data.Contracts;
 using Reaparr.PlexApi.Contracts;
@@ -254,7 +253,7 @@ public class PlexApiClientFactoryExecutionUnitTests : BaseUnitTest
         var operation = client.General.GetIdentityAsync().ToResponse(cancellation.Token);
 
         // Act
-        cancellation.Cancel();
+        await cancellation.CancelAsync();
         var result = await operation;
 
         result.IsCancelled.ShouldBeTrue();
@@ -293,7 +292,7 @@ public class PlexApiClientFactoryExecutionUnitTests : BaseUnitTest
         var operation = client.General.GetIdentityAsync().ToResponse(effectiveCancellation.Token);
 
         // Act
-        effectiveCancellation.Cancel();
+        await effectiveCancellation.CancelAsync();
         var result = await operation.WaitAsync(TimeSpan.FromSeconds(2));
 
         // Assert
@@ -422,8 +421,8 @@ public class PlexApiClientFactoryExecutionUnitTests : BaseUnitTest
     {
         protected override async Task SerializeToStreamAsync(Stream stream, TransportContext? context)
         {
-            await stream.WriteAsync(Encoding.UTF8.GetBytes("{\"MediaContainer\":"));
-            throw new HttpIOException(HttpRequestError.ResponseEnded, "The response ended prematurely.", null!);
+            await stream.WriteAsync("{\"MediaContainer\":"u8.ToArray());
+            throw new HttpIOException(HttpRequestError.ResponseEnded, "The response ended prematurely.");
         }
 
         protected override async Task SerializeToStreamAsync(
@@ -432,8 +431,8 @@ public class PlexApiClientFactoryExecutionUnitTests : BaseUnitTest
             CancellationToken cancellationToken
         )
         {
-            await stream.WriteAsync(Encoding.UTF8.GetBytes("{\"MediaContainer\":"), cancellationToken);
-            throw new HttpIOException(HttpRequestError.ResponseEnded, "The response ended prematurely.", null!);
+            await stream.WriteAsync("{\"MediaContainer\":"u8.ToArray(), cancellationToken);
+            throw new HttpIOException(HttpRequestError.ResponseEnded, "The response ended prematurely.");
         }
 
         protected override bool TryComputeLength(out long length)

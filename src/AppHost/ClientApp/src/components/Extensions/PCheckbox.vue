@@ -17,11 +17,11 @@ const props = withDefaults(
 	},
 );
 
-const emit = defineEmits<{
-	(e: 'input', save: boolean): void;
-}>();
-
 function handleInput(): void {
 	emit('input', !props.value);
 }
+
+const emit = defineEmits<{
+	(e: 'input', save: boolean): void;
+}>();
 </script>

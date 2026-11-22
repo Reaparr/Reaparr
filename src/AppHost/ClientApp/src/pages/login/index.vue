@@ -104,13 +104,14 @@ import { get, set } from '@vueuse/core';
 import { useAuthenticationStore } from '@store';
 import { finalize } from 'rxjs';
 
-const authStore = useAuthenticationStore();
 const username = ref('');
 const password = ref('');
 const rememberMe = ref(false);
 const invalidCredentials = ref(false);
 const lockedOut = ref(false);
 const loggingIn = ref(false);
+
+const authStore = useAuthenticationStore();
 
 function onLogin(): void {
 	if (get(loggingIn)) return;

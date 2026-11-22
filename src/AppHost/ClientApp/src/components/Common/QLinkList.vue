@@ -33,6 +33,8 @@ import { sendDesktopMessage } from '@composables';
 import { DesktopMessageType } from '@dto';
 import { useGlobalStore } from '@store';
 
+const globalStore = useGlobalStore();
+
 withDefaults(defineProps<{
 	list?: { text: string; link?: string }[];
 	cy?: string;
@@ -40,8 +42,6 @@ withDefaults(defineProps<{
 	list: () => [],
 	cy: 'link-list',
 });
-
-const globalStore = useGlobalStore();
 
 function onClick(href?: string): void {
 	if (globalStore.isDesktopMode) {

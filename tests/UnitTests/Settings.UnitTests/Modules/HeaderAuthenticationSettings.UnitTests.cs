@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using Reaparr.Settings.Contracts;
 
 namespace Reaparr.Settings.UnitTests;
@@ -309,7 +310,36 @@ public class HeaderAuthenticationSettingsUnitTests : BaseUnitTest
     }
 
     [Test]
-    public async Task ShouldNotifyObservers_WhenPropertiesChange()
+    public void ShouldPublishCurrentModelBeforePropertyChanged_WhenPropertyChanges()
+    {
+        // Arrange
+        var settings = HeaderAuthenticationSettings.Create();
+        var changedModels = new List<HeaderAuthenticationSettings>();
+        var propertyNames = new List<string?>();
+        var notificationOrder = new List<string>();
+        using var subscription = settings.HasChanged.Subscribe(model =>
+        {
+            changedModels.Add(model);
+            notificationOrder.Add("HasChanged");
+        });
+        ((INotifyPropertyChanged)settings).PropertyChanged += (_, args) =>
+        {
+            propertyNames.Add(args.PropertyName);
+            notificationOrder.Add("PropertyChanged");
+        };
+
+        // Act
+        settings.Enabled = true;
+
+        // Assert
+        changedModels.Count.ShouldBe(2);
+        changedModels.All(model => ReferenceEquals(model, settings)).ShouldBeTrue();
+        propertyNames.ShouldBe([nameof(HeaderAuthenticationSettings.Enabled)]);
+        notificationOrder.ShouldBe(["HasChanged", "HasChanged", "PropertyChanged"]);
+    }
+
+    [Test]
+    public void ShouldNotifyObservers_WhenPropertiesChange()
     {
         // Arrange
         var settings = HeaderAuthenticationSettings.Create();
@@ -322,34 +352,32 @@ public class HeaderAuthenticationSettingsUnitTests : BaseUnitTest
         settings.MaxHeaderLength = 1024;
         settings.MappingType = HeaderMappingType.Email;
 
-        // Wait a bit to ensure all notifications are processed
-        await Task.Delay(10, CancellationToken);
-
         // Assert
-        changeNotifications.Count.ShouldBeGreaterThan(0);
+        changeNotifications.Count.ShouldBe(4);
         changeNotifications.Last().Enabled.ShouldBeTrue();
         changeNotifications.Last().MaxHeaderLength.ShouldBe(1024);
         changeNotifications.Last().MappingType.ShouldBe(HeaderMappingType.Email);
     }
 
     [Test]
-    public async Task ShouldNotNotifyObservers_WhenSameValueIsSet()
+    public void ShouldNotNotifyObservers_WhenSameValueIsSet()
     {
         // Arrange
         var settings = HeaderAuthenticationSettings.Create();
         var changeNotifications = new List<HeaderAuthenticationSettings>();
+        var propertyNames = new List<string?>();
 
         using var subscription = settings.HasChanged.Subscribe(changeNotifications.Add);
+        ((INotifyPropertyChanged)settings).PropertyChanged += (_, args) => propertyNames.Add(args.PropertyName);
         var initialCount = changeNotifications.Count;
+        initialCount.ShouldBe(1);
 
         // Act
         settings.Enabled = false; // Same as default value
         settings.MaxHeaderLength = 256; // Same as default value
 
-        // Wait a bit to ensure notifications are processed
-        await Task.Delay(10, CancellationToken);
-
         // Assert
         changeNotifications.Count.ShouldBe(initialCount);
+        propertyNames.ShouldBeEmpty();
     }
 }

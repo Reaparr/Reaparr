@@ -41,7 +41,7 @@ public static partial class DbContextExtensions
             .Select(x => (bool?)x.IsEnabled)
             .FirstOrDefaultAsync(CancellationToken.None);
 
-        return isEnabled.HasValue && !isEnabled.Value;
+        return isEnabled == false;
     }
 
     /// <summary>

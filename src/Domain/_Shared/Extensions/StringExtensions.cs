@@ -189,7 +189,7 @@ public static partial class StringExtensions
         return title;
     }
 
-    [GeneratedRegex(@"[^\w\s]")]
+    [GeneratedRegex(@"[^\w\s]", RegexOptions.None, matchTimeoutMilliseconds: 1000)]
     private static partial Regex RemovePunctuationRegex();
 
     public static string GetFileName(this string path)

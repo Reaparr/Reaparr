@@ -52,7 +52,7 @@ public class ScheduledDownloadMembershipUnitTests : BaseUnitTest<DownloadTaskUpd
             },
         };
         using var speedLimits = new DownloadSpeedLimitProvider(settings);
-        Func<string, long> getEffectiveSpeedLimit = speedLimits.GetEffectiveDownloadSpeedLimit;
+        var getEffectiveSpeedLimit = speedLimits.GetEffectiveDownloadSpeedLimit;
         var handler = new UpdateScheduledDownloadLimitsCommandHandler(
             new LoggerConfiguration().CreateLogger(),
             settings,

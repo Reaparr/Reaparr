@@ -186,37 +186,44 @@ public static partial class DashOutputFileNameCleaner
         var cleaned = token.Trim();
         cleaned = InvalidFileNameCharsRegex().Replace(cleaned, string.Empty);
         cleaned = cleaned.Replace(' ', '.');
-        cleaned = Regex.Replace(cleaned, "\\.+", ".");
+        cleaned = Regex.Replace(cleaned, "\\.+", ".", RegexOptions.None, TimeSpan.FromSeconds(1));
         return cleaned.Trim('.');
     }
 
     [GeneratedRegex(
         @"(?:\[|\(|\{)?(?:imdb\s*[-:]\s*tt\d+|tmdb\s*[-:]\s*\d+|tvdb\s*[-:]\s*\d+)(?:\]|\)|\})?",
-        RegexOptions.IgnoreCase
+        RegexOptions.IgnoreCase,
+        matchTimeoutMilliseconds: 1000
     )]
     private static partial Regex IdTokenRegex();
 
-    [GeneratedRegex(@"[\s._\-\[\]\(\)\{\}]+")]
+    [GeneratedRegex(@"[\s._\-\[\]\(\)\{\}]+", RegexOptions.None, matchTimeoutMilliseconds: 1000)]
     private static partial Regex SplitTokenRegex();
 
-    [GeneratedRegex(@"^(?:\d{3,4}p|4k|8k)$", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"^(?:\d{3,4}p|4k|8k)$", RegexOptions.IgnoreCase, matchTimeoutMilliseconds: 1000)]
     private static partial Regex QualityTokenRegex();
 
-    [GeneratedRegex(@"^(?:s\d{1,2}e\d{1,3}(?:e\d{1,3})*|\d{1,2}x\d{1,3}|e\d{1,3})$", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(
+        @"^(?:s\d{1,2}e\d{1,3}(?:e\d{1,3})*|\d{1,2}x\d{1,3}|e\d{1,3})$",
+        RegexOptions.IgnoreCase,
+        matchTimeoutMilliseconds: 1000
+    )]
     private static partial Regex EpisodeTokenRegex();
 
-    [GeneratedRegex("[<>:\"/\\\\|?*]")]
+    [GeneratedRegex("[<>:\"/\\\\|?*]", RegexOptions.None, matchTimeoutMilliseconds: 1000)]
     private static partial Regex InvalidFileNameCharsRegex();
 
     [GeneratedRegex(
         @"(?<![\p{L}\p{N}])(?:(?:ddp?|eac3|ac3|aac|flac|truehd|dts(?:-hd)?)\s*\d\.\d(?:ch)?|\d\.\d(?:ch)?)(?![\p{L}\p{N}])",
-        RegexOptions.IgnoreCase
+        RegexOptions.IgnoreCase,
+        matchTimeoutMilliseconds: 1000
     )]
     private static partial Regex EmbeddedChannelTokenRegex();
 
     [GeneratedRegex(
         @"^(?:\d\.\d(?:ch)?|(?:ddp?|eac3|ac3|aac|flac|truehd|dts(?:-hd)?)\d\.\d(?:ch)?)$",
-        RegexOptions.IgnoreCase
+        RegexOptions.IgnoreCase,
+        matchTimeoutMilliseconds: 1000
     )]
     private static partial Regex ChannelTokenRegex();
 }

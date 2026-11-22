@@ -83,7 +83,6 @@ defineOptions({ inheritAttrs: false });
 
 // shortcut: 600 characters, increase when detail tables gain more vertical space.
 const SUMMARY_PREVIEW_LENGTH = 600;
-
 const props = withDefaults(defineProps<{
 	title: string;
 	summaryLabel: string;
@@ -96,6 +95,7 @@ const props = withDefaults(defineProps<{
 
 const { t } = useI18n();
 const dialogStore = useDialogStore();
+
 const summaryText = computed(() => props.summary?.trim() ?? '');
 const hasSummary = computed(() => get(summaryText).length > 0);
 const summaryPreview = computed(() => {

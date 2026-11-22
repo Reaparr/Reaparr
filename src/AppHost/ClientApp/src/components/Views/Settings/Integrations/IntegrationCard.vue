@@ -16,14 +16,8 @@ import type { NamedColor } from 'quasar';
 import { IntegrationProvisioningState, IntegrationType, TestConnectionStatus, type IntegrationSummary } from '@dto';
 
 const props = defineProps<{ integration: IntegrationSummary }>();
-const { t } = useI18n();
-const emit = defineEmits<{
-	(e: 'edit', integration: IntegrationSummary): void;
-}>();
 
-function open(): void {
-	emit('edit', props.integration);
-}
+const { t } = useI18n();
 
 const integrationChips = computed(() => {
 	const provisioningColor: NamedColor = props.integration.provisioningState === IntegrationProvisioningState.Configured
@@ -46,6 +40,13 @@ const integrationChips = computed(() => {
 		},
 	];
 });
-
 const integrationIcon = computed(() => props.integration.type === IntegrationType.Radarr ? 'radarr' : 'sonarr');
+
+function open(): void {
+	emit('edit', props.integration);
+}
+
+const emit = defineEmits<{
+	(e: 'edit', integration: IntegrationSummary): void;
+}>();
 </script>

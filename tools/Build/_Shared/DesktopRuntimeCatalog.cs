@@ -1,3 +1,4 @@
+
 namespace Reaparr.Build;
 
 internal static class DesktopRuntimeCatalog

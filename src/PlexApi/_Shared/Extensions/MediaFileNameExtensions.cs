@@ -4,40 +4,42 @@ namespace Reaparr.PlexApi;
 
 public static partial class MediaFileNameExtensions
 {
-    [GeneratedRegex(@"(S\d+E\d+|S\d{2,}E\d{2,}|\d+x\d+|\d{4}[-.\s]\d{2}[-.\s]\d{2})", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"(?:S\d+E\d+|S\d{2,}E\d{2,}|\d+x\d+|\d{4}[-.\s]\d{2}[-.\s]\d{2})", RegexOptions.IgnoreCase, 1000)]
     private static partial Regex EpisodeIdentifierRegex();
 
-    [GeneratedRegex(@"\b(19\d{2}|20\d{2})\b")]
+    [GeneratedRegex(@"\b(?:19\d{2}|20\d{2})\b", RegexOptions.None, 1000)]
     private static partial Regex YearRegex();
 
-    [GeneratedRegex(@"(?:\{|\[)?(?:tmdb|imdb)[-:](\d+|tt\d+)(?:\}|\])?|tt\d{7,}", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"(?:\{|\[)?(?:tmdb|imdb)[-:](?:\d+|tt\d+)(?:\}|\])?|tt\d{7,}", RegexOptions.IgnoreCase, 1000)]
     private static partial Regex ExplicitIdRegex();
 
     [GeneratedRegex(
-        @"\b(WEBDL|WEB-DL|WEBRip|WEB-Rip|BluRay|BDRip|BRRip|HDRip|HDTV|DVDRip|Remux)\b",
-        RegexOptions.IgnoreCase
+        @"\b(?:WEBDL|WEB-DL|WEBRip|WEB-Rip|BluRay|BDRip|BRRip|HDRip|HDTV|DVDRip|Remux)\b",
+        RegexOptions.IgnoreCase,
+        1000
     )]
     private static partial Regex SourceTagRegex();
 
-    [GeneratedRegex(@"\b(720p|1080p|2160p|4k|uhd|480p|576p|1440p|8k)\b", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"\b(?:720p|1080p|2160p|4k|uhd|480p|576p|1440p|8k)\b", RegexOptions.IgnoreCase, 1000)]
     private static partial Regex ResolutionRegex();
 
-    [GeneratedRegex(@"\b(x264|x265|h264|h265|AVC|HEVC|XviD|DivX|VP9|AV1)\b", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"\b(?:x264|x265|h264|h265|AVC|HEVC|XviD|DivX|VP9|AV1)\b", RegexOptions.IgnoreCase, 1000)]
     private static partial Regex VideoCodecRegex();
 
-    [GeneratedRegex(@"\b(AAC|AC3|EAC3|DTS|DTS-HD|TrueHD|FLAC|Opus|MP3|Atmos)\b", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"\b(?:AAC|AC3|EAC3|DTS|DTS-HD|TrueHD|FLAC|Opus|MP3|Atmos)\b", RegexOptions.IgnoreCase, 1000)]
     private static partial Regex AudioTokenRegex();
 
-    [GeneratedRegex(@"\b(CD\d+|Part\d+|Disc\d+|DVD\d+)\b", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"\b(?:CD\d+|Part\d+|Disc\d+|DVD\d+)\b", RegexOptions.IgnoreCase, 1000)]
     private static partial Regex MultiPartRegex();
 
     [GeneratedRegex(
-        @"\bpart\s+(I{1,3}|IV|VI{0,3}|IX|XI{0,3}|XIV|XVI{0,3}|XIX|XXI{0,3}|\d+)\b",
-        RegexOptions.IgnoreCase
+        @"\bpart\s+(?:I{1,3}|IV|VI{0,3}|IX|XI{0,3}|XIV|XVI{0,3}|XIX|XXI{0,3}|\d+)\b",
+        RegexOptions.IgnoreCase,
+        1000
     )]
     private static partial Regex PartWithRomanOrNumberRegex();
 
-    [GeneratedRegex(@"[a-zA-Z]")]
+    [GeneratedRegex(@"[a-zA-Z]", RegexOptions.None, 1000)]
     private static partial Regex LetterRegex();
 
     /// <summary>

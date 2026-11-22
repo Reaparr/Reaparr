@@ -29,15 +29,15 @@ public static class LogFactory
     {
         switch (messageTemplate)
         {
-            case { } s when s.StartsWith("dbug:"):
+            case { } s when s.StartsWith("dbug:", StringComparison.Ordinal):
                 // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
                 Create().Here(sourceFilePath, memberName, sourceLineNumber).Debug(messageTemplate);
                 break;
-            case { } s when s.StartsWith("info:"):
+            case { } s when s.StartsWith("info:", StringComparison.Ordinal):
                 // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
                 Create().Here(sourceFilePath, memberName, sourceLineNumber).Information(messageTemplate);
                 break;
-            case { } s when s.StartsWith("fail:"):
+            case { } s when s.StartsWith("fail:", StringComparison.Ordinal):
                 // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
                 Create().Here(sourceFilePath, memberName, sourceLineNumber).Error(messageTemplate);
                 break;

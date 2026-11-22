@@ -43,7 +43,7 @@ public class TelemetryNativeCaptureUnitTests : BaseUnitTest
         using var httpClient = new HttpClient(HttpHandlerMock.Object);
         var factory = new Mock<IHttpClientFactory>(MockBehavior.Strict);
         factory.Setup(x => x.CreateClient(It.IsAny<string>())).Returns(httpClient).Verifiable(Times.Once());
-        using var client = new PostHogClient(
+        await using var client = new PostHogClient(
             new PostHogOptions
             {
                 ProjectToken = "phc_test",
@@ -211,7 +211,7 @@ public class TelemetryNativeCaptureUnitTests : BaseUnitTest
         using var httpClient = new HttpClient(HttpHandlerMock.Object);
         var factory = new Mock<IHttpClientFactory>(MockBehavior.Strict);
         factory.Setup(x => x.CreateClient(It.IsAny<string>())).Returns(httpClient).Verifiable(Times.Once());
-        using var client = new PostHogClient(
+        await using var client = new PostHogClient(
             new PostHogOptions
             {
                 ProjectToken = "phc_test",
@@ -295,7 +295,7 @@ public class TelemetryNativeCaptureUnitTests : BaseUnitTest
             build.TelemetryProjectToken = "phc_test";
         });
         const string identity = "ba407754-d97e-46d8-a848-b723bfab84b1";
-        Exception? exception = outcome switch
+        var exception = outcome switch
         {
             TelemetryOutcome.Failed => CreateException(),
             TelemetryOutcome.Cancelled => new OperationCanceledException(),

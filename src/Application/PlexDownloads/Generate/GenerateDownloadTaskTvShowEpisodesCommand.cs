@@ -190,9 +190,9 @@ public class GenerateDownloadTaskTvShowEpisodesCommandHandler
                 DownloadTaskFileId = downloadTaskTvShowEpisodeFile.Id,
                 DownloadTaskTvShowEpisodeId = downloadTaskTvShowEpisodeFile.ParentId,
                 DownloadTaskTvShowSeasonId = downloadTaskTvShowEpisodeFile.Parent?.Parent?.Id
-                    ?? throw new ArgumentNullException(),
+                    ?? throw new ArgumentNullException(nameof(downloadTaskTvShowEpisodeFile)),
                 DownloadTaskTvShowId = downloadTaskTvShowEpisodeFile.Parent?.Parent?.Parent?.Id
-                    ?? throw new ArgumentNullException(),
+                    ?? throw new ArgumentNullException(nameof(downloadTaskTvShowEpisodeFile)),
                 CreatedAt = DateTime.UtcNow,
             })
         );

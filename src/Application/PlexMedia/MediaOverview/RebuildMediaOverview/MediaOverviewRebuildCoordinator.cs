@@ -28,7 +28,7 @@ public sealed class MediaOverviewRebuildCoordinator : IMediaOverviewRebuildCoord
         PlexMediaType.OtherVideos,
     ];
 
-    private readonly object _sync = new();
+    private readonly Lock _sync = new();
     private static readonly TimeSpan _rebuildCooldown = TimeSpan.FromMinutes(15);
     private readonly HashSet<PlexMediaType> _pendingMediaTypes = [];
     private readonly Dictionary<PlexMediaType, DateTimeOffset> _lastSuccessfulRebuildAt = [];

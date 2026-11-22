@@ -40,9 +40,10 @@ const props = withDefaults(defineProps<{
 	clickable: false,
 	count: 1,
 });
-const minCount = computed(() => props.truncated ? 1 : 100);
+
 const { t } = useI18n();
 
+const minCount = computed(() => props.truncated ? 1 : 100);
 const label = computed(() => props.quality === AudioQuality.Unknown
 	? t('general.error.unknown')
 	: props.quality.replace(/(\d+)_(\d+)kHz/, '$1.$2 kHz')

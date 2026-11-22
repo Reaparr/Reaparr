@@ -9,7 +9,7 @@ public static class PlexMediaTypeMappers
     /// </summary>
     /// <param name="value">The string representation of <see cref="PlexMediaType"/>.</param>
     /// <returns>The converted enum of type <see cref="PlexMediaType"/>.</returns>
-    /// <exception cref="NotImplementedException">Throws exception if string has no enum <see cref="PlexMediaType"/> equivalent.</exception>
+    /// <exception cref="FormatException">The string has no <see cref="PlexMediaType"/> equivalent.</exception>
     public static PlexMediaType ToPlexMediaType(this string? value)
     {
         return value switch
@@ -49,7 +49,7 @@ public static class PlexMediaTypeMappers
                     value ?? "<null>",
                     nameof(PlexMediaType)
                 );
-            throw new NotImplementedException(logResult.ToString());
+            throw new FormatException(logResult.ToString());
         }
     }
 
@@ -58,7 +58,7 @@ public static class PlexMediaTypeMappers
     /// </summary>
     /// <param name="source">The enum of type <see cref="PlexMediaType"/>.</param>
     /// <returns>The string value of the <see cref="PlexMediaType"/> property.</returns>
-    /// <exception cref="NotImplementedException">Throws exception if enum <see cref="PlexMediaType"/> has no string equivalent.</exception>
+    /// <exception cref="NotSupportedException">The enum value has no string equivalent.</exception>
     public static string ToPlexMediaTypeString(this PlexMediaType source)
     {
         return source switch
@@ -87,7 +87,7 @@ public static class PlexMediaTypeMappers
                     source,
                     nameof(PlexMediaType)
                 );
-            throw new NotImplementedException(logResult.ToString());
+            throw new NotSupportedException(logResult.ToString());
         }
     }
 
@@ -97,7 +97,7 @@ public static class PlexMediaTypeMappers
     /// </summary>
     /// <param name="source">The enum of type <see cref="PlexMediaType"/>.</param>
     /// <returns>The Plex API string representation.</returns>
-    /// <exception cref="NotImplementedException">Throws exception if enum value has no Plex API equivalent.</exception>
+    /// <exception cref="NotSupportedException">The enum value has no Plex API equivalent.</exception>
     public static string ToPlexApiString(this PlexMediaType source)
     {
         return source switch
@@ -122,7 +122,7 @@ public static class PlexMediaTypeMappers
                     source,
                     nameof(PlexMediaType)
                 );
-            throw new NotImplementedException(logResult.ToString());
+            throw new NotSupportedException(logResult.ToString());
         }
     }
 }

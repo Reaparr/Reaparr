@@ -415,21 +415,19 @@ public class CheckAllConnectionsStatusByPlexServerCommandUnitTests
             .Verifiable(Times.Once);
         Mock.SetupCommand(It.IsAny<CheckConnectionStatusByIdCommand>)
             .Returns(
-                (CheckConnectionStatusByIdCommand request, CancellationToken _) =>
+                async (CheckConnectionStatusByIdCommand request, CancellationToken cancellationToken) =>
                 {
                     if (request.PlexServerConnectionId == removedId)
                     {
-                        dbContext.PlexServerConnections.Where(x => x.Id == removedId).ExecuteDelete();
-                        return Task.FromResult(
-                            ResultExtensions
-                                .EntityNotFound(nameof(PlexServerConnection), removedId)
-                                .ToResult<PlexServerStatus>()
-                        );
+                        await dbContext
+                            .PlexServerConnections.Where(x => x.Id == removedId)
+                            .ExecuteDeleteAsync(cancellationToken);
+                        return ResultExtensions
+                            .EntityNotFound(nameof(PlexServerConnection), removedId)
+                            .ToResult<PlexServerStatus>();
                     }
 
-                    return Task.FromResult(
-                        Result.Ok(FakeData.GetPlexServerStatus(new Seed(523190), true, 1, survivorId).Generate())
-                    );
+                    return Result.Ok(FakeData.GetPlexServerStatus(new Seed(523190), true, 1, survivorId).Generate());
                 }
             )
             .Verifiable(Times.Exactly(2));
@@ -580,14 +578,14 @@ public class CheckAllConnectionsStatusByPlexServerCommandUnitTests
             .Verifiable(Times.Once);
         Mock.SetupCommand(It.IsAny<CheckConnectionStatusByIdCommand>)
             .Returns(
-                (CheckConnectionStatusByIdCommand request, CancellationToken _) =>
+                async (CheckConnectionStatusByIdCommand request, CancellationToken cancellationToken) =>
                 {
-                    dbContext.PlexServerConnections.Where(x => x.Id == request.PlexServerConnectionId).ExecuteDelete();
-                    return Task.FromResult(
-                        ResultExtensions
-                            .EntityNotFound(nameof(PlexServerConnection), request.PlexServerConnectionId)
-                            .ToResult<PlexServerStatus>()
-                    );
+                    await dbContext
+                        .PlexServerConnections.Where(x => x.Id == request.PlexServerConnectionId)
+                        .ExecuteDeleteAsync(cancellationToken);
+                    return ResultExtensions
+                        .EntityNotFound(nameof(PlexServerConnection), request.PlexServerConnectionId)
+                        .ToResult<PlexServerStatus>();
                 }
             )
             .Verifiable(Times.Exactly(connectionIds.Count));
@@ -662,30 +660,28 @@ public class CheckAllConnectionsStatusByPlexServerCommandUnitTests
             .Verifiable(Times.Once);
         Mock.SetupCommand(It.IsAny<CheckConnectionStatusByIdCommand>)
             .Returns(
-                (CheckConnectionStatusByIdCommand request, CancellationToken _) =>
+                async (CheckConnectionStatusByIdCommand request, CancellationToken cancellationToken) =>
                 {
-                    dbContext.PlexServerConnections.Where(x => x.Id == request.PlexServerConnectionId).ExecuteDelete();
+                    await dbContext
+                        .PlexServerConnections.Where(x => x.Id == request.PlexServerConnectionId)
+                        .ExecuteDeleteAsync(cancellationToken);
 
                     if (request.PlexServerConnectionId == connections[0].Id)
                     {
-                        return Task.FromResult(
-                            ResultExtensions
-                                .EntityNotFound(nameof(PlexServerConnection), request.PlexServerConnectionId)
-                                .ToResult<PlexServerStatus>()
-                        );
+                        return ResultExtensions
+                            .EntityNotFound(nameof(PlexServerConnection), request.PlexServerConnectionId)
+                            .ToResult<PlexServerStatus>();
                     }
 
-                    return Task.FromResult(
-                        Result.Ok(
-                            FakeData
-                                .GetPlexServerStatus(
-                                    new Seed(523198),
-                                    isSuccessful: true,
-                                    plexServerId: 1,
-                                    plexServerConnectionId: request.PlexServerConnectionId
-                                )
-                                .Generate()
-                        )
+                    return Result.Ok(
+                        FakeData
+                            .GetPlexServerStatus(
+                                new Seed(523198),
+                                isSuccessful: true,
+                                plexServerId: 1,
+                                plexServerConnectionId: request.PlexServerConnectionId
+                            )
+                            .Generate()
                     );
                 }
             )

@@ -45,9 +45,9 @@ public class CleanUpDownloadTaskFoldersEpisodeUnitTests : BaseCommandUnitTest<Cl
         fs.Directory.Exists(file.DownloadDirectory).ShouldBe(containsFile);
         fs.Directory.Exists(Path.GetDirectoryName(file.DownloadDirectory)!).ShouldBe(containsFile);
         fs.Directory.Exists(Path.Combine(paths.DefaultDownloadsDestinationFolder, "TvShows")).ShouldBeTrue();
-        fs.File.ReadAllText(controlPath).ShouldBe("control bytes");
+        (await fs.File.ReadAllTextAsync(controlPath, CancellationToken)).ShouldBe("control bytes");
         if (containsFile)
-            fs.File.ReadAllText(file.DownloadFilePath).ShouldBe("target bytes");
+            (await fs.File.ReadAllTextAsync(file.DownloadFilePath, CancellationToken)).ShouldBe("target bytes");
         var retained = await dbContext.DownloadTaskTvShowEpisodeFile.SingleAsync(CancellationToken);
         retained.Id.ShouldBe(file.Id);
         retained.DownloadStatus.ShouldBe(DownloadStatus.Completed);

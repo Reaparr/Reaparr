@@ -201,12 +201,12 @@ public class GetDownloadPreviewEndpointUnitTests
 
         events.Select(x => x.Name).ShouldBe([nameof(TelemetryEvent.DownloadPreviewFinished)]);
         var properties = events.Single().Properties;
-        properties[TelemetryProperty.Outcome].ShouldBe(TelemetryOutcome.Succeeded.ToString());
+        properties[TelemetryProperty.Outcome].ShouldBe(nameof(TelemetryOutcome.Succeeded));
         properties[TelemetryProperty.Downloads.SelectedCount].ShouldBe(2);
         properties[TelemetryProperty.Downloads.SelectionCount].ShouldBe(2);
         ((IEnumerable<string>)properties[TelemetryProperty.Downloads.SelectedMediaTypes]).ShouldBe([
-            PlexMediaType.Movie.ToString(),
-            PlexMediaType.TvShow.ToString(),
+            nameof(PlexMediaType.Movie),
+            nameof(PlexMediaType.TvShow),
         ]);
         properties[TelemetryProperty.Downloads.DestinationFolderPathId].ShouldBe(17);
         properties[TelemetryProperty.Downloads.CustomDestinationFolderPath].ShouldBe("/downloads");
@@ -347,11 +347,11 @@ public class GetDownloadPreviewEndpointUnitTests
 
         events.Select(x => x.Name).ShouldBe([nameof(TelemetryEvent.DownloadPreviewFinished)]);
         var properties = events.Single().Properties;
-        properties[TelemetryProperty.Outcome].ShouldBe(TelemetryOutcome.NoOp.ToString());
+        properties[TelemetryProperty.Outcome].ShouldBe(nameof(TelemetryOutcome.NoOp));
         properties[TelemetryProperty.Downloads.SelectedCount].ShouldBe(1);
         properties[TelemetryProperty.Downloads.SelectionCount].ShouldBe(1);
         ((IEnumerable<string>)properties[TelemetryProperty.Downloads.SelectedMediaTypes]).ShouldBe([
-            PlexMediaType.Movie.ToString(),
+            nameof(PlexMediaType.Movie),
         ]);
         properties[TelemetryProperty.Downloads.CustomDestinationFolderPath].ShouldBe(string.Empty);
         properties.ContainsKey(TelemetryProperty.Downloads.DestinationFolderPathId).ShouldBeFalse();
@@ -486,7 +486,7 @@ public class GetDownloadPreviewEndpointUnitTests
         properties[TelemetryProperty.Downloads.SelectedCount].ShouldBe(1);
         properties[TelemetryProperty.Downloads.SelectionCount].ShouldBe(1);
         ((IEnumerable<string>)properties[TelemetryProperty.Downloads.SelectedMediaTypes]).ShouldBe([
-            PlexMediaType.OtherVideos.ToString(),
+            nameof(PlexMediaType.OtherVideos),
         ]);
         properties.ContainsKey(TelemetryProperty.Downloads.PreviewCount).ShouldBeFalse();
         properties.ContainsKey(TelemetryProperty.Downloads.PreviewTotalSize).ShouldBeFalse();

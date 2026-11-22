@@ -642,7 +642,7 @@ public sealed class GetLibraryMediaPhotoGraphUnitTests : BaseUnitTest<GetLibrary
     }
 
     private static void SetHistoricalPhotoPage(
-        LukeHagar.PlexAPI.SDK.Models.Components.MediaContainerWithMetadataMediaContainer container,
+        MediaContainerWithMetadataMediaContainer container,
         IReadOnlyList<Metadata> all,
         int offset
     )
@@ -654,7 +654,7 @@ public sealed class GetLibraryMediaPhotoGraphUnitTests : BaseUnitTest<GetLibrary
     }
 
     private static void SetHistoricalMixedPage(
-        LukeHagar.PlexAPI.SDK.Models.Components.MediaContainerWithMetadataMediaContainer container,
+        MediaContainerWithMetadataMediaContainer container,
         IReadOnlyList<Metadata> all,
         int offset
     )

@@ -131,34 +131,22 @@ const props = defineProps<{
 	disabled?: boolean;
 }>();
 const emit = defineEmits<{ change: [range: DownloadScheduleRange]; apply: [limit: number | null]; preview: [limit: number | null | undefined] }>();
-const { t } = useI18n();
-const mode = ref<'limited' | 'unlimited' | 'mixed'>('limited');
-const limit = ref<number | null>(null);
+
 let hasLocalEdits = false;
 let hasAppliedLimit = false;
 let submittedLimit: number | null | undefined;
+
+const mode = ref<'limited' | 'unlimited' | 'mixed'>('limited');
+const limit = ref<number | null>(null);
+
+const { t } = useI18n();
+const times = useDownloadScheduleTimes(() => props.timeFormat, () => props.locale);
+
 const previewLimit = computed(() => get(mode) === 'unlimited'
 	? null
 	: get(mode) === 'limited' && get(limit) !== null && isDownloadScheduleLimit(get(limit)) ? get(limit) : undefined);
+
 watch(previewLimit, (value) => emit('preview', value), { immediate: true });
-const times = useDownloadScheduleTimes(() => props.timeFormat, () => props.locale);
-
-function onEdit() {
-	hasLocalEdits = true;
-}
-
-function onLimitInput(value: number | string | null | undefined) {
-	set(limit, typeof value === 'number' ? value : null);
-	onEdit();
-}
-
-function applyLimit() {
-	submittedLimit = get(mode) === 'unlimited' ? null : get(limit)!;
-	hasAppliedLimit = true;
-	hasLocalEdits = false;
-	emit('apply', submittedLimit);
-}
-
 watch([() => props.selection.join(','), () => props.selectedLimits, () => props.defaultLimit], ([selectionKey], [previousSelectionKey, previousLimits]) => {
 	const values = [...new Set(props.selectedLimits)];
 	const nextLimit = values.length === 1 ? values[0] ?? null : null;
@@ -174,4 +162,18 @@ watch([() => props.selection.join(','), () => props.selectedLimits, () => props.
 		set(limit, max(props.selectedLimits) ?? props.defaultLimit ?? null);
 	}
 }, { immediate: true, deep: true });
+
+function onEdit() {
+	hasLocalEdits = true;
+}
+function onLimitInput(value: number | string | null | undefined) {
+	set(limit, typeof value === 'number' ? value : null);
+	onEdit();
+}
+function applyLimit() {
+	submittedLimit = get(mode) === 'unlimited' ? null : get(limit)!;
+	hasAppliedLimit = true;
+	hasLocalEdits = false;
+	emit('apply', submittedLimit);
+}
 </script>

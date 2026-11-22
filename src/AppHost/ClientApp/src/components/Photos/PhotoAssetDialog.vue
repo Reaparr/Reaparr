@@ -83,7 +83,7 @@
 								data-cy="photo-viewer-counter"
 								role="status"
 								:aria-label="`${photoStore.index + 1} / ${photoStore.count}`">
-								{{ photoStore.index + 1 }} / {{ photoStore.count }}
+								{{ t('components.photo-browser.asset-counter', { current: photoStore.index + 1, total: photoStore.count }) }}
 							</span>
 						</QCarouselControl>
 						<Dock
@@ -391,14 +391,20 @@ import { PhotoAssetKind, PhotoItemKind, type PhotoAssetBrowseDTO, type PhotoAsse
 import type { PhotoOverviewItem, PhotoViewerSlide } from '@/store/photoBrowsingStore';
 import { useMediaStore, usePhotoBrowsingStore } from '@store';
 
-const telemetry = useTelemetry();
-const photoStore = usePhotoBrowsingStore();
-const mediaStore = useMediaStore();
-const { t } = useI18n();
+type PhotoDockItem = {
+	label: string;
+	icon: string;
+	dataCy: string;
+	action: () => void;
+};
+
 const detailsTitleId = 'photo-asset-details-title';
-const emit = defineEmits<{
-	(e: 'download', item: PhotoOverviewItem): void;
-}>();
+const dockPassThrough = {
+	itemLink: ({ context }: DockPassThroughMethodOptions) => ({
+		'data-cy': context.item.dataCy,
+	}),
+};
+
 const carouselModel = ref('');
 const carouselSurface = shallowRef<HTMLElement | null>(null);
 const panOffset = reactive({ x: 0, y: 0 });
@@ -416,22 +422,43 @@ const pointerDrag = reactive({
 });
 const pointerCaptureTarget = shallowRef<HTMLElement | null>(null);
 
+const telemetry = useTelemetry();
+const photoStore = usePhotoBrowsingStore();
+const mediaStore = useMediaStore();
+const { t } = useI18n();
+const { lengthX, lengthY } = useSwipe(carouselSurface, {
+	threshold: 24,
+	passive: false,
+	onSwipeStart: () => {
+		if (!photoStore.zoomed) return;
+		const slide = get(activeSlide);
+		if (!slide || isClip(slide)) return;
+		swipeOrigin.x = panOffset.x;
+		swipeOrigin.y = panOffset.y;
+	},
+	onSwipe: () => {
+		if (!photoStore.zoomed) return;
+		setPanPosition(swipeOrigin.x + get(lengthX), swipeOrigin.y + get(lengthY));
+	},
+	onSwipeEnd: (_, direction) => {
+		if (photoStore.zoomed || !photoStore.dialog.open) return;
+		const slides = photoStore.slides;
+		const currentPosition = slides.findIndex((slide) => slide.index === photoStore.index);
+		if (direction === 'left' && currentPosition === slides.length - 1) goNext();
+		if (direction === 'right' && currentPosition === 0) goPrevious();
+	},
+});
+useEventListener(carouselSurface, 'wheel', onWheel, { passive: false });
+useEventListener(carouselSurface, 'pointerdown', onPointerDown, { passive: false });
+useEventListener(carouselSurface, 'pointermove', onPointerMove, { passive: false });
+useEventListener(carouselSurface, 'pointerup', endPointerDrag);
+useEventListener(carouselSurface, 'pointercancel', endPointerDrag);
+useEventListener(carouselSurface, 'lostpointercapture', endPointerDrag);
+useEventListener(window, 'keydown', onKeyDown, { capture: true });
+
 const activeSlide = computed(() => photoStore.slides.find((slide) => slide.index === photoStore.index) ?? null);
 const activeAsset = computed<PhotoAssetBrowseDTO | null>(() => photoStore.current ?? get(activeSlide)?.asset ?? null);
 const detailsAsset = computed<PhotoAssetInspectionDTO | null>(() => photoStore.dialog.asset);
-type PhotoDockItem = {
-	label: string;
-	icon: string;
-	dataCy: string;
-	action: () => void;
-};
-
-const dockPassThrough = {
-	itemLink: ({ context }: DockPassThroughMethodOptions) => ({
-		'data-cy': context.item.dataCy,
-	}),
-};
-
 const dockItems = computed<PhotoDockItem[]>(() => {
 	const asset = get(activeAsset);
 	const items: PhotoDockItem[] = [{
@@ -469,27 +496,44 @@ const dockItems = computed<PhotoDockItem[]>(() => {
 	return items;
 });
 
+watch(() => [photoStore.index, photoStore.slides], () => {
+	const retainedKeys = new Set(photoStore.slides.map(slideKey));
+	for (const key of nativeDimensions.keys()) {
+		if (!retainedKeys.has(key)) nativeDimensions.delete(key);
+	}
+	endPointerDrag();
+	syncCarouselModel();
+}, { immediate: true, deep: true });
+watch(() => photoStore.zoomed, (zoomed) => {
+	if (!zoomed) {
+		endPointerDrag();
+		set(zoomScale, 1);
+		resetPan();
+	}
+});
+
+watchDebounced(
+	[() => mediaStore.photoPreviewSize.width, () => mediaStore.photoPreviewSize.height],
+	() => useSubscription(photoStore.resizeImages().subscribe()),
+	{ debounce: 150 },
+);
+
 function activateDockAction(event: Event, item: PhotoDockItem): void {
 	event.preventDefault();
 	item.action();
 }
-
 function slideKey(slide: PhotoViewerSlide): string {
 	return `${slide.asset.plexLibraryId}:${slide.asset.id}`;
 }
-
 function isClip(slide: PhotoViewerSlide): boolean {
 	return isClipAsset(slide.asset);
 }
-
 function isClipAsset(asset: PhotoAssetBrowseDTO): boolean {
 	return asset.assetKind === PhotoAssetKind.VideoClip;
 }
-
 function kindLabel(kind: PhotoAssetKind): string {
 	return kind === PhotoAssetKind.VideoClip ? t('components.photo-browser.kind-clip') : t('components.photo-browser.kind-image');
 }
-
 function imageStyle(slide: PhotoViewerSlide): Record<string, string> {
 	if (!photoStore.zoomed || isClip(slide)) return {};
 	const dimensions = nativeDimensions.get(slideKey(slide));
@@ -499,7 +543,6 @@ function imageStyle(slide: PhotoViewerSlide): Record<string, string> {
 		transform: `translate3d(${panOffset.x}px, ${panOffset.y}px, 0)`,
 	};
 }
-
 function resetPan(): void {
 	panOffset.x = 0;
 	panOffset.y = 0;
@@ -514,24 +557,20 @@ function setPanPosition(x: number, y: number): void {
 	panOffset.x = Math.max(-maxX, Math.min(maxX, x));
 	panOffset.y = Math.max(-maxY, Math.min(maxY, y));
 }
-
 function syncCarouselModel(): void {
 	const slide = get(activeSlide);
 	set(carouselModel, slide ? slideKey(slide) : '');
 }
-
 function onImageLoaded(slide: PhotoViewerSlide, event: Event): void {
 	const image = event.target;
 	if (!(image instanceof HTMLImageElement) || image.naturalWidth <= 0 || image.naturalHeight <= 0) return;
 	nativeDimensions.set(slideKey(slide), { width: image.naturalWidth, height: image.naturalHeight });
 }
-
 function onCarouselModelValue(value: string | number): void {
 	const slide = photoStore.slides.find((candidate) => slideKey(candidate) === String(value));
 	if (!slide || slide.index === photoStore.index) return;
 	goTo(slide.index, true);
 }
-
 function goTo(index: number, userInitiated = false): void {
 	if (photoStore.count <= 0) return;
 	const normalized = ((index % photoStore.count) + photoStore.count) % photoStore.count;
@@ -541,22 +580,18 @@ function goTo(index: number, userInitiated = false): void {
 	}
 	useSubscription(photoStore.showAsset(normalized).subscribe());
 }
-
 function goPrevious(): void {
 	goTo(photoStore.index - 1, true);
 }
-
 function goNext(): void {
 	goTo(photoStore.index + 1, true);
 }
-
 function downloadCurrentAsset(): void {
 	const asset = get(activeAsset);
 	if (asset) {
 		emit('download', { kind: PhotoItemKind.Asset, asset, index: photoStore.index });
 	}
 }
-
 function toggleZoom(): void {
 	resetPan();
 	set(zoomScale, 1);
@@ -567,7 +602,6 @@ function toggleZoom(): void {
 		telemetry.photoZoomChanged(asset, photoStore.zoomed);
 	}
 }
-
 function onWheel(event: WheelEvent): void {
 	const slide = get(activeSlide);
 	if (!slide || isClip(slide)) return;
@@ -590,13 +624,11 @@ function onWheel(event: WheelEvent): void {
 	}
 	setPanPosition(panOffset.x, panOffset.y);
 }
-
 function getWheelFrame(event: WheelEvent): HTMLElement | null {
 	if (photoStore.detailsOpen || event.deltaY === 0) return null;
 	if (!(event.target instanceof HTMLElement)) return null;
 	return event.target.closest<HTMLElement>('.photo-asset-dialog__image-frame');
 }
-
 function getFitScale(frame: HTMLElement, dimensions: { width: number; height: number }): number {
 	const bounds = frame.getBoundingClientRect();
 	const style = getComputedStyle(frame);
@@ -604,7 +636,6 @@ function getFitScale(frame: HTMLElement, dimensions: { width: number; height: nu
 	const height = bounds.height - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
 	return Math.min(1, width / dimensions.width, height / dimensions.height);
 }
-
 function closeViewer(): void {
 	const asset = get(activeAsset);
 	if (photoStore.dialog.open && asset) {
@@ -613,15 +644,12 @@ function closeViewer(): void {
 	endPointerDrag();
 	photoStore.closeAssetDialog();
 }
-
 function onDialogModelValue(value: boolean): void {
 	if (!value) closeViewer();
 }
-
 function onDialogHide(): void {
 	if (photoStore.dialog.open) closeViewer();
 }
-
 function openDetails(): void {
 	const asset = get(activeAsset);
 	if (!photoStore.detailsOpen && asset) {
@@ -629,11 +657,9 @@ function openDetails(): void {
 	}
 	useSubscription(photoStore.openDetails().subscribe());
 }
-
 function onDetailsModelValue(value: boolean): void {
 	if (!value) closeDetails();
 }
-
 function closeDetails(): void {
 	const asset = get(detailsAsset) ?? get(activeAsset);
 	if (!photoStore.detailsOpen) return;
@@ -642,7 +668,6 @@ function closeDetails(): void {
 	}
 	photoStore.closeDetails();
 }
-
 function retryInspection(): void {
 	const asset = get(detailsAsset) ?? get(activeAsset);
 	if (asset) {
@@ -650,7 +675,6 @@ function retryInspection(): void {
 	}
 	useSubscription(photoStore.retryInspection().subscribe());
 }
-
 function retryImage(): void {
 	const asset = get(activeAsset);
 	if (asset) {
@@ -665,7 +689,6 @@ function isPanPointerTarget(event: PointerEvent): boolean {
 	const target = event.target;
 	return target instanceof HTMLElement && target.closest('.photo-asset-dialog__image-frame') !== null;
 }
-
 function onPointerDown(event: PointerEvent): void {
 	const slide = get(activeSlide);
 	const target = event.currentTarget;
@@ -684,7 +707,6 @@ function onPointerDown(event: PointerEvent): void {
 	set(pointerCaptureTarget, target);
 	event.preventDefault();
 }
-
 function onPointerMove(event: PointerEvent): void {
 	if (!pointerDrag.active || event.pointerId !== pointerDrag.pointerId) return;
 	if (event.pointerType === 'mouse' && event.buttons === 0) {
@@ -697,7 +719,6 @@ function onPointerMove(event: PointerEvent): void {
 	);
 	event.preventDefault();
 }
-
 function endPointerDrag(event?: PointerEvent): void {
 	if (!pointerDrag.active || (event && event.pointerId !== pointerDrag.pointerId)) return;
 	const target = get(pointerCaptureTarget);
@@ -706,15 +727,12 @@ function endPointerDrag(event?: PointerEvent): void {
 	pointerDrag.pointerId = -1;
 	set(pointerCaptureTarget, null);
 }
-
 function libraryRoute(asset: PhotoAssetInspectionDTO): string {
 	return `/photos/${asset.plexLibraryId}?view=folders`;
 }
-
 function folderRoute(asset: PhotoAssetInspectionDTO, folderId: number): string {
 	return `/photos/${asset.plexLibraryId}?view=folders&folderId=${folderId}`;
 }
-
 function requestNextMembershipPage(): void {
 	const albums = get(detailsAsset)?.albums;
 	if (!albums || get(membershipPageInFlight) !== null || photoStore.dialog.loading || albums.pageSize <= 0 || albums.page * albums.pageSize >= albums.totalCount) return;
@@ -724,18 +742,15 @@ function requestNextMembershipPage(): void {
 		finalize(() => set(membershipPageInFlight, null)),
 	).subscribe());
 }
-
 function onMembershipVirtualScroll(details: { to?: number }): void {
 	const albums = get(detailsAsset)?.albums;
 	if (!albums || details.to == null || details.to < albums.items.length - 1) return;
 	requestNextMembershipPage();
 }
-
 function isViewerControlTarget(target: EventTarget | null): boolean {
 	if (!(target instanceof HTMLElement)) return false;
 	return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || Boolean(target.closest('.p-dock'));
 }
-
 function onKeyDown(event: KeyboardEvent): void {
 	if (!photoStore.dialog.open) return;
 	if (event.key === 'Escape') {
@@ -757,7 +772,6 @@ function onKeyDown(event: KeyboardEvent): void {
 		onZoomKeyDown(event);
 	}
 }
-
 function onZoomKeyDown(event: KeyboardEvent): void {
 	if (event.key === '+' || event.key === '=') {
 		event.preventDefault();
@@ -779,59 +793,9 @@ function onZoomKeyDown(event: KeyboardEvent): void {
 	}
 }
 
-const { lengthX, lengthY } = useSwipe(carouselSurface, {
-	threshold: 24,
-	passive: false,
-	onSwipeStart: () => {
-		if (!photoStore.zoomed) return;
-		const slide = get(activeSlide);
-		if (!slide || isClip(slide)) return;
-		swipeOrigin.x = panOffset.x;
-		swipeOrigin.y = panOffset.y;
-	},
-	onSwipe: () => {
-		if (!photoStore.zoomed) return;
-		setPanPosition(swipeOrigin.x + get(lengthX), swipeOrigin.y + get(lengthY));
-	},
-	onSwipeEnd: (_, direction) => {
-		if (photoStore.zoomed || !photoStore.dialog.open) return;
-		const slides = photoStore.slides;
-		const currentPosition = slides.findIndex((slide) => slide.index === photoStore.index);
-		if (direction === 'left' && currentPosition === slides.length - 1) goNext();
-		if (direction === 'right' && currentPosition === 0) goPrevious();
-	},
-});
-useEventListener(carouselSurface, 'wheel', onWheel, { passive: false });
-useEventListener(carouselSurface, 'pointerdown', onPointerDown, { passive: false });
-useEventListener(carouselSurface, 'pointermove', onPointerMove, { passive: false });
-useEventListener(carouselSurface, 'pointerup', endPointerDrag);
-useEventListener(carouselSurface, 'pointercancel', endPointerDrag);
-useEventListener(carouselSurface, 'lostpointercapture', endPointerDrag);
-
-useEventListener(window, 'keydown', onKeyDown, { capture: true });
-
-watchDebounced(
-	[() => mediaStore.photoPreviewSize.width, () => mediaStore.photoPreviewSize.height],
-	() => useSubscription(photoStore.resizeImages().subscribe()),
-	{ debounce: 150 },
-);
-
-watch(() => [photoStore.index, photoStore.slides], () => {
-	const retainedKeys = new Set(photoStore.slides.map(slideKey));
-	for (const key of nativeDimensions.keys()) {
-		if (!retainedKeys.has(key)) nativeDimensions.delete(key);
-	}
-	endPointerDrag();
-	syncCarouselModel();
-}, { immediate: true, deep: true });
-
-watch(() => photoStore.zoomed, (zoomed) => {
-	if (!zoomed) {
-		endPointerDrag();
-		set(zoomScale, 1);
-		resetPan();
-	}
-});
+const emit = defineEmits<{
+	(e: 'download', item: PhotoOverviewItem): void;
+}>();
 </script>
 
 <style scoped lang="scss">

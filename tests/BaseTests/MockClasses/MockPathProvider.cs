@@ -75,7 +75,7 @@ public class MockPathProvider : IPathProvider
     public string LogsDirectory => Path.Combine(ConfigDirectory, IPathProvider.DefaultLogsFolderName);
 
     /// <inheritdoc/>
-    public List<string> DatabaseFiles => [DatabasePath, Database_SHM_Path, Database_WAL_Path];
+    public IReadOnlyList<string> DatabaseFiles => [DatabasePath, Database_SHM_Path, Database_WAL_Path];
 
     /// <inheritdoc/>
     public string DataDirectory => _sandboxFolder;

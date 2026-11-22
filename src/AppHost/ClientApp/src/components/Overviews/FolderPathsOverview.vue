@@ -127,35 +127,28 @@ import { showErrorNotification, useI18n } from '#imports';
 import { useDialogStore, useFolderPathStore } from '@store';
 import { useSubscription } from '@vueuse/rxjs';
 
-const { t } = useI18n();
+let directoryWriteSession = 0;
+let deleteWriteSession = 0;
+let displayNameWriteSession = 0;
+const props = withDefaults(defineProps<{ onlyDefaults?: boolean }>(), {
+	onlyDefaults: false,
+});
 
-const dialogStore = useDialogStore();
-const folderPathStore = useFolderPathStore();
 const activeFolderType = ref(FolderType.DownloadFolder);
 const pendingDeleteFolderPath = ref<FolderPathDTO | null>(null);
 const directoryBrowserSaving = ref(false);
 const directoryBrowserError = ref('');
 const deleteFolderPathSaving = ref(false);
 const deleteFolderPathError = ref('');
-let directoryWriteSession = 0;
-let deleteWriteSession = 0;
-let displayNameWriteSession = 0;
-onBeforeUnmount(() => {
-	directoryWriteSession += 1;
-	deleteWriteSession += 1;
-	displayNameWriteSession += 1;
-});
 
-const props = withDefaults(defineProps<{ onlyDefaults?: boolean }>(), {
-	onlyDefaults: false,
-});
+const { t } = useI18n();
+const dialogStore = useDialogStore();
+const folderPathStore = useFolderPathStore();
 
 const folderPathTabs = computed<IFolderPathGroup[]>(() => folderPathStore.getFolderPathsGroups(false));
-
 const activeFolderPathGroup = computed<IFolderPathGroup | undefined>(() =>
 	get(folderPathTabs).find((group) => group.folderType === get(activeFolderType)),
 );
-
 const visibleFolderPaths = computed(() => {
 	if (props.onlyDefaults) {
 		return folderPathStore.getDefaultFolderPaths;
@@ -173,13 +166,11 @@ function onDirectoryBrowserOpened(): void {
 	set(directoryBrowserSaving, false);
 	set(directoryBrowserError, '');
 }
-
 function onDirectoryBrowserClosed(): void {
 	directoryWriteSession += 1;
 	set(directoryBrowserSaving, false);
 	set(directoryBrowserError, '');
 }
-
 function completeDirectoryWrite(result: ResultDTO<FolderPathDTO>, session: number): void {
 	if (session !== directoryWriteSession) {
 		return;
@@ -193,7 +184,6 @@ function completeDirectoryWrite(result: ResultDTO<FolderPathDTO>, session: numbe
 
 	set(directoryBrowserError, formatErrorResponse(result));
 }
-
 function confirmDirectoryBrowser(path: FolderPathDTO): void {
 	if (get(directoryBrowserSaving)) {
 		return;
@@ -224,7 +214,6 @@ function confirmDirectoryBrowser(path: FolderPathDTO): void {
 			}),
 	);
 }
-
 function addFolderPath(folderGroup: IFolderPathGroup): void {
 	let displayName = '';
 	switch (folderGroup.folderType) {
@@ -260,7 +249,6 @@ function addFolderPath(folderGroup: IFolderPathGroup): void {
 		isDefault: false,
 	});
 }
-
 function deleteFolderPath(folderPath: FolderPathDTO): void {
 	if (folderPath.isDefault || get(deleteFolderPathSaving)) {
 		return;
@@ -271,7 +259,6 @@ function deleteFolderPath(folderPath: FolderPathDTO): void {
 	set(deleteFolderPathError, '');
 	dialogStore.openDialog(DialogType.FolderPathDeleteConfirmationDialog);
 }
-
 function cancelDeleteFolderPath(): void {
 	if (get(deleteFolderPathSaving)) {
 		return;
@@ -281,7 +268,6 @@ function cancelDeleteFolderPath(): void {
 	set(pendingDeleteFolderPath, null);
 	set(deleteFolderPathError, '');
 }
-
 function confirmDeleteFolderPath(): void {
 	if (get(deleteFolderPathSaving)) {
 		return;
@@ -325,11 +311,9 @@ function confirmDeleteFolderPath(): void {
 			}),
 	);
 }
-
 function getFolderPathCyPrefix(folderPath: FolderPathDTO): string {
 	return `${folderPath.isDefault ? 'default' : 'custom'}-${kebabCase(folderPath.folderType)}`;
 }
-
 function toTranslation(type: FolderType): IHelp {
 	switch (type) {
 		case FolderType.DownloadFolder:
@@ -372,7 +356,6 @@ function toTranslation(type: FolderType): IHelp {
 			throw new Error('FolderType not supported');
 	}
 }
-
 function saveDisplayName(id: number, value: string): void {
 	const session = ++displayNameWriteSession;
 	useSubscription(
@@ -393,6 +376,12 @@ function saveDisplayName(id: number, value: string): void {
 		}),
 	);
 }
+
+onBeforeUnmount(() => {
+	directoryWriteSession += 1;
+	deleteWriteSession += 1;
+	displayNameWriteSession += 1;
+});
 </script>
 
 <style lang="scss">

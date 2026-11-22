@@ -38,10 +38,6 @@ import type { DialogType } from '@enums';
 import { useI18n } from 'vue-i18n';
 import { useDialogStore } from '@store';
 
-const { t } = useI18n();
-
-const dialogStore = useDialogStore();
-
 const props = withDefaults(defineProps<{
 	name: DialogType;
 	id?: number;
@@ -59,9 +55,8 @@ const props = withDefaults(defineProps<{
 	disableCancel: false,
 });
 
-const emit = defineEmits<{
-	(e: 'confirm' | 'cancel'): void;
-}>();
+const { t } = useI18n();
+const dialogStore = useDialogStore();
 
 const confirmationText = computed(() => ({
 	title: props.title != '' ? props.title : t('confirmation.not-found.title'),
@@ -73,8 +68,11 @@ function cancel() {
 	emit('cancel');
 	dialogStore.closeDialog(props.name, props.id);
 }
-
 function confirm() {
 	emit('confirm');
 }
+
+const emit = defineEmits<{
+	(e: 'confirm' | 'cancel'): void;
+}>();
 </script>

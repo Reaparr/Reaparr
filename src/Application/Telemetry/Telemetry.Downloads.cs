@@ -132,7 +132,7 @@ public sealed partial class Telemetry
     {
         var properties = new Dictionary<string, object>
         {
-            [TelemetryProperty.Scope] = TelemetryScope.Selection.ToString(),
+            [TelemetryProperty.Scope] = nameof(TelemetryScope.Selection),
             [TelemetryProperty.TaskIds] = requestedTaskIds.ToArray(),
             [TelemetryProperty.TaskKeys] = taskKeys.Select(ToTaskKeyProperties).ToArray(),
             [TelemetryProperty.Outcome] = Outcome(result, result.IsSuccess && result.Value == 0),
@@ -149,7 +149,7 @@ public sealed partial class Telemetry
     {
         var properties = new Dictionary<string, object>
         {
-            [TelemetryProperty.Scope] = TelemetryScope.Server.ToString(),
+            [TelemetryProperty.Scope] = nameof(TelemetryScope.Server),
             [TelemetryProperty.ServerId] = plexServerId,
             [TelemetryProperty.Outcome] = Outcome(result, result.IsSuccess && result.Value == 0),
         };
@@ -190,8 +190,8 @@ public sealed partial class Telemetry
                 [TelemetryProperty.Downloads.TaskType] = downloadTask.DownloadTaskType.ToString(),
                 [TelemetryProperty.ServerId] = downloadTask.PlexServerId,
                 [TelemetryProperty.LibraryId] = downloadTask.PlexLibraryId,
-                [TelemetryProperty.Downloads.Client] = PlexDownloadClientType.Direct.ToString(),
-                [TelemetryProperty.Downloads.Source] = PlexDownloadClientType.Direct.ToString(),
+                [TelemetryProperty.Downloads.Client] = nameof(PlexDownloadClientType.Direct),
+                [TelemetryProperty.Downloads.Source] = nameof(PlexDownloadClientType.Direct),
                 [TelemetryProperty.Downloads.DownloadFileNameTag] = downloadTask.FileName,
                 [TelemetryProperty.Downloads.DownloadSourcePathTag] = downloadTask.FileLocationUrl,
                 [TelemetryProperty.Downloads.DownloadPathTag] = downloadTask.DownloadFilePath,
@@ -216,8 +216,8 @@ public sealed partial class Telemetry
                 [TelemetryProperty.Downloads.TaskType] = downloadTask.DownloadTaskType.ToString(),
                 [TelemetryProperty.ServerId] = downloadTask.PlexServerId,
                 [TelemetryProperty.LibraryId] = downloadTask.PlexLibraryId,
-                [TelemetryProperty.Downloads.Client] = PlexDownloadClientType.Direct.ToString(),
-                [TelemetryProperty.Downloads.Source] = PlexDownloadClientType.Direct.ToString(),
+                [TelemetryProperty.Downloads.Client] = nameof(PlexDownloadClientType.Direct),
+                [TelemetryProperty.Downloads.Source] = nameof(PlexDownloadClientType.Direct),
                 [TelemetryProperty.Downloads.Attempt] = attempt,
                 [TelemetryProperty.Downloads.ConfiguredSegments] = configuredSegments,
                 [TelemetryProperty.Downloads.Segments] = segments,
@@ -240,8 +240,8 @@ public sealed partial class Telemetry
                 [TelemetryProperty.Downloads.TaskType] = downloadTask.DownloadTaskType.ToString(),
                 [TelemetryProperty.ServerId] = downloadTask.PlexServerId,
                 [TelemetryProperty.LibraryId] = downloadTask.PlexLibraryId,
-                [TelemetryProperty.Downloads.Client] = PlexDownloadClientType.Dash.ToString(),
-                [TelemetryProperty.Downloads.Source] = PlexDownloadClientType.Dash.ToString(),
+                [TelemetryProperty.Downloads.Client] = nameof(PlexDownloadClientType.Dash),
+                [TelemetryProperty.Downloads.Source] = nameof(PlexDownloadClientType.Dash),
                 [TelemetryProperty.Downloads.DownloadFileNameTag] = downloadTask.FileName,
                 [TelemetryProperty.Downloads.DownloadSourcePathTag] = downloadTask.FileLocationUrl,
                 [TelemetryProperty.Downloads.DownloadPathTag] = downloadTask.DownloadFilePath,
@@ -265,8 +265,8 @@ public sealed partial class Telemetry
                 [TelemetryProperty.Downloads.TaskType] = downloadTask.DownloadTaskType.ToString(),
                 [TelemetryProperty.ServerId] = downloadTask.PlexServerId,
                 [TelemetryProperty.LibraryId] = downloadTask.PlexLibraryId,
-                [TelemetryProperty.Downloads.Client] = PlexDownloadClientType.Dash.ToString(),
-                [TelemetryProperty.Downloads.Source] = PlexDownloadClientType.Dash.ToString(),
+                [TelemetryProperty.Downloads.Client] = nameof(PlexDownloadClientType.Dash),
+                [TelemetryProperty.Downloads.Source] = nameof(PlexDownloadClientType.Dash),
                 [TelemetryProperty.Downloads.NormalizedFileName] = downloadTask.FileName,
                 [TelemetryProperty.Downloads.OutputPath] = outputPath,
                 [TelemetryProperty.Downloads.DownloadPath] = downloadTask.DownloadFilePath,

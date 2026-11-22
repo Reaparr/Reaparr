@@ -36,7 +36,9 @@ import prettyBytes from 'pretty-bytes';
 import { get } from '@vueuse/core';
 
 const props = defineProps<{ library: PlexLibraryDTO; serverEnabled: boolean }>();
+
 const { t, locale } = useI18n();
+
 const formattedSize = computed(() => prettyBytes(Math.max(0, props.library.mediaSize), { locale: get(locale) }));
 const metrics = computed(() => {
 	const indexed = !!props.library.syncedAt;

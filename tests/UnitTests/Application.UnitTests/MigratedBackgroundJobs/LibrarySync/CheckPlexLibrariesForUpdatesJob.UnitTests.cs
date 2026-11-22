@@ -327,7 +327,7 @@ public class CheckPlexLibrariesForUpdatesJobUnitTests : BaseUnitTest<CheckPlexLi
             config.PlexAccountCount = 1;
         });
         using var cancellationSource = new CancellationTokenSource();
-        cancellationSource.Cancel();
+        await cancellationSource.CancelAsync();
         var context = SetupJobContext(cancellationSource.Token);
 
         Mock.Mock<ITelemetry>()

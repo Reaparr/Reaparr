@@ -387,7 +387,7 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
         var firstCompleted = await Task.WhenAny(execution, leaseRequested.Task).WaitAsync(CancellationToken);
         firstCompleted.ShouldBe(leaseRequested.Task);
         execution.IsCompleted.ShouldBeFalse();
-        cancellation.Cancel();
+        await cancellation.CancelAsync();
         await execution.WaitAsync(CancellationToken);
 
         // Assert
@@ -734,7 +734,7 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
         );
         var cancellation = new CancellationTokenSource();
         var cancellationToken = cancellation.Token;
-        cancellation.Cancel();
+        await cancellation.CancelAsync();
         var context = SetupJobContext(library.PlexServerId, library.Id, cancellationToken);
         Mock.Mock<ICommandExecutor>()
             .Setup(x =>
@@ -887,7 +887,6 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
     {
         // Arrange
         var coordinator = new MediaOverviewRebuildCoordinator();
-        using var rebuildLease = await coordinator.AcquireRebuildLeaseAsync(CancellationToken);
         await SetupDatabase(55111, config =>
         {
             config.PlexServerCount = 1;
@@ -926,12 +925,14 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
             .Verifiable(Times.Once());
         SetupBeginJob();
 
-        // Act
-        var execution = Sut.Execute(context.Object);
-        await dbContext
-            .PlexServers.Where(x => x.Id == library.PlexServerId)
-            .ExecuteUpdateAsync(x => x.SetProperty(y => y.IsEnabled, false), CancellationToken);
-        rebuildLease.Dispose();
+        Task execution;
+        using (await coordinator.AcquireRebuildLeaseAsync(CancellationToken))
+        {
+            execution = Sut.Execute(context.Object);
+            await dbContext
+                .PlexServers.Where(x => x.Id == library.PlexServerId)
+                .ExecuteUpdateAsync(x => x.SetProperty(y => y.IsEnabled, false), CancellationToken);
+        }
         await execution;
 
         // Assert
@@ -1033,7 +1034,6 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
     {
         // Arrange
         var coordinator = new MediaOverviewRebuildCoordinator();
-        using var rebuildLease = await coordinator.AcquireRebuildLeaseAsync(CancellationToken);
         await SetupDatabase(55113, config =>
         {
             config.PlexServerCount = 1;
@@ -1112,12 +1112,15 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
         SetupBeginJob();
 
         // Act
-        var execution = Sut.Execute(context.Object);
-        await leaseRequested.Task;
-        await dbContext
-            .PlexServers.Where(x => x.Id == library.PlexServerId)
-            .ExecuteUpdateAsync(x => x.SetProperty(y => y.IsEnabled, false), CancellationToken);
-        rebuildLease.Dispose();
+        Task execution;
+        using (await coordinator.AcquireRebuildLeaseAsync(CancellationToken))
+        {
+            execution = Sut.Execute(context.Object);
+            await leaseRequested.Task;
+            await dbContext
+                .PlexServers.Where(x => x.Id == library.PlexServerId)
+                .ExecuteUpdateAsync(x => x.SetProperty(y => y.IsEnabled, false), CancellationToken);
+        }
         await execution;
 
         // Assert

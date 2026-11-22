@@ -25,12 +25,12 @@
 						<div class="update-dialog__sidebar-body">
 							<q-tabs
 								v-model="releaseIndex"
-								@update:model-value="onReleaseSelected"
 								vertical
 								active-color="primary"
 								indicator-color="primary"
 								class="update-dialog__tabs"
-								dense>
+								dense
+								@update:model-value="onReleaseSelected">
 								<q-tab
 									v-for="(release, index) in updateStore.releaseNotes"
 									:key="index"
@@ -129,13 +129,13 @@ import { useI18n } from 'vue-i18n';
 import VueMarkdown from 'vue-markdown-render';
 import QScroll from '@components/Common/QScroll.vue';
 
+const releaseIndex = ref(0);
+
 const telemetry = useTelemetry();
 const { t } = useI18n();
-
 const globalStore = useGlobalStore();
 const updateStore = useUpdateStore();
 
-const releaseIndex = ref(0);
 const desktopUpdateButtonLabel = computed(() => {
 	if (updateStore.isApplyingUpdate) {
 		return t('components.update-available-dialog.restarting');
@@ -151,7 +151,6 @@ const desktopUpdateButtonLabel = computed(() => {
 function onReleaseSelected(index: number): void {
 	telemetry.updateReleaseSelected(index);
 }
-
 function runDesktopUpdate() {
 	telemetry.updateApplyRequested();
 	useSubscription(updateStore.downloadAndApplyUpdate().subscribe());

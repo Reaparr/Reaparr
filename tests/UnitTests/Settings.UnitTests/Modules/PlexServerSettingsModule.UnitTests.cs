@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using Reaparr.Settings.Contracts;
 
 namespace Reaparr.Settings.UnitTests;
@@ -47,5 +48,26 @@ public class PlexServerSettingsModuleUnitTests : BaseUnitTest<PlexServerSettings
 
         // Assert
         speedLimit.ShouldBe(200);
+    }
+
+    [Test]
+    public void ShouldPublishExplicitPropertyNames_WhenServerSettingsChange()
+    {
+        // Arrange
+        var sut = PlexServerSettingsModule.Create();
+        var propertyNames = new List<string?>();
+        ((INotifyPropertyChanged)sut).PropertyChanged += (_, args) => propertyNames.Add(args.PropertyName);
+
+        // Act
+        sut.SetDownloadSpeedLimit("machine1", 200);
+        sut.SetServerName("machine1", "test-name");
+
+        // Assert
+        propertyNames.ShouldBe([
+            nameof(PlexServerSettingsModule.Data),
+            nameof(PlexServerSettingItemModule.DownloadSpeedLimit),
+            nameof(PlexServerSettingItemModule.PlexServerName),
+        ]);
+        sut.Data.Count.ShouldBe(1);
     }
 }

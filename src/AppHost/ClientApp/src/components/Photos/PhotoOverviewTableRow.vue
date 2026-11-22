@@ -50,10 +50,7 @@ import type { PhotoOverviewItem } from '@/store/photoBrowsingStore';
 const props = defineProps<{
 	item: PhotoOverviewItem;
 }>();
-const emit = defineEmits<{
-	(e: 'open', event: Event): void;
-	(e: 'download'): void;
-}>();
+
 const { t } = useI18n();
 const visibilityTarget = useTemplateRef<HTMLElement>('visibilityTarget');
 usePhotoImagePreloadCandidate(visibilityTarget, () => props.item);
@@ -90,4 +87,9 @@ const metadata = computed(() => {
 		size: item.asset.size,
 	};
 });
+
+const emit = defineEmits<{
+	(e: 'open', event: Event): void;
+	(e: 'download'): void;
+}>();
 </script>

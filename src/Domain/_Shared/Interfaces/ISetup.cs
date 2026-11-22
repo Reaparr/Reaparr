@@ -2,5 +2,5 @@
 
 public interface ISetup
 {
-    public Result Setup();
+    Result Setup();
 }

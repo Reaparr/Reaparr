@@ -5,10 +5,9 @@ namespace Reaparr.PlexApi;
 
 public class PlexApiClientFactory : IPlexApiClientFactory
 {
-    private static readonly RetryConfig DisabledSdkRetry = new(
+    private static readonly RetryConfig _disabledSdkRetry = new(
         RetryConfig.RetryStrategy.NONE,
-        new BackoffStrategy(1, 1, 1, 1, 0),
-        false
+        new BackoffStrategy(1, 1, 1, 1, 0)
     );
 
     private readonly Func<PlexApiClientOptions?, IPlexApiClient> _clientFactory;
@@ -37,7 +36,7 @@ public class PlexApiClientFactory : IPlexApiClientFactory
             client: _clientFactory(resolvedOptions),
             serverUrl: resolvedOptions.ConnectionUrl,
             token: authToken,
-            retryConfig: DisabledSdkRetry
+            retryConfig: _disabledSdkRetry
         );
     }
 

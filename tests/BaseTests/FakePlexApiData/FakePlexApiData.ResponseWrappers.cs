@@ -13,13 +13,11 @@ public partial class FakePlexApiData
     /// <param name="statusCode"> The status code to return </param>
     /// <param name="seed"> The seed to use for the faker data </param>
     /// <param name="request"> The request message that was sent </param>
-    /// <param name="options"></param>
     /// <returns></returns>
     public static PostUsersSignInDataResponse PostUsersSignInDataResponse(
         HttpStatusCode statusCode,
         Seed seed,
-        HttpRequestMessage? request = null,
-        Action<PlexApiDataConfig>? options = null
+        HttpRequestMessage? request = null
     )
     {
         return new Faker<PostUsersSignInDataResponse>()
@@ -29,7 +27,7 @@ public partial class FakePlexApiData
             .RuleFor(x => x.ContentType, _ => ContentType.ApplicationJson)
             .RuleFor(
                 x => x.UserPlexAccount,
-                _ => statusCode == HttpStatusCode.Created ? GetPlexSignInResponse(seed, options).Generate() : null
+                _ => statusCode == HttpStatusCode.Created ? GetPlexSignInResponse(seed).Generate() : null
             )
             .RuleFor(
                 x => x.RawResponse,
@@ -163,8 +161,7 @@ public partial class FakePlexApiData
     public static GetIdentityResponse GetPlexServerIdentityResponse(
         HttpStatusCode statusCode,
         Seed seed,
-        HttpRequestMessage? request = null,
-        Action<PlexApiDataConfig>? options = null
+        HttpRequestMessage? request = null
     )
     {
         var container = new Faker<GetIdentityMediaContainer>()

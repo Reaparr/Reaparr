@@ -497,11 +497,7 @@ public class MockPlexApiServer : IMockPlexApiServer
                                 )
                                     libraryType = PlexMediaType.OtherVideos;
 
-                                var responseBody = FakePlexApiData.GetLibrarySectionsAllResponseBody(
-                                    _seed,
-                                    library,
-                                    options: _options
-                                );
+                                var responseBody = FakePlexApiData.GetLibrarySectionsAllResponseBody(_seed, library);
 
                                 var fullList =
                                     library.Type.ToPlexMediaType() == PlexMediaType.PhotoAlbum

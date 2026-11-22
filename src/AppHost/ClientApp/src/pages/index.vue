@@ -14,5 +14,6 @@ import { PlexMediaType } from '@dto';
 import { useSettingsStore } from '@store';
 
 const settingsStore = useSettingsStore();
+
 const isPhotoHome = computed(() => settingsStore.displaySettings.allOverviewViewMode === PlexMediaType.PhotoAlbum);
 </script>

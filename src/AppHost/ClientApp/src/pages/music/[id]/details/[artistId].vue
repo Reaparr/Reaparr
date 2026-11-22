@@ -100,6 +100,7 @@
 </template>
 
 <script setup lang="ts">
+import Log from 'consola';
 import { get, set } from '@vueuse/core';
 import { Subject, of, switchMap, catchError, take } from 'rxjs';
 import { useSubscription } from '@vueuse/rxjs';
@@ -109,6 +110,14 @@ import type { IMediaOverviewBarActions } from '@interfaces';
 import { useDialogStore, useDownloadStore, useMediaOverviewStore, useMediaStore, useSettingsStore } from '@store';
 import { listenMediaOverviewDownloadCommand } from '@composables/event-bus';
 
+definePageMeta({ scrollToTop: false });
+
+const requests = new Subject<void>();
+
+const loading = ref(true);
+const errorMessage = ref('');
+const mediaItemDetail = ref<PlexMediaDTO | null>(null);
+
 const route = useRoute();
 const router = useRouter();
 const { t } = useI18n();
@@ -117,42 +126,6 @@ const mediaOverviewStore = useMediaOverviewStore();
 const dialogStore = useDialogStore();
 const downloadStore = useDownloadStore();
 const settingsStore = useSettingsStore();
-const loading = ref(true);
-const errorMessage = ref('');
-const mediaItemDetail = ref<PlexMediaDTO | null>(null);
-const requests = new Subject<void>();
-const libraryId = computed(() => +(route.params.id as string));
-const artistId = computed(() => +(route.params.artistId as string));
-const validRoute = computed(() => [get(libraryId), get(artistId)].every((id) => Number.isSafeInteger(id) && id > 0));
-const dates = computed(() => [
-	{ key: 'originallyAvailableAt', label: t('components.music-details.originally-available'), value: get(mediaItemDetail)?.originallyAvailableAt },
-	{ key: 'addedAt', label: t('components.music-details.added-at'), value: get(mediaItemDetail)?.addedAt },
-	{ key: 'updatedAt', label: t('components.music-details.updated-at'), value: get(mediaItemDetail)?.updatedAt },
-].filter((date): date is { key: string; label: string; value: string } => !!date.value && Number.isFinite(Date.parse(date.value)) && !date.value.startsWith('0001-')));
-
-function backToArtists(): void {
-	const id = get(libraryId);
-	router.push(Number.isSafeInteger(id) && id > 0 ? `/music/${id}` : '/music');
-}
-
-function onAction(event: IMediaOverviewBarActions): void {
-	if (event === 'back')
-		backToArtists();
-}
-
-function loadArtist(): void {
-	set(loading, get(validRoute));
-	set(errorMessage, get(validRoute) ? '' : t('components.music-details.invalid-route'));
-	set(mediaItemDetail, null);
-	mediaOverviewStore.$patch({
-		libraryId: get(libraryId),
-		downloadButtonVisible: false,
-		isDetailView: true,
-		selection: { keys: [], allSelected: false, indexKey: get(libraryId) },
-	});
-	requests.next();
-}
-
 useSubscription(requests.pipe(
 	switchMap(() => get(validRoute)
 		? mediaStore.getMediaDataDetailById(get(artistId), PlexMediaType.MusicArtist).pipe(take(1), catchError(() => of(null)))
@@ -168,6 +141,17 @@ useSubscription(requests.pipe(
 		set(errorMessage, t('components.music-details.load-error'));
 	set(loading, false);
 }));
+
+const libraryId = computed(() => +(route.params.id as string));
+const artistId = computed(() => +(route.params.artistId as string));
+const validRoute = computed(() => [get(libraryId), get(artistId)].every((id) => Number.isSafeInteger(id) && id > 0));
+const dates = computed(() => [
+	{ key: 'originallyAvailableAt', label: t('components.music-details.originally-available'), value: get(mediaItemDetail)?.originallyAvailableAt },
+	{ key: 'addedAt', label: t('components.music-details.added-at'), value: get(mediaItemDetail)?.addedAt },
+	{ key: 'updatedAt', label: t('components.music-details.updated-at'), value: get(mediaItemDetail)?.updatedAt },
+].filter((date): date is { key: string; label: string; value: string } => !!date.value && Number.isFinite(Date.parse(date.value)) && !date.value.startsWith('0001-')));
+
+watch([libraryId, artistId], loadArtist, { immediate: true, flush: 'sync' });
 
 listenMediaOverviewDownloadCommand((command) => {
 	const first = command[0];
@@ -188,13 +172,30 @@ listenMediaOverviewDownloadCommand((command) => {
 	}
 });
 
-watch([libraryId, artistId], loadArtist, { immediate: true, flush: 'sync' });
+function backToArtists(): void {
+	const id = get(libraryId);
+	router.push(Number.isSafeInteger(id) && id > 0 ? `/music/${id}` : '/music').catch((error) => Log.error('Failed to return to music artists', error));
+}
+function onAction(event: IMediaOverviewBarActions): void {
+	if (event === 'back')
+		backToArtists();
+}
+function loadArtist(): void {
+	set(loading, get(validRoute));
+	set(errorMessage, get(validRoute) ? '' : t('components.music-details.invalid-route'));
+	set(mediaItemDetail, null);
+	mediaOverviewStore.$patch({
+		libraryId: get(libraryId),
+		downloadButtonVisible: false,
+		isDetailView: true,
+		selection: { keys: [], allSelected: false, indexKey: get(libraryId) },
+	});
+	requests.next();
+}
 
 onBeforeUnmount(() => {
 	requests.complete();
 	set(mediaItemDetail, null);
 	mediaOverviewStore.$patch({ downloadButtonVisible: false, isDetailView: false });
 });
-
-definePageMeta({ scrollToTop: false });
 </script>

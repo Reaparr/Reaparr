@@ -174,7 +174,7 @@ public static class BasePlexMediaDataMapper
         }
 
         // Replace multiple consecutive dots with a single dot
-        var result = Regex.Replace(sanitized.ToString(), @"\.+", ".");
+        var result = Regex.Replace(sanitized.ToString(), @"\.+", ".", RegexOptions.None, TimeSpan.FromSeconds(1));
 
         // Remove dots from start and end
         result = result.Trim('.');

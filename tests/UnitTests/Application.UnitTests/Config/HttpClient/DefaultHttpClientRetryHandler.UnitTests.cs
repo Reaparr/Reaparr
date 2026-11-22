@@ -51,7 +51,7 @@ public class DefaultHttpClientRetryHandlerUnitTests : BaseUnitTest
         // Act
         var sendTask = client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
         await bufferingStarted.Task.WaitAsync(TimeSpan.FromSeconds(2));
-        var exception = await Should.ThrowAsync<Polly.Timeout.TimeoutRejectedException>(() => sendTask);
+        await Should.ThrowAsync<Polly.Timeout.TimeoutRejectedException>(() => sendTask);
         await bufferingCancelled.Task.WaitAsync(TimeSpan.FromSeconds(2));
 
         // Assert
@@ -79,8 +79,8 @@ public class DefaultHttpClientRetryHandlerUnitTests : BaseUnitTest
         // Act
         var sendTask = client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellation.Token);
         await bufferingStarted.Task.WaitAsync(TimeSpan.FromSeconds(2));
-        cancellation.Cancel();
-        var exception = await Should.ThrowAsync<OperationCanceledException>(() => sendTask);
+        await cancellation.CancelAsync();
+        await Should.ThrowAsync<OperationCanceledException>(() => sendTask);
         await bufferingCancelled.Task.WaitAsync(TimeSpan.FromSeconds(2));
 
         // Assert
@@ -100,10 +100,8 @@ public class DefaultHttpClientRetryHandlerUnitTests : BaseUnitTest
             () => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("unexpected retry") }
         );
         using var client = CreateClient(terminal);
-        using var request = new HttpRequestMessage(HttpMethod.Post, "http://plex.test/unsafe")
-        {
-            Content = new StringContent("request body"),
-        };
+        using var request = new HttpRequestMessage(HttpMethod.Post, "http://plex.test/unsafe");
+        request.Content = new StringContent("request body");
         request.SetRetryCount(2);
         request.SetResponseBufferingTimeout(TimeSpan.FromSeconds(1));
 
@@ -248,8 +246,8 @@ public class DefaultHttpClientRetryHandlerUnitTests : BaseUnitTest
             CancellationToken cancellationToken
         )
         {
-            await stream.WriteAsync(Encoding.UTF8.GetBytes("partial payload"), cancellationToken);
-            throw new HttpIOException(HttpRequestError.ResponseEnded, "The response ended prematurely.", null!);
+            await stream.WriteAsync("partial payload"u8.ToArray(), cancellationToken);
+            throw new HttpIOException(HttpRequestError.ResponseEnded, "The response ended prematurely.");
         }
 
         protected override bool TryComputeLength(out long length)

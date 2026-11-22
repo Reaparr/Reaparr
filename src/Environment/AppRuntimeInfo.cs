@@ -112,7 +112,7 @@ public class AppRuntimeInfo : IAppRuntimeInfo
         return string.IsNullOrWhiteSpace(value) ? null : value;
     }
 
-    public Dictionary<string, string?> GetAllEnvironmentVariables =>
+    public IReadOnlyDictionary<string, string?> GetAllEnvironmentVariables =>
         System
             .Environment.GetEnvironmentVariables()
             .Cast<DictionaryEntry>()

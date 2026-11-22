@@ -78,7 +78,7 @@ public class GetAllMediaByTypeEndpointIntegrationTests : BaseIntegrationTests
             rebuilt.IsSuccess.ShouldBeTrue();
             rebuilt.Errors.Count.ShouldBe(0);
         }
-        int[] expectedSnapshotIds = useSnapshot ? movies.Select(x => x.Id).ToArray() : [];
+        var expectedSnapshotIds = useSnapshot ? movies.Select(x => x.Id).ToArray() : [];
         (
             await context
                 .MediaOverviewMovieSnapshots.OrderBy(x => x.PlexMovieId)

@@ -45,11 +45,11 @@ export function checkConfig(config: Partial<MockConfig> = {}): MockConfig {
 		},
 	};
 
-	for (const key in defaultConfig) {
+	for (const key of Object.keys(defaultConfig) as (keyof MockConfig)[]) {
 		if (!Object.hasOwn(config, key)) {
-			config[key] = defaultConfig[key];
-		} else if (typeof defaultConfig[key] === 'object' && defaultConfig[key] !== null) {
-			config[key] = { ...defaultConfig[key], ...config[key] };
+			Object.assign(config, { [key]: defaultConfig[key] });
+		} else if (key === 'override') {
+			config.override = { ...defaultConfig.override, ...config.override };
 		}
 	}
 

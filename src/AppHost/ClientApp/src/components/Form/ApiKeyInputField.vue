@@ -31,34 +31,14 @@
 <script setup lang="ts">
 import { set } from '@vueuse/core';
 
-const { t } = useI18n();
 const model = defineModel<string>({
 	default: '',
 });
-
 const hasFocus = defineModel<boolean>('hasFocus');
 
 const showApiKey = ref(false);
 
-withDefaults(defineProps<{
-	hideMaskButton?: boolean;
-	cy?: string;
-	showStrength?: boolean;
-	minPasswordLength?: number;
-	disableValidation?: boolean;
-	hint?: string;
-}>(), {
-	hideMaskButton: false,
-	cy: 'api-key-input-field',
-	showStrength: false,
-	minPasswordLength: 8,
-	disableValidation: false,
-	hint: undefined,
-});
-
-const emits = defineEmits<{
-	(e: 'blur'): void;
-}>();
+const { t } = useI18n();
 
 const getApiKeyRules = computed(() => [
 	// Rule: API key is required
@@ -81,8 +61,28 @@ const getApiKeyRules = computed(() => [
 		|| t('components.api-key-input-field.validation.api-key-invalid-placeholder'),
 ]);
 
+withDefaults(defineProps<{
+	hideMaskButton?: boolean;
+	cy?: string;
+	showStrength?: boolean;
+	minPasswordLength?: number;
+	disableValidation?: boolean;
+	hint?: string;
+}>(), {
+	hideMaskButton: false,
+	cy: 'api-key-input-field',
+	showStrength: false,
+	minPasswordLength: 8,
+	disableValidation: false,
+	hint: undefined,
+});
+
 function onBlur() {
 	set(hasFocus, false);
 	emits('blur');
 }
+
+const emits = defineEmits<{
+	(e: 'blur'): void;
+}>();
 </script>

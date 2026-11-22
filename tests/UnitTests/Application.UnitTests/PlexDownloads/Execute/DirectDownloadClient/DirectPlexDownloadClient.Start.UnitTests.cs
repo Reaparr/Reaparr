@@ -15,7 +15,7 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
         Storage,
         UnauthorizedStorage,
         HttpRequest,
-        HttpIOException,
+        HttpIoException,
         Argument,
         NotSupported,
         Format,
@@ -199,9 +199,9 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
         Mock.Mock<IDownloadManagerSettings>().Setup(x => x.DownloadSegments).Returns(0);
 
         SetupCommandExecutor();
-        int attemptNumber = 0;
-        int configuredSegments = 0;
-        int attemptSegments = 0;
+        var attemptNumber = 0;
+        var configuredSegments = 0;
+        var attemptSegments = 0;
         long effectiveSpeedLimitBytes = 0;
         DownloadTaskFileBase? attemptDownloadTask = null;
         Mock.Mock<ITelemetry>()
@@ -905,7 +905,7 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
         var serverMachineIdentifier = await dbContext.GetPlexServerMachineIdentifierById(downloadTask.PlexServerId);
 
         using var speedLimits = new DownloadSpeedLimitProvider(new UserSettings());
-        Action<IReadOnlyDictionary<string, long>> setScheduledSpeedLimits = speedLimits.SetScheduledDownloadSpeedLimits;
+        var setScheduledSpeedLimits = speedLimits.SetScheduledDownloadSpeedLimits;
         speedLimits.SetScheduledDownloadSpeedLimits(
             new Dictionary<string, long> { [serverMachineIdentifier] = 1000L * 1024 }
         );
@@ -2131,7 +2131,7 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
     [Arguments(CompletionFailureKind.Storage, DomainDownloadStatus.StorageError)]
     [Arguments(CompletionFailureKind.UnauthorizedStorage, DomainDownloadStatus.StorageError)]
     [Arguments(CompletionFailureKind.HttpRequest, DomainDownloadStatus.Error)]
-    [Arguments(CompletionFailureKind.HttpIOException, DomainDownloadStatus.Error)]
+    [Arguments(CompletionFailureKind.HttpIoException, DomainDownloadStatus.Error)]
     [Arguments(CompletionFailureKind.Argument, DomainDownloadStatus.Error)]
     [Arguments(CompletionFailureKind.NotSupported, DomainDownloadStatus.Error)]
     [Arguments(CompletionFailureKind.Format, DomainDownloadStatus.Error)]
@@ -2162,12 +2162,14 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
             CompletionFailureKind.Storage => new IOException("Disk write failed."),
             CompletionFailureKind.UnauthorizedStorage => new UnauthorizedAccessException("Access denied."),
             CompletionFailureKind.HttpRequest => new HttpRequestException("Connection reset."),
-            CompletionFailureKind.HttpIOException => new HttpIOException(
+            CompletionFailureKind.HttpIoException => new HttpIOException(
                 HttpRequestError.ResponseEnded,
-                "The response ended prematurely.",
-                null!
+                "The response ended prematurely."
             ),
-            CompletionFailureKind.Argument => new ArgumentException("Invalid downloader argument."),
+            CompletionFailureKind.Argument => new ArgumentException(
+                "Invalid downloader argument.",
+                nameof(failureKind)
+            ),
             CompletionFailureKind.NotSupported => new NotSupportedException("Unsupported operation."),
             CompletionFailureKind.Format => new FormatException("Malformed response."),
             _ => new InvalidOperationException("Unexpected downloader failure."),
@@ -2606,10 +2608,10 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
         downloadServiceMock
             .Setup(x => x.DownloadFileTaskAsync(It.IsAny<string>(), It.IsAny<string>(), cancellationTokenSource.Token))
             .Returns<string, string, CancellationToken>(
-                (_, _, token) =>
+                async (_, _, token) =>
                 {
-                    cancellationTokenSource.Cancel();
-                    return Task.FromCanceled(token);
+                    await cancellationTokenSource.CancelAsync();
+                    await Task.FromCanceled(token);
                 }
             );
 

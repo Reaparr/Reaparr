@@ -55,7 +55,6 @@ const settingsStore = useSettingsStore();
 function onGeneralSettingChanged(): void {
 	telemetry.generalSettingsChanged();
 }
-
 function onDebugSettingChanged(): void {
 	telemetry.debugSettingsChanged();
 }

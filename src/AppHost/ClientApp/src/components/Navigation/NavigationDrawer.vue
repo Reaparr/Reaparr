@@ -28,17 +28,18 @@ import type { QExpansionListProps } from '@interfaces/components/QExpansionListP
 import { useSettingsStore, useDownloadStore } from '@store';
 
 const showDrawer = defineModel<boolean>('showDrawer', { default: false });
+
 const settingsStore = useSettingsStore();
 const downloadStore = useDownloadStore();
 const { t } = useI18n();
 const $q = useQuasar();
+
 const drawerWidth = computed(() => {
 	if (!$q.screen.lt.md || !$q.screen.width)
 		return 400;
 
 	return Math.min(400, $q.screen.width * 0.92);
 });
-
 const getNavItems = computed((): QExpansionListProps[] => {
 	const mainItems: QExpansionListProps[] = [
 		{

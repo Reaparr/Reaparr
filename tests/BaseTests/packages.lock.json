@@ -50,6 +50,12 @@
           "xunit.v3.extensibility.core": "4.0.3"
         }
       },
+      "Meziantou.Analyzer": {
+        "type": "Direct",
+        "requested": "[3.0.341, )",
+        "resolved": "3.0.341",
+        "contentHash": "zpogT6IwYBgNRa9+oETzs7aTU6Te3M/Osdkk/HN1TlJTDjz9dZwoUgh/yWqovT3jTofQGGLB1JqEK8I4uA6+yA=="
+      },
       "Moq": {
         "type": "Direct",
         "requested": "[4.20.72, )",
@@ -68,6 +74,12 @@
           "Microsoft.Extensions.Http": "2.1.1",
           "Moq": "[4.8.0, 5.0.0)"
         }
+      },
+      "Roslynator.Analyzers": {
+        "type": "Direct",
+        "requested": "[5.0.1, )",
+        "resolved": "5.0.1",
+        "contentHash": "sCZ0Di4B937wKa9pwKbdsE6Njr8A/FdCLw28+yDKyMaDZ/f8JWxcFn6NOCukzKhCG/eA6M2DbXlKkrPi0g0lIA=="
       },
       "Shouldly": {
         "type": "Direct",

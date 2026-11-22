@@ -86,13 +86,13 @@ import { get, set } from '@vueuse/core';
 import { useSubscription } from '@vueuse/rxjs';
 import { finalize } from 'rxjs';
 
-const { t } = useI18n();
-const authStore = useAuthenticationStore();
-
 const loading = ref(true);
 const isValid = ref(false);
 const passwordInputFocus = ref(false);
 const confirmPasswordLostFocus = ref(false);
+
+const { t } = useI18n();
+const authStore = useAuthenticationStore();
 
 const getUsernameRules = computed(() => [
 	(v: string): boolean | string => !!v || t('components.authentication-overview.validation.username-is-required'),

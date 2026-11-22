@@ -39,20 +39,20 @@ import { useMediaOverviewStore } from '@store';
 import { SortType } from '@dto';
 import { getVideoQualityFromValue, translateVideoQuality } from '@composables';
 
-const mediaOverviewStore = useMediaOverviewStore();
-const $q = useQuasar();
-
 type AlphabetNavigationEntry = {
 	displayValue: string;
 	scrollIndex: number;
 	label: string;
 };
 
-const navigationRef = useTemplateRef<HTMLElement>('navigation');
 const clickedLabel = shallowRef<string | null>(null);
 const isDragging = shallowRef(false);
 const dragStartY = shallowRef<number | null>(null);
 const draggedEntry = shallowRef<AlphabetNavigationEntry | null>(null);
+
+const mediaOverviewStore = useMediaOverviewStore();
+const $q = useQuasar();
+const navigationRef = useTemplateRef<HTMLElement>('navigation');
 
 const navigationEntries = computed<AlphabetNavigationEntry[]>(() => {
 	return Array.from(mediaOverviewStore.scrollDict.entries()).map(([displayValue, scrollIndex]) => ({
@@ -73,7 +73,6 @@ function onLetterClick(label: string, scrollIndex: number, highlight = true) {
 	mediaOverviewStore.clearPendingMediaHighlight();
 	useSubscription(mediaOverviewStore.scrollToIndex(scrollIndex, highlight).subscribe());
 }
-
 function onPointerDown(event: PointerEvent) {
 	if (!$q.screen.lt.sm || (event.pointerType === 'mouse' && event.button !== 0)) {
 		return;
@@ -83,7 +82,6 @@ function onPointerDown(event: PointerEvent) {
 	set(dragStartY, event.clientY);
 	set(draggedEntry, null);
 }
-
 function onPointerMove(event: PointerEvent) {
 	const startY = get(dragStartY);
 	if (startY === null || Math.abs(event.clientY - startY) < 8) {
@@ -107,23 +105,19 @@ function onPointerMove(event: PointerEvent) {
 	const position = Math.min(0.999, Math.max(0, pointerOffset / element.scrollHeight));
 	set(draggedEntry, entries[Math.floor(position * entries.length)] ?? null);
 }
-
 function onPointerUp() {
 	const entry = get(draggedEntry);
 	if (get(isDragging) && entry) onLetterClick(entry.displayValue, entry.scrollIndex, false);
 	resetDragState();
 }
-
 function onPointerCancel() {
 	resetDragState();
 }
-
 function resetDragState() {
 	set(isDragging, false);
 	set(dragStartY, null);
 	set(draggedEntry, null);
 }
-
 function getDisplayValue(value: string): string {
 	if (mediaOverviewStore.getActiveSort.field !== SortType.VideoQuality) {
 		return value;

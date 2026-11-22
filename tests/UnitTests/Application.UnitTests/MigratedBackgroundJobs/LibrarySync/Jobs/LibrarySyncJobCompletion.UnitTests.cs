@@ -38,7 +38,7 @@ public class LibrarySyncJobCompletionUnitTests : BaseUnitTest<LibrarySyncJob>
         var next = libraries[1];
         using var jobCancellation = new CancellationTokenSource();
         if (expectedStatus == LibrarySyncJobStatus.Cancelled)
-            jobCancellation.Cancel();
+            await jobCancellation.CancelAsync();
         var context = SetupContext(current, jobCancellation.Token);
         SetupRefresh(current, expectedStatus, notificationFails);
         var checker = Mock.Create<CheckQueuedPlexLibraryToSyncCommandHandler>();

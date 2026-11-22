@@ -56,14 +56,15 @@ import { toDownloadMedia } from '@composables/conversion';
 import { sendMediaOverviewDownloadCommand, useMediaOverviewBarDownloadCommandBus } from '@composables/event-bus';
 
 const props = defineProps<{ mediaItem: PlexMediaDTO }>();
+
 const { t } = useI18n();
 const mediaOverviewStore = useMediaOverviewStore();
+
 const selection = ref<ISelection>({
-	indexKey: props.mediaItem.id,
+	indexKey: 0,
 	keys: [],
 	allSelected: false,
 });
-
 const mediaRows = computed((): PlexMediaSlimDTO[] => props.mediaItem.mediaData.map((mediaData) => ({
 	id: mediaData.id,
 	title: mediaData.fileName,
@@ -91,32 +92,8 @@ const mediaRows = computed((): PlexMediaSlimDTO[] => props.mediaItem.mediaData.m
 		audioQuality: AudioQuality.None,
 	} satisfies PlexMediaQualityDTO],
 })));
-
 const selectedCount = computed(() => get(selection).keys.length);
 const rootSelected = computed((): boolean | null => get(selection).allSelected);
-
-function rootSetSelected(value: boolean): void {
-	set(selection, {
-		indexKey: props.mediaItem.id,
-		keys: value ? get(mediaRows).map((row) => row.id) : [],
-		allSelected: value,
-	});
-}
-
-function onSelection(payload: ISelection): void {
-	set(selection, {
-		indexKey: props.mediaItem.id,
-		keys: payload.keys,
-		allSelected: payload.allSelected,
-	});
-}
-
-function toOtherVideoPartDownloadMedia(row: PlexMediaSlimDTO): DownloadMediaDTO[] {
-	return toDownloadMedia(props.mediaItem).map((command) => ({
-		...command,
-		qualities: row.qualities,
-	}));
-}
 
 watch(() => props.mediaItem, () => {
 	set(selection, {
@@ -124,8 +101,7 @@ watch(() => props.mediaItem, () => {
 		keys: [],
 		allSelected: false,
 	});
-}, { flush: 'sync', deep: true });
-
+}, { immediate: true, flush: 'sync', deep: true });
 watch(selectedCount, (count) => {
 	mediaOverviewStore.$patch({ downloadButtonVisible: count > 0 });
 }, { immediate: true });
@@ -136,6 +112,27 @@ useMediaOverviewBarDownloadCommandBus().on(() => {
 	if (downloadMedia.length > 0)
 		sendMediaOverviewDownloadCommand(downloadMedia);
 });
+
+function rootSetSelected(value: boolean): void {
+	set(selection, {
+		indexKey: props.mediaItem.id,
+		keys: value ? get(mediaRows).map((row) => row.id) : [],
+		allSelected: value,
+	});
+}
+function onSelection(payload: ISelection): void {
+	set(selection, {
+		indexKey: props.mediaItem.id,
+		keys: payload.keys,
+		allSelected: payload.allSelected,
+	});
+}
+function toOtherVideoPartDownloadMedia(row: PlexMediaSlimDTO): DownloadMediaDTO[] {
+	return toDownloadMedia(props.mediaItem).map((command) => ({
+		...command,
+		qualities: row.qualities,
+	}));
+}
 
 onBeforeUnmount(() => {
 	mediaOverviewStore.$patch({ downloadButtonVisible: false });

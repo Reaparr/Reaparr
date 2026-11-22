@@ -22,7 +22,7 @@ import { useRoute } from 'vue-router';
 import { useLibraryStore } from '@store';
 
 const route = useRoute();
-const libraryStore = useLibraryStore();
-
 const libraryId = +(route.params.libraryId as string);
+
+const libraryStore = useLibraryStore();
 </script>

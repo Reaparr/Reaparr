@@ -240,7 +240,7 @@ public class CleanUpDownloadTaskFoldersCommonUnitTests : BaseCommandUnitTest<Cle
         result.Errors.Count.ShouldBe(0);
         var fs = Mock.Container.Resolve<IFileSystem>();
         fs.Directory.Exists(file.DownloadDirectory).ShouldBeFalse();
-        fs.File.ReadAllBytes(controlPath).ShouldBe(controlBytes);
+        (await fs.File.ReadAllBytesAsync(controlPath, CancellationToken)).ShouldBe(controlBytes);
     }
 
     [Test]
@@ -272,7 +272,7 @@ public class CleanUpDownloadTaskFoldersCommonUnitTests : BaseCommandUnitTest<Cle
         result.Errors.Count.ShouldBe(0);
         var fs = Mock.Container.Resolve<IFileSystem>();
         fs.Directory.Exists(file.DownloadDirectory).ShouldBeTrue();
-        fs.File.ReadAllText(file.DownloadFilePath).ShouldBe("target bytes");
+        (await fs.File.ReadAllTextAsync(file.DownloadFilePath, CancellationToken)).ShouldBe("target bytes");
     }
 
     [Test]

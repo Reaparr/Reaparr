@@ -21,9 +21,7 @@ public static partial class FakeData
         .Ignore(x => x.PlexLibraries)
         .Ignore(x => x.PlexMusicArtistGenres);
 
-    public static Faker<PlexGenreVideo> GetPlexGenresVideo(Seed seed, Action<FakeDataConfig>? options = null) =>
-        _plexGenreVideo.UseSeed(seed.Next());
+    public static Faker<PlexGenreVideo> GetPlexGenresVideo(Seed seed) => _plexGenreVideo.UseSeed(seed.Next());
 
-    public static Faker<PlexGenreAudio> GetPlexGenresAudio(Seed seed, Action<FakeDataConfig>? options = null) =>
-        _plexGenreAudio.UseSeed(seed.Next());
+    public static Faker<PlexGenreAudio> GetPlexGenresAudio(Seed seed) => _plexGenreAudio.UseSeed(seed.Next());
 }

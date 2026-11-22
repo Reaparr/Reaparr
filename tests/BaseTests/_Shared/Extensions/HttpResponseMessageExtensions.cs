@@ -75,7 +75,7 @@ public static class HttpResponseMessageExtensions
                         value = null;
                         break;
                     default:
-                        throw new ArgumentOutOfRangeException();
+                        throw new ArgumentOutOfRangeException(nameof(dict), element.ValueKind, null);
                 }
             }
 

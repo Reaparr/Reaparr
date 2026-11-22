@@ -73,12 +73,6 @@ import { get, set, useElementSize } from '@vueuse/core';
 import { useDialogStore } from '@store';
 import { useSubscription } from '@vueuse/rxjs';
 
-const dialogStore = useDialogStore();
-const $q = useQuasar();
-
-const showDialog = ref(false);
-const dataValue = ref<T>();
-
 const props = withDefaults(
 	defineProps<{
 		name: string;
@@ -113,31 +107,16 @@ const props = withDefaults(
 	},
 );
 
-defineEmits<{
-	(e: 'opened', value: T): void;
-	(e: 'closed'): void;
-}>();
+const showDialog = ref(false);
+const dataValue = ref<T>();
 
+const dialogStore = useDialogStore();
+const $q = useQuasar();
 const contentSize = useElementSize(useTemplateRef('el'));
 
 const parentValue = computed(() => {
 	return get(dataValue);
 });
-
-function openDialog(value: T, id?: number) {
-	if (!(props.id === 0 || props.id === id)) {
-		return;
-	}
-	set(dataValue, value);
-	set(showDialog, true);
-}
-
-function closeDialog(id?: number) {
-	if (!(props.id === 0 || props.id === id)) {
-		return;
-	}
-	set(showDialog, false);
-}
 const styles = computed(() => {
 	if (!$q.screen.lt.md) {
 		return { width: `clamp(200px, 100%, ${props.width})` };
@@ -148,6 +127,20 @@ const styles = computed(() => {
 		height: props.fullHeight ? 'calc(100dvh - 32px)' : undefined,
 	};
 });
+
+function openDialog(value: T, id?: number) {
+	if (!(props.id === 0 || props.id === id)) {
+		return;
+	}
+	set(dataValue, value);
+	set(showDialog, true);
+}
+function closeDialog(id?: number) {
+	if (!(props.id === 0 || props.id === id)) {
+		return;
+	}
+	set(showDialog, false);
+}
 
 onMounted(() => {
 	useSubscription(
@@ -165,6 +158,11 @@ onMounted(() => {
 			}),
 	);
 });
+
+defineEmits<{
+	(e: 'opened', value: T): void;
+	(e: 'closed'): void;
+}>();
 </script>
 
 <style lang="scss">

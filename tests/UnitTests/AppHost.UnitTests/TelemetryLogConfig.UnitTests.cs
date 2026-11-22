@@ -151,7 +151,7 @@ public class TelemetryLogConfigUnitTests : BaseUnitTest
             );
             builder.Services.ConfigureTelemetry(build.Object, runtime);
             builder.Services.PostConfigure<PostHogOptions>(options => options.EnableCompression = false);
-            using var postHogContainer = BuildPostHogContainer(builder.Services);
+            await using var postHogContainer = BuildPostHogContainer(builder.Services);
             builder.Services.AddSingleton(postHogContainer.Resolve<IPostHogClient>());
             // Both hosts share a process: exclude the collector's own incoming requests from instrumentation.
             builder.Services.Configure<AspNetCoreTraceInstrumentationOptions>(options =>
@@ -199,7 +199,7 @@ public class TelemetryLogConfigUnitTests : BaseUnitTest
                 failedResponse.StatusCode.ShouldBe(System.Net.HttpStatusCode.InternalServerError);
                 await app.Services.GetRequiredService<IPostHogClient>().FlushAsync();
                 app.Services.GetRequiredService<TracerProvider>().ForceFlush().ShouldBeTrue();
-                logger.Dispose();
+                await logger.DisposeAsync();
 
                 // Assert native wire identities, not a mock echo of a dictionary passed to a sink.
                 operationTrace.ShouldBe(initiatingActivity.TraceId);
@@ -282,7 +282,7 @@ public class TelemetryLogConfigUnitTests : BaseUnitTest
         }
         finally
         {
-            logger.Dispose();
+            await logger.DisposeAsync();
         }
     }
 
@@ -332,7 +332,7 @@ public class TelemetryLogConfigUnitTests : BaseUnitTest
             builder.Services.AddSingleton<ITelemetry, Telemetry>();
             builder.Services.AddSingleton<Serilog.ILogger>(logger);
             builder.Services.ConfigureTelemetry(build.Object, runtime);
-            using var postHogContainer = BuildPostHogContainer(builder.Services);
+            await using var postHogContainer = BuildPostHogContainer(builder.Services);
             builder.Services.AddSingleton(postHogContainer.Resolve<IPostHogClient>());
             await using var app = builder.Build();
             app.UseRouting();
@@ -358,7 +358,7 @@ public class TelemetryLogConfigUnitTests : BaseUnitTest
                 response.StatusCode.ShouldBe(System.Net.HttpStatusCode.NoContent);
                 await app.Services.GetRequiredService<IPostHogClient>().FlushAsync();
                 app.Services.GetService<TracerProvider>().ShouldBeNull();
-                logger.Dispose();
+                await logger.DisposeAsync();
                 received.ShouldBeEmpty();
                 user.Verify(x => x.GetTelemetryId(), Times.Never());
                 buffer.GetAll().Single().Message.ShouldContain("Business operation completed");
@@ -377,7 +377,7 @@ public class TelemetryLogConfigUnitTests : BaseUnitTest
         }
         finally
         {
-            logger.Dispose();
+            await logger.DisposeAsync();
         }
     }
 

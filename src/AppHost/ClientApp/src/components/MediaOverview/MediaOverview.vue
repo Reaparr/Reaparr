@@ -194,6 +194,13 @@ import {
 	useSettingsStore,
 } from '#imports';
 
+const props = defineProps<{
+	libraryId: number;
+}>();
+
+const refreshSubmitting = ref(false);
+const refreshAttemptActive = ref(false);
+
 const { t } = useI18n();
 const settingsStore = useSettingsStore();
 const mediaOverviewStore = useMediaOverviewStore();
@@ -202,10 +209,6 @@ const libraryStore = useLibraryStore();
 const dialogStore = useDialogStore();
 const accountStore = useAccountStore();
 const globalStore = useGlobalStore();
-
-const props = defineProps<{
-	libraryId: number;
-}>();
 
 const library = computed(() => libraryStore.getLibrary(props.libraryId));
 const isLibraryInaccessible = computed(() => {
@@ -218,8 +221,6 @@ const isLibraryInaccessible = computed(() => {
 		|| !accountStore.getHasAccountServerAccess(library.plexServerId)
 		|| !accountStore.getHasAccountLibraryAccess(library.id);
 });
-const refreshSubmitting = ref(false);
-const refreshAttemptActive = ref(false);
 const syncQueue = computed(() => libraryStore.getLibrarySyncQueue(props.libraryId));
 const syncQueueKey = computed(() => {
 	const queue = libraryStore.getLibrarySyncQueue(props.libraryId);
@@ -239,134 +240,6 @@ const showQueuedPanel = computed(() => {
 		&& currentLibrary.syncedAt === null
 		&& !get(isLibraryInaccessible);
 });
-
-function resetProgress() {
-	libraryStore.updateLibraryProgress({
-		plexLibraryId: mediaOverviewStore.libraryId,
-		percentage: 0,
-		received: 0,
-		total: 0,
-		isComplete: false,
-		timeStamp: '',
-		timeRemaining: '',
-		items: [],
-		errors: [],
-	});
-}
-
-function refreshLibrary(forceMediaRefresh: boolean): void {
-	if (get(isRefreshDisabled)) {
-		return;
-	}
-
-	set(refreshSubmitting, true);
-	set(refreshAttemptActive, true);
-	resetProgress();
-	useSubscription(
-		libraryStore.reSyncLibrary(props.libraryId, forceMediaRefresh).pipe(
-			finalize(() => {
-				set(refreshSubmitting, false);
-			}),
-		).subscribe({
-			next: (queue) => {
-				if (!queue) {
-					set(refreshAttemptActive, false);
-				}
-			},
-			error: () => {
-				set(refreshAttemptActive, false);
-			},
-		}),
-	);
-}
-
-function openLibraryServerSettings(): void {
-	useSubscription(
-		libraryStore.setLibraryEnabled(props.libraryId, true).subscribe(),
-	);
-}
-
-// region Eventbus
-
-/**
- * Listen for process download command
- */
-listenMediaOverviewDownloadCommand((command) => {
-	Log.info('MediaOverview => Received download command', command);
-	// Only show if there is more than 1 selection
-	if (command.length > 0 && command.some((x) => x.mediaIds.length > 0)) {
-		if (settingsStore.isConfirmationEnabled(mediaOverviewStore.getMediaType)) {
-			dialogStore.openMediaConfirmationDownloadDialog(command);
-		} else {
-			downloadStore.downloadMedia({
-				customDestinationFolderPath: '',
-				destinationFolderPathId: null,
-				downloadMedias: command,
-			});
-		}
-	}
-});
-
-useMediaOverviewBarDownloadCommandBus().on(() => {
-	const downloadCommand: DownloadMediaDTO = {
-		plexServerId: libraryStore.getServerByLibraryId(mediaOverviewStore.libraryId)?.id ?? 0,
-		plexLibraryId: mediaOverviewStore.libraryId,
-		mediaIds: mediaOverviewStore.selection.keys,
-		type: mediaOverviewStore.getMediaType,
-		qualities: [],
-		selectionKind: toDownloadSelectionKind(mediaOverviewStore.getMediaType),
-		keepCompletedInDownloadFolder: settingsStore.downloadManagerSettings.keepCompletedInDownloadFolder,
-	};
-	sendMediaOverviewDownloadCommand([downloadCommand]);
-});
-
-function onAction(event: IMediaOverviewBarActions) {
-	switch (event) {
-		case 'back':
-			break;
-		case 'selection-dialog':
-			dialogStore.openDialog(DialogType.MediaSelectionDialog);
-
-			break;
-		case 'refresh-library':
-			if (get(isRefreshDisabled)) {
-				break;
-			}
-			dialogStore.openDialog(DialogType.RefreshMediaDialog);
-			break;
-		case 'media-options-dialog':
-			dialogStore.openDialog(DialogType.MediaOptionsDialog);
-			break;
-		default:
-			Log.error('Unknown action event', event);
-			break;
-	}
-}
-
-function retryMediaLoad() {
-	useSubscription(mediaOverviewStore.retryMediaLoad().subscribe());
-}
-
-function onOptionsClosed(hasChanged: boolean, visibilityChanged: boolean) {
-	if (!hasChanged) {
-		return;
-	}
-
-	if (visibilityChanged && mediaOverviewStore.allMediaMode) {
-		useSubscription(mediaOverviewStore.refreshMediaDataWithMetadata().subscribe());
-		return;
-	}
-
-	useSubscription(mediaOverviewStore.refreshMediaData().subscribe());
-}
-
-function refreshCompletedLibrary(): void {
-	useSubscription(
-		libraryStore.refreshLibrary(props.libraryId).pipe(
-			switchMap(() => mediaOverviewStore.refreshMediaData()),
-		).subscribe(),
-	);
-}
 
 // Refresh library metadata and media only when the current queue row reports completion.
 watch(
@@ -399,6 +272,127 @@ watch(
 	{ immediate: true },
 );
 
+// region Eventbus
+
+/**
+ * Listen for process download command
+ */
+listenMediaOverviewDownloadCommand((command) => {
+	Log.info('MediaOverview => Received download command', command);
+	// Only show if there is more than 1 selection
+	if (command.length > 0 && command.some((x) => x.mediaIds.length > 0)) {
+		if (settingsStore.isConfirmationEnabled(mediaOverviewStore.getMediaType)) {
+			dialogStore.openMediaConfirmationDownloadDialog(command);
+		} else {
+			downloadStore.downloadMedia({
+				customDestinationFolderPath: '',
+				destinationFolderPathId: null,
+				downloadMedias: command,
+			});
+		}
+	}
+});
+useMediaOverviewBarDownloadCommandBus().on(() => {
+	const downloadCommand: DownloadMediaDTO = {
+		plexServerId: libraryStore.getServerByLibraryId(mediaOverviewStore.libraryId)?.id ?? 0,
+		plexLibraryId: mediaOverviewStore.libraryId,
+		mediaIds: mediaOverviewStore.selection.keys,
+		type: mediaOverviewStore.getMediaType,
+		qualities: [],
+		selectionKind: toDownloadSelectionKind(mediaOverviewStore.getMediaType),
+		keepCompletedInDownloadFolder: settingsStore.downloadManagerSettings.keepCompletedInDownloadFolder,
+	};
+	sendMediaOverviewDownloadCommand([downloadCommand]);
+});
+
+function resetProgress() {
+	libraryStore.updateLibraryProgress({
+		plexLibraryId: mediaOverviewStore.libraryId,
+		percentage: 0,
+		received: 0,
+		total: 0,
+		isComplete: false,
+		timeStamp: '',
+		timeRemaining: '',
+		items: [],
+		errors: [],
+	});
+}
+function refreshLibrary(forceMediaRefresh: boolean): void {
+	if (get(isRefreshDisabled)) {
+		return;
+	}
+
+	set(refreshSubmitting, true);
+	set(refreshAttemptActive, true);
+	resetProgress();
+	useSubscription(
+		libraryStore.reSyncLibrary(props.libraryId, forceMediaRefresh).pipe(
+			finalize(() => {
+				set(refreshSubmitting, false);
+			}),
+		).subscribe({
+			next: (queue) => {
+				if (!queue) {
+					set(refreshAttemptActive, false);
+				}
+			},
+			error: () => {
+				set(refreshAttemptActive, false);
+			},
+		}),
+	);
+}
+function openLibraryServerSettings(): void {
+	useSubscription(
+		libraryStore.setLibraryEnabled(props.libraryId, true).subscribe(),
+	);
+}
+function onAction(event: IMediaOverviewBarActions) {
+	switch (event) {
+		case 'back':
+			break;
+		case 'selection-dialog':
+			dialogStore.openDialog(DialogType.MediaSelectionDialog);
+
+			break;
+		case 'refresh-library':
+			if (get(isRefreshDisabled)) {
+				break;
+			}
+			dialogStore.openDialog(DialogType.RefreshMediaDialog);
+			break;
+		case 'media-options-dialog':
+			dialogStore.openDialog(DialogType.MediaOptionsDialog);
+			break;
+		default:
+			Log.error('Unknown action event', event);
+			break;
+	}
+}
+function retryMediaLoad() {
+	useSubscription(mediaOverviewStore.retryMediaLoad().subscribe());
+}
+function onOptionsClosed(hasChanged: boolean, visibilityChanged: boolean) {
+	if (!hasChanged) {
+		return;
+	}
+
+	if (visibilityChanged && mediaOverviewStore.allMediaMode) {
+		useSubscription(mediaOverviewStore.refreshMediaDataWithMetadata().subscribe());
+		return;
+	}
+
+	useSubscription(mediaOverviewStore.refreshMediaData().subscribe());
+}
+function refreshCompletedLibrary(): void {
+	useSubscription(
+		libraryStore.refreshLibrary(props.libraryId).pipe(
+			switchMap(() => mediaOverviewStore.refreshMediaData()),
+		).subscribe(),
+	);
+}
+
 onMounted(() => {
 	resetProgress();
 
@@ -409,32 +403,32 @@ onMounted(() => {
 			take(1),
 			switchMap(() => mediaOverviewStore.initializeLibrary(props.libraryId)),
 		).subscribe({
-			next: async () => {
-				const requestedScrollIndex = mediaOverviewStore.currentScrollIndex;
-				if (requestedScrollIndex <= 0) {
-					return;
-				}
-
-				// URL/store uses one-based index (same convention as media sortIndex).
-				// PosterTable scroll API expects zero-based row/item index.
-				const targetIndex = requestedScrollIndex - 1;
-				// Initial render can race with virtualized content mounting and page prefetch.
-				// Retry a few times so refresh/back-forward restores land at the intended poster.
-				const maxAttempts = 10;
-				for (let attempt = 0; attempt < maxAttempts; attempt++) {
-					await nextTick();
-					useSubscription(mediaOverviewStore.scrollToIndex(targetIndex, false).subscribe());
-					await new Promise((resolve) => setTimeout(resolve, 100));
-
-					const container = document.querySelector<HTMLElement>('#poster-table');
-					const targetNode = container?.querySelector(`[data-scroll-index="${targetIndex}"]`);
-					if ((container && container.scrollTop > 0) || targetNode) {
-						break;
-					}
-				}
+			next: () => {
+				void restorePosterScrollPosition().catch((error: unknown) => Log.error('Failed to restore media scroll position', error));
 			},
 		}),
 	);
+
+	async function restorePosterScrollPosition(): Promise<void> {
+		const requestedScrollIndex = mediaOverviewStore.currentScrollIndex;
+		if (requestedScrollIndex <= 0) return;
+
+		// URL/store uses one-based index (same convention as media sortIndex).
+		// PosterTable scroll API expects zero-based row/item index.
+		const targetIndex = requestedScrollIndex - 1;
+		// Initial render can race with virtualized content mounting and page prefetch.
+		// Retry a few times so refresh/back-forward restores land at the intended poster.
+		const maxAttempts = 10;
+		for (let attempt = 0; attempt < maxAttempts; attempt++) {
+			await nextTick();
+			useSubscription(mediaOverviewStore.scrollToIndex(targetIndex, false).subscribe());
+			await new Promise((resolve) => setTimeout(resolve, 100));
+
+			const container = document.querySelector<HTMLElement>('#poster-table');
+			const targetNode = container?.querySelector(`[data-scroll-index="${targetIndex}"]`);
+			if ((container && container.scrollTop > 0) || targetNode) break;
+		}
+	}
 });
 </script>
 

@@ -30,7 +30,7 @@ public interface IAppRuntimeInfo
     /// <summary>
     /// Gets all defined System and user level Environment keys and their values
     /// </summary>
-    Dictionary<string, string?> GetAllEnvironmentVariables { get; }
+    IReadOnlyDictionary<string, string?> GetAllEnvironmentVariables { get; }
 
     #region Paths
 

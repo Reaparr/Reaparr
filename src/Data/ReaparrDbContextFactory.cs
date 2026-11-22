@@ -15,5 +15,9 @@ public class ReaparrDbContextFactory : IReaparrDbContextFactory
 
     public IReaparrDbContext Create() => new ReaparrDbContext(_log, _pathProvider, _appRuntimeInfo);
 
+    // TODO remove this method, its a fake async so why?
+#pragma warning disable MA0042
+    // Calling CreateAsync here would recurse; this adapter wraps synchronous construction.
     public Task<IReaparrDbContext> CreateAsync() => Task.FromResult(Create());
+#pragma warning restore MA0042
 }

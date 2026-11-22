@@ -8,23 +8,16 @@
 import { useSettingsStore } from '@store';
 import { destroyBackgroundEffect, setupBackgroundEffect } from '@/public/background-effect.js';
 
-const settingsStore = useSettingsStore();
-
-const $q = useQuasar();
-
 const props = withDefaults(defineProps<{ hideBackground?: boolean }>(), {
 	hideBackground: false,
 });
 
+const settingsStore = useSettingsStore();
+const $q = useQuasar();
+
 const isDark = computed(() => {
 	return $q.dark.isActive;
 });
-
-watch(
-	() => settingsStore.generalSettings.disableAnimatedBackground,
-	(value) => toggleAnimatedBackground(!value),
-);
-
 const backgroundOverlay = computed(() => {
 	if (props.hideBackground) {
 		return {
@@ -38,6 +31,11 @@ const backgroundOverlay = computed(() => {
 		'light-background': !isDark.value,
 	};
 });
+
+watch(
+	() => settingsStore.generalSettings.disableAnimatedBackground,
+	(value) => toggleAnimatedBackground(!value),
+);
 
 function toggleAnimatedBackground(state: boolean) {
 	return state ? setupBackgroundEffect() : destroyBackgroundEffect();

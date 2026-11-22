@@ -101,7 +101,6 @@ const accountsDisplay = computed(() => {
 function updateActiveAccountId(accountId: number): void {
 	settingsStore.generalSettings.activeAccountId = accountId;
 }
-
 function runReSyncAccount(accountId = 0): void {
 	useSubscription(
 		accountStore
@@ -116,7 +115,6 @@ function runReSyncAccount(accountId = 0): void {
 			.subscribe(),
 	);
 }
-
 function onLogOut(): void {
 	useSubscription(authStore.logout().subscribe());
 }

@@ -44,8 +44,8 @@ public class GetAllUniqueMediaTitlesEndpoint : Endpoint<GetAllUniqueMediaTitlesE
         };
 
         var result = query
-            .Where(x => Regex.IsMatch(x, @"^[a-zA-Z0-9\-: ]+$"))
             .AsEnumerable()
+            .Where(x => Regex.IsMatch(x, @"^[a-zA-Z0-9\-: ]+$", RegexOptions.None, TimeSpan.FromSeconds(1)))
             .OrderByNatural(x => x)
             .Distinct()
             .Select(x => x.Trim())

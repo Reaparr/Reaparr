@@ -61,14 +61,12 @@ import { DialogType } from '@enums';
 import { useSettingsStore } from '@store';
 import type { ColLevels } from '@props';
 
+const originalValues: Record<string, boolean> = {};
+
 const telemetry = useTelemetry();
 const settingsStore = useSettingsStore();
-const originalValues: Record<string, boolean> = {};
-const emits = defineEmits<{
-	(e: 'closed', hasChanged: boolean, visibilityChanged: boolean): void;
-}>();
-
 const breakpoints = useBreakpoints(breakpointsQuasar);
+
 const colLabel = computed((): ColLevels => {
 	if (get(breakpoints.smallerOrEqual('sm'))) {
 		return 10;
@@ -89,7 +87,6 @@ function onOpen() {
 	originalValues.hideMediaFromOwnedServers = settingsStore.generalSettings.hideMediaFromOwnedServers;
 	originalValues.useLowQualityPosterImages = settingsStore.generalSettings.useLowQualityPosterImages;
 }
-
 function onGeneralSettingChanged(): void {
 	telemetry.generalSettingsChanged();
 }
@@ -105,4 +102,8 @@ function onClosing() {
 
 	emits('closed', hasChanged, visibilityChanged);
 }
+
+const emits = defineEmits<{
+	(e: 'closed', hasChanged: boolean, visibilityChanged: boolean): void;
+}>();
 </script>

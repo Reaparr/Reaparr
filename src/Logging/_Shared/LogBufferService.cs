@@ -8,7 +8,7 @@ public class LogBufferService : ILogBufferService
     internal const int MaxRetainedEvents = 10_000;
     internal const long MaxRetainedTextBytes = 8L * 1024 * 1024;
 
-    private readonly object _sync = new();
+    private readonly Lock _sync = new();
     private readonly Queue<LiveLogEventDTO> _logEvents = new();
     private long _retainedTextBytes;
 

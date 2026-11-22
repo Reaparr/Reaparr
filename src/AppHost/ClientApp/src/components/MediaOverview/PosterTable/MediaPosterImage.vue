@@ -67,9 +67,6 @@ import type { PlexMediaSlimDTO } from '@dto';
 import type { IMediaActionEmits } from '@interfaces';
 import { useSettingsStore, useMediaStore } from '@store';
 
-const settingsStore = useSettingsStore();
-const mediaStore = useMediaStore();
-
 const props = withDefaults(defineProps<{
 	mediaItem: PlexMediaSlimDTO;
 	overlay?: boolean;
@@ -87,11 +84,21 @@ const props = withDefaults(defineProps<{
 	thumbWidth: 200,
 	thumbHeight: 300,
 });
-const imageUrl = ref('');
-const loading = ref(true);
 let currentSubscription: Subscription | null = null;
 
-defineEmits<IMediaActionEmits>();
+const imageUrl = ref('');
+const loading = ref(true);
+
+const settingsStore = useSettingsStore();
+const mediaStore = useMediaStore();
+
+// Watch for changes in mediaItem or active state (handles RecycleScroller element recycling)
+// Only load thumbnail when the view is active to skip work on off-screen items
+watch([() => props.mediaItem.id, () => props.active], ([, isActive]) => {
+	if (isActive) {
+		loadThumbnail(props.mediaItem);
+	}
+}, { immediate: true });
 
 function loadThumbnail(mediaItem: PlexMediaSlimDTO) {
 	// Cancel any pending subscription when media item changes
@@ -129,19 +136,13 @@ function loadThumbnail(mediaItem: PlexMediaSlimDTO) {
 	});
 }
 
-// Watch for changes in mediaItem or active state (handles RecycleScroller element recycling)
-// Only load thumbnail when the view is active to skip work on off-screen items
-watch([() => props.mediaItem.id, () => props.active], ([, isActive]) => {
-	if (isActive) {
-		loadThumbnail(props.mediaItem);
-	}
-}, { immediate: true });
-
 onUnmounted(() => {
 	if (currentSubscription) {
 		currentSubscription.unsubscribe();
 	}
 });
+
+defineEmits<IMediaActionEmits>();
 </script>
 
 <style lang="scss">

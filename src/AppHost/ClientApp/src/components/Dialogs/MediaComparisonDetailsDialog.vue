@@ -229,17 +229,23 @@ import type { TreeTableSelectionKeys } from 'primevue/treetable';
 import { omit, uniqueId, uniqBy } from 'lodash-es';
 import { catchError, defer, EMPTY, finalize, map, Subject, switchMap, take, throwIfEmpty } from 'rxjs';
 
-const telemetry = useTelemetry();
 interface IComparisonDetailsRow extends Omit<PlexMediaComparisonDetailsRowDTO, 'children'> {
 	key: string;
 	children: IComparisonDetailsRow[];
 }
-
 interface IComparisonDetailTreeNode extends TreeNode {
 	data: IComparisonDetailsRow;
 	children?: IComparisonDetailTreeNode[];
 }
 
+const comparisonRequests = new Subject<PlexMediaSlimDTO | null>();
+const loading = ref(false);
+const comparisonFailed = ref(false);
+const comparisonRows = ref<IComparisonDetailsRow[]>([]);
+const selectedMediaItem = ref<PlexMediaSlimDTO | null>(null);
+const selectedRows = ref<TreeTableSelectionKeys>({});
+
+const telemetry = useTelemetry();
 const { t } = useI18n();
 const $q = useQuasar();
 const mediaStore = useMediaStore();
@@ -247,20 +253,29 @@ const dialogStore = useDialogStore();
 const settingsStore = useSettingsStore();
 const libraryStore = useLibraryStore();
 const serverStore = useServerStore();
+useSubscription(
+	comparisonRequests.pipe(
+		switchMap((mediaItem) => {
+			set(comparisonRows, []);
+			set(selectedRows, {});
+			set(comparisonFailed, false);
+			set(loading, mediaItem !== null);
+			if (!mediaItem)
+				return EMPTY;
 
-const loading = ref(false);
-const comparisonFailed = ref(false);
-const comparisonRequests = new Subject<PlexMediaSlimDTO | null>();
-const comparisonRows = ref<IComparisonDetailsRow[]>([]);
-const selectedMediaItem = ref<PlexMediaSlimDTO | null>(null);
-const selectedRows = ref<TreeTableSelectionKeys>({});
-
-const detailTreeRows = computed(() => mapToTreeNodes(get(comparisonRows)));
-
-const selectedDownloadRows = computed(() => getSelectedDownloadRows(get(comparisonRows)));
-const isMusic = computed(() => get(selectedMediaItem)?.type === PlexMediaType.MusicArtist);
-const canDownload = computed(() => get(selectedMediaItem) !== null && !get(loading) && !get(comparisonFailed));
-
+			return defer(() => mediaStore.getMediaComparisonDetails(mediaItem.id, mediaItem.type)).pipe(
+				take(1),
+				throwIfEmpty(),
+				map((details) => details.rows.map(toComparisonRow)),
+				catchError(() => {
+					set(comparisonFailed, true);
+					return EMPTY;
+				}),
+				finalize(() => set(loading, false)),
+			);
+		}),
+	).subscribe((rows) => set(comparisonRows, rows)),
+);
 const comparisonColumns: QTreeTableColumn[] = [
 	{
 		header: t('components.media-overview.comparison.details-column-title'),
@@ -297,6 +312,10 @@ const comparisonColumns: QTreeTableColumn[] = [
 	},
 ];
 
+const detailTreeRows = computed(() => mapToTreeNodes(get(comparisonRows)));
+const selectedDownloadRows = computed(() => getSelectedDownloadRows(get(comparisonRows)));
+const isMusic = computed(() => get(selectedMediaItem)?.type === PlexMediaType.MusicArtist);
+const canDownload = computed(() => get(selectedMediaItem) !== null && !get(loading) && !get(comparisonFailed));
 const responsiveComparisonColumns = computed<QTreeTableColumn[]>(() => {
 	const columns = comparisonColumns
 		.map((column) => column.field === 'title' ? { ...column, selection: !get(isMusic) } : column);
@@ -311,7 +330,6 @@ function mapToTreeNodes(rows: IComparisonDetailsRow[]): IComparisonDetailTreeNod
 		children: mapToTreeNodes(row.children),
 	}));
 }
-
 function toComparisonRow(row: PlexMediaComparisonDetailsRowDTO): IComparisonDetailsRow {
 	return {
 		...row,
@@ -319,11 +337,9 @@ function toComparisonRow(row: PlexMediaComparisonDetailsRowDTO): IComparisonDeta
 		children: row.children.map(toComparisonRow),
 	};
 }
-
 function getComparisonState(row: IComparisonDetailsRow): PlexMediaComparisonState {
 	return typeof row.state === 'number' ? getPlexMediaComparisonStateFromId(row.state) : row.state;
 }
-
 function onOpen(value: unknown) {
 	const mediaItem = value as PlexMediaSlimDTO | null;
 	set(selectedMediaItem, mediaItem);
@@ -332,7 +348,6 @@ function onOpen(value: unknown) {
 	}
 	requestComparison();
 }
-
 function requestComparison() {
 	const mediaItem = get(selectedMediaItem);
 	if (mediaItem && get(comparisonFailed)) {
@@ -340,36 +355,10 @@ function requestComparison() {
 	}
 	comparisonRequests.next(mediaItem);
 }
-
 function onClose() {
 	comparisonRequests.next(null);
 	set(selectedMediaItem, null);
 }
-
-useSubscription(
-	comparisonRequests.pipe(
-		switchMap((mediaItem) => {
-			set(comparisonRows, []);
-			set(selectedRows, {});
-			set(comparisonFailed, false);
-			set(loading, mediaItem !== null);
-			if (!mediaItem)
-				return EMPTY;
-
-			return defer(() => mediaStore.getMediaComparisonDetails(mediaItem.id, mediaItem.type)).pipe(
-				take(1),
-				throwIfEmpty(),
-				map((details) => details.rows.map(toComparisonRow)),
-				catchError(() => {
-					set(comparisonFailed, true);
-					return EMPTY;
-				}),
-				finalize(() => set(loading, false)),
-			);
-		}),
-	).subscribe((rows) => set(comparisonRows, rows)),
-);
-
 function onSelectionChange(keys: TreeTableSelectionKeys) {
 	if (!get(canDownload))
 		return;
@@ -385,7 +374,6 @@ function onSelectionChange(keys: TreeTableSelectionKeys) {
 		telemetry.mediaComparisonSelectionChanged(mediaItem, Object.keys(get(selectedRows)).length);
 	}
 }
-
 function getActionableMusicTracks(rows: IComparisonDetailsRow[]): IComparisonDetailsRow[] {
 	return rows.flatMap((row) => {
 		if (getComparisonState(row) === PlexMediaComparisonState.Owned)
@@ -399,21 +387,18 @@ function getActionableMusicTracks(rows: IComparisonDetailsRow[]): IComparisonDet
 		return getActionableMusicTracks(row.children);
 	});
 }
-
 function getMusicSelectionValue(rows: IComparisonDetailsRow[]): boolean | null {
 	const tracks = getActionableMusicTracks(rows);
 	const selectedCount = tracks.filter((track) => get(selectedRows)[track.key]?.checked).length;
 	return tracks.length > 0 && selectedCount === tracks.length ? true : selectedCount > 0 ? null : false;
 }
-
 function toggleMusicSelection(rows: IComparisonDetailsRow[], checked: boolean) {
 	if (!get(canDownload))
 		return;
 	const tracks = getActionableMusicTracks(rows);
 	const keys = checked ? { ...get(selectedRows) } : omit(get(selectedRows), tracks.map((track) => track.key));
 	if (checked) {
-		for (const track of tracks)
-			keys[track.key] = { checked: true, partialChecked: false };
+		Object.assign(keys, Object.fromEntries(tracks.map((track) => [track.key, { checked: true, partialChecked: false }])));
 	}
 	set(selectedRows, keys);
 	const mediaItem = get(selectedMediaItem);
@@ -421,7 +406,6 @@ function toggleMusicSelection(rows: IComparisonDetailsRow[], checked: boolean) {
 		telemetry.mediaComparisonSelectionChanged(mediaItem, Object.keys(keys).length, checked);
 	}
 }
-
 function getSelectedDownloadRows(rows: IComparisonDetailsRow[]): IComparisonDetailsRow[] {
 	return rows.flatMap((row) => {
 		const children = getSelectedDownloadRows(row.children ?? []);
@@ -431,7 +415,6 @@ function getSelectedDownloadRows(rows: IComparisonDetailsRow[]): IComparisonDeta
 		return [row, ...children];
 	});
 }
-
 function downloadRows(rows: IComparisonDetailsRow[]) {
 	if (!get(canDownload))
 		return;
@@ -445,7 +428,6 @@ function downloadRows(rows: IComparisonDetailsRow[]) {
 
 	dialogStore.openMediaConfirmationDownloadDialog(downloadCommands);
 }
-
 function toDownloadMediaCommand(row: IComparisonDetailsRow): DownloadMediaDTO {
 	return {
 		type: row.type,

@@ -81,7 +81,7 @@ public partial class FakePlexApiData
                 (f, x) =>
                 {
                     x.Type = type.ToPlexApiString();
-                    x.Media = [GetMediaMetaDataMedia(seed, options).Generate()];
+                    x.Media = [GetMediaMetaDataMedia(seed).Generate()];
                     x.Guid = f.PlexMedia().Guid(type);
                     if (type == PlexMediaType.PhotoAlbum)
                     {
@@ -107,19 +107,19 @@ public partial class FakePlexApiData
             );
     }
 
-    public static Faker<Media> GetMediaMetaDataMedia(Seed seed, Action<PlexApiDataConfig>? options = null)
+    public static Faker<Media> GetMediaMetaDataMedia(Seed seed)
     {
         return _getMediaMetaDataMedia
             .UseSeed(seed.Next())
             .FinishWith(
                 (_, x) =>
                 {
-                    x.Part = [GetMediaMetaDataPart(seed, options).Generate()];
+                    x.Part = [GetMediaMetaDataPart(seed).Generate()];
                 }
             );
     }
 
-    public static Faker<Part> GetMediaMetaDataPart(Seed seed, Action<PlexApiDataConfig>? options = null) =>
+    public static Faker<Part> GetMediaMetaDataPart(Seed seed) =>
         _getMediaMetaDataPartFaker
             .UseSeed(seed.Next())
             .FinishWith(

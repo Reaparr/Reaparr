@@ -177,7 +177,7 @@ public static partial class PlexMediaExtensions
     {
         if (plexTvShowEpisode.TvShow is null || plexTvShowEpisode.TvShowSeason is null)
         {
-            throw new NullReferenceException("PlexTvShowEpisode.TvShow or PlexTvShowEpisode.TvShowSeason is null");
+            throw new InvalidOperationException("PlexTvShowEpisode.TvShow or PlexTvShowEpisode.TvShowSeason is null");
         }
 
         var fileName = plexMediaData.GetEpisodeDownloadFileName(plexTvShowEpisode.MediaDataList);

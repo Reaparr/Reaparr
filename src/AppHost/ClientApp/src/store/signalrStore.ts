@@ -246,7 +246,7 @@ export const useSignalrStore = defineStore(StoreNames.SignalrStore, () => {
 		downloadRecovery = useDownloadStore().reconcileAfterReconnect().subscribe();
 	}
 
-	function updateState<T>(propertyName: keyof ISignalRStoreState, newObject: T, idName: keyof T): void {
+	function updateState<T>(propertyName: 'serverConnectionCheckStatusProgress', newObject: T, idName: keyof T): void {
 		if (!state[propertyName]) {
 			Log.error(`Failed to get ISignalRStoreState property name: ${propertyName}`);
 			return;
@@ -274,11 +274,10 @@ export const useSignalrStore = defineStore(StoreNames.SignalrStore, () => {
 			}
 		}
 
-		// Trigger Subject to send current state
-		(state[propertyName + 'Subject'] as Subject<Array<T>>).next(state[propertyName] as Array<T>);
+		state.serverConnectionCheckStatusProgressSubject.next(state[propertyName] as ServerConnectionCheckStatusProgressDTO[]);
 	}
 
-	function removeStateItem<T>(propertyName: keyof ISignalRStoreState, itemToRemove: T, idName: keyof T): void {
+	function removeStateItem<T>(propertyName: 'serverConnectionCheckStatusProgress', itemToRemove: T, idName: keyof T): void {
 		if (!state[propertyName]) {
 			Log.error(`Failed to get ISignalRStoreState property name: ${propertyName}`);
 			return;
@@ -304,8 +303,7 @@ export const useSignalrStore = defineStore(StoreNames.SignalrStore, () => {
 			}
 		}
 
-		// Trigger Subject to send current state
-		(state[propertyName + 'Subject'] as Subject<Array<T>>).next(state[propertyName] as Array<T>);
+		state.serverConnectionCheckStatusProgressSubject.next(state[propertyName] as ServerConnectionCheckStatusProgressDTO[]);
 	}
 
 	// region Start / Stop Hub Connections

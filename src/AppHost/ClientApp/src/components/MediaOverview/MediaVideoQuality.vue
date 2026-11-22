@@ -45,7 +45,6 @@ const props = withDefaults(defineProps<{
 	count: 1,
 });
 
-defineEmits<IMediaActionEmits>();
 const minCount = computed(() => {
 	return props.truncated ? 1 : 100;
 });
@@ -123,6 +122,8 @@ const getQualityDisplay = (quality: VideoQuality): {
 			};
 	}
 };
+
+defineEmits<IMediaActionEmits>();
 </script>
 
 <style lang="scss">

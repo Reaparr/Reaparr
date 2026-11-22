@@ -1031,7 +1031,7 @@ public class SyncPlexMusicCommandUnitTests : BaseCommandUnitTest<SyncPlexMusicCo
             })
             .Single();
         using var cancellation = new CancellationTokenSource();
-        cancellation.Cancel();
+        await cancellation.CancelAsync();
         var cancellationArtist = ToIncomingArtist(
             db,
             await db

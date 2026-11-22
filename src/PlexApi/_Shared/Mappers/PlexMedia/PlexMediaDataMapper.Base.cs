@@ -4,7 +4,7 @@ namespace Reaparr.PlexApi;
 
 public static partial class PlexMediaDataMapper
 {
-    [GeneratedRegex("[^0-9]")]
+    [GeneratedRegex("[^0-9]", RegexOptions.None, matchTimeoutMilliseconds: 1000)]
     private static partial Regex MyRegex();
 
     private static string? GetImdbId(this List<MetaDataGuidsDTO> guids) =>

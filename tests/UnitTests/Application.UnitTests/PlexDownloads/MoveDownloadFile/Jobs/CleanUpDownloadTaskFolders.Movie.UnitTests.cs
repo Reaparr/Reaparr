@@ -38,7 +38,7 @@ public class CleanUpDownloadTaskFoldersMovieUnitTests : BaseCommandUnitTest<Clea
         fs.Directory.Exists(file.DownloadDirectory).ShouldBe(containsFile);
         fs.Directory.Exists(Path.GetDirectoryName(file.DownloadDirectory)!).ShouldBe(directoryExists || containsFile);
         if (containsFile)
-            fs.File.ReadAllText(file.DownloadFilePath).ShouldBe("target bytes");
+            (await fs.File.ReadAllTextAsync(file.DownloadFilePath, CancellationToken)).ShouldBe("target bytes");
         var retained = await dbContext.DownloadTaskMovieFile.SingleAsync(CancellationToken);
         retained.Id.ShouldBe(file.Id);
         retained.DownloadStatus.ShouldBe(DownloadStatus.Completed);

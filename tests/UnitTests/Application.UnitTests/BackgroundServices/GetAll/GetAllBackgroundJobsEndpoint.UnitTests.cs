@@ -31,7 +31,9 @@ public class GetAllBackgroundJobsEndpointUnitTests
         var context = new Mock<IJobExecutionContext>();
         context.SetupGet(x => x.JobDetail).Returns(jobDetail.Object);
         context.SetupGet(x => x.MergedJobDataMap).Returns(CreateJobDataMap(update));
-        context.SetupGet(x => x.FireTimeUtc).Returns(update.JobStartTime);
+        context
+            .SetupGet(x => x.FireTimeUtc)
+            .Returns(new DateTimeOffset(DateTime.SpecifyKind(update.JobStartTime, DateTimeKind.Utc)));
         return context.Object;
     }
 

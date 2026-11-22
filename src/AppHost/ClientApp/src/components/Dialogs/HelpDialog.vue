@@ -35,11 +35,12 @@ import { DialogType } from '@enums';
 import { useI18n } from 'vue-i18n';
 import VueMarkdown from 'vue-markdown-render';
 import type MarkdownIt from 'markdown-it';
+import type { Options, Renderer, Token } from 'markdown-it';
 
 const { t } = useI18n();
+
 const helpTitle = ref('');
 const helpText = ref('');
-
 const missingHelpTitle = ref(t('help.default.title'));
 const missingHelpText = ref(t('help.default.text'));
 
@@ -47,24 +48,29 @@ function onOpen(event: IHelp): void {
 	set(helpTitle, event.title ? event.title : get(missingHelpTitle));
 	set(helpText, event.text ? event.text : get(missingHelpText));
 }
-
 function onClose() {
 	set(helpTitle, '');
 	set(helpText, '');
 }
-
 // Markdown-it plugin to add target="_blank" and rel="noopener noreferrer" to all links
 function markdownItTargetBlank(md: MarkdownIt): void {
-	const d = md.renderer.rules.link_open;
-	if (!d) {
+	const defaultLinkOpen = md.renderer.rules.link_open;
+	if (!defaultLinkOpen) {
 		return;
 	}
-	md.renderer.rules.link_open = (t, i, o, e, s) => {
-		const a = t[i].attrIndex('target');
-		if (a < 0) t[i].attrPush(['target', '_blank']);
-		else t[i].attrs[a][1] = '_blank';
-		t[i].attrPush(['rel', 'noopener noreferrer']);
-		return d(t, i, o, e, s);
+	md.renderer.rules.link_open = (
+		tokens: Token[],
+		index: number,
+		options: Options,
+		env: unknown,
+		renderer: Renderer,
+	) => {
+		const token = tokens[index]!;
+		const targetIndex = token.attrIndex('target');
+		if (targetIndex < 0) token.attrPush(['target', '_blank']);
+		else token.attrs![targetIndex]![1] = '_blank';
+		token.attrPush(['rel', 'noopener noreferrer']);
+		return defaultLinkOpen(tokens, index, options, env, renderer);
 	};
 }
 </script>

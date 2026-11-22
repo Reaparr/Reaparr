@@ -37,9 +37,11 @@
             "select-artist": "Interpret {title} auswählen",
             "select-album": "Album {title} auswählen",
             "selected-count": "{count} ausgewählt",
-            "track-count": "{count} Titel",
+            "track-count-display": "({count} Titel)",
             "record-label": "Plattenlabel",
             "release-date": "Veröffentlichungsdatum",
+            "record-label-display": "{label}: {value}",
+            "release-date-display": "{label}:",
             "no-tracks": "Keine Titel gefunden",
             "no-albums": "Keine Alben gefunden"
         },
@@ -86,6 +88,7 @@
             "details-loading": "Elementdetails werden geladen",
             "memberships-loading": "Albumzugehörigkeiten werden geladen",
             "asset-viewer": "Fotobetrachter",
+            "asset-counter": "{current} / {total}",
             "close-asset-viewer": "Fotobetrachter schließen",
             "close-details": "Elementdetails schließen",
             "previous-asset": "Vorheriges Element",
@@ -438,7 +441,6 @@
             "next-steps": "Schließen blendet nur diesen Dialog aus; fehlgeschlagene Anfragen werden nicht erneut ausgeführt. Wenn das Problem weiterhin besteht, öffnet Auf GitHub melden ein vorausgefülltes Issue zur Prüfung. Nichts wird automatisch übermittelt. Entfernen Sie sensible Informationen, ergänzen Sie Schritte zur Reproduktion und fügen Sie relevante Backend-Protokolle hinzu, bevor Sie das Issue absenden.",
             "request-failed": "Das Backend konnte diese Anfrage nicht abschließen.",
             "connection-failed": "Das Reaparr-Backend ist nicht erreichbar. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
-            "endpoint": "Endpunkt",
             "omitted-errors": "Nur die ersten 10 unterschiedlichen Fehler werden angezeigt. Weitere Fehler wurden ausgelassen; siehe Reaparr-Protokolle.",
             "report-issue": "Auf GitHub melden",
             "report-description": "Beschreiben Sie bitte, was Sie gerade getan haben, und fügen Sie relevante Reaparr-Protokolle hinzu."

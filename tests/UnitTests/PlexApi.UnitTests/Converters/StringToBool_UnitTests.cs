@@ -30,4 +30,19 @@ public class StringToBool : BaseUnitTest
         // Assert
         deserializedBoolean.ShouldBe(expected);
     }
+
+    [Test]
+    [Arguments(true, "\"1\"")]
+    [Arguments(false, "\"0\"")]
+    public void ShouldSerializeBooleanAsPlexString(bool value, string expectedJson)
+    {
+        // Arrange
+        var sut = new PlexApi.StringToBool();
+
+        // Act
+        var json = JsonSerializer.Serialize(value, new JsonSerializerOptions { Converters = { sut } });
+
+        // Assert
+        json.ShouldBe(expectedJson);
+    }
 }

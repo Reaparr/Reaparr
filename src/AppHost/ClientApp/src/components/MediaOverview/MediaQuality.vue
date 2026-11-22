@@ -39,8 +39,6 @@ const props = withDefaults(defineProps<{
 	clickable: false,
 });
 
-defineEmits<IMediaActionEmits>();
-
 const displayQualities = computed(() => {
 	const parentQualities = new Set<string>();
 	return props.qualities.filter((quality) => {
@@ -58,6 +56,8 @@ const displayQualities = computed(() => {
 function isAudioMediaType(mediaType: PlexMediaType): boolean {
 	return [PlexMediaType.MusicArtist, PlexMediaType.MusicAlbum, PlexMediaType.MusicTrack].includes(mediaType);
 }
+
+defineEmits<IMediaActionEmits>();
 </script>
 
 <style lang="scss" scoped>

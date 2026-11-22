@@ -52,7 +52,7 @@ public class StopDownloadTaskCommandMoveQueueUnitTests : BaseCommandUnitTest<Sto
         SetupFileSystem(fs => fs.AddFile(target.DownloadFilePath, new MockFileData(bytes)));
         using var stopping = new CancellationTokenSource();
         if (shuttingDown)
-            stopping.Cancel();
+            await stopping.CancelAsync();
         Mock.Mock<IHostApplicationLifetime>().SetupGet(x => x.ApplicationStopping).Returns(stopping.Token);
         Mock.Mock<IDownloadTaskScheduler>()
             .Setup(x => x.IsDownloading(targetKey, CancellationToken))
@@ -98,7 +98,11 @@ public class StopDownloadTaskCommandMoveQueueUnitTests : BaseCommandUnitTest<Sto
             retained.CurrentFileTransferBytesOffset,
             retained.FileDataTransferred
         ).ShouldBe(waitingBefore);
-        Mock.Container.Resolve<IFileSystem>().File.ReadAllBytes(target.DownloadFilePath).ShouldBe(bytes);
+        (
+            await Mock
+                .Container.Resolve<IFileSystem>()
+                .File.ReadAllBytesAsync(target.DownloadFilePath, CancellationToken)
+        ).ShouldBe(bytes);
         Mock.Mock<IDownloadTaskScheduler>().Verify();
         Mock.Mock<IMoveDownloadFileScheduler>().Verify();
         Mock.Mock<IMoveDownloadFileScheduler>()

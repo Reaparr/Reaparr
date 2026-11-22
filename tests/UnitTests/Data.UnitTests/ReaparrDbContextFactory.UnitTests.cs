@@ -10,12 +10,14 @@ public class ReaparrDbContextFactoryUnitTests
     public async Task ShouldCreateIndependentConfiguredContexts_WhenUsingBothCreationMethods()
     {
         // Arrange
-        using var container = CreateContainer();
+        await using var container = CreateContainer();
         var factory = container.Resolve<IReaparrDbContextFactory>();
         var pathProvider = container.Resolve<IPathProvider>();
 
         // Act
+#pragma warning disable MA0042 // This test intentionally covers the synchronous factory API.
         using var syncContext = factory.Create();
+#pragma warning restore MA0042
         using var asyncContext = await factory.CreateAsync();
 
         // Assert

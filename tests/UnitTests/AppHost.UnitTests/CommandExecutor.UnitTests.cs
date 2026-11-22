@@ -31,6 +31,8 @@ public class CommandExecutorUnitTests
         state.ValidationCalls.ShouldBe(1);
         state.HandlerCalls.ShouldBe(1);
         state.Markers.Select(x => x.Disposed).ShouldAllBe(x => x);
+        state.HandlerMarker!.Disposed.ShouldBeTrue();
+        state.MiddlewareMarker!.Disposed.ShouldBeTrue();
         state.HandlerScope.ShouldBe(state.MiddlewareScope);
         state.HandlerContext.ShouldNotBeSameAs(state.MiddlewareContext);
         Should.Throw<ObjectDisposedException>(() => state.HandlerContext!.ClearChangeTracker());
@@ -77,7 +79,7 @@ public class CommandExecutorUnitTests
         using var cancellation = new CancellationTokenSource();
         state.ThrowActivation = outcome == "activation";
         if (outcome == "cancel")
-            cancellation.Cancel();
+            await cancellation.CancelAsync();
 
         // Act
         var result = await executor.Send(new LifetimeCommand(outcome), cancellation.Token);
@@ -112,7 +114,7 @@ public class CommandExecutorUnitTests
         state.HandlerCalls.ShouldBe(1);
         var context = state.HandlerContext!;
         context.ClearChangeTracker();
-        cancellation.Cancel();
+        await cancellation.CancelAsync();
         var cancelled = await execution;
         var cancelledScope = state.HandlerScope;
         var next = await executor.Send(new LifetimeCommand());
@@ -347,6 +349,8 @@ public class CommandExecutorUnitTests
         public Task<Result>? EscapedDispatch;
         public List<Guid> ScopeIds { get; } = [];
         public List<DisposalMarker> Markers { get; } = [];
+        public DisposalMarker? HandlerMarker;
+        public DisposalMarker? MiddlewareMarker;
     }
 
     public sealed class ScopeIdentity
@@ -421,6 +425,7 @@ public class CommandExecutorUnitTests
             _state = state;
             _executor = executor;
             _eventPublisher = eventPublisher;
+            state.HandlerMarker = marker;
             if (state.ThrowActivation)
                 throw new InvalidOperationException("activation");
         }
@@ -487,6 +492,7 @@ public class CommandExecutorUnitTests
             _context = context;
             _scope = scope;
             _state = state;
+            state.MiddlewareMarker = marker;
             if (state.ThrowMiddlewareActivation)
                 throw new InvalidOperationException("middleware activation");
         }

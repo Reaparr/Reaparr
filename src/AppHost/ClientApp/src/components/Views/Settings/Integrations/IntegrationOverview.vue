@@ -36,16 +36,15 @@ import { storeToRefs } from 'pinia';
 
 const dialogStore = useDialogStore();
 const integrationStore = useIntegrationStore();
+
 const { items } = storeToRefs(integrationStore);
 
 function refresh(): void {
 	useSubscription(integrationStore.refresh().subscribe());
 }
-
 function openAdd(): void {
 	dialogStore.openIntegrationDialog(null);
 }
-
 function openEdit(integration: IntegrationSummary): void {
 	dialogStore.openIntegrationDialog(integration);
 }

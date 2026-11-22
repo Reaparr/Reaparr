@@ -42,7 +42,7 @@ public class TelemetryProxyUnitTests : BaseUnitTest
                 return response;
             }
         );
-        using var serviceProvider = CreateForwarderServiceProvider();
+        await using var serviceProvider = CreateForwarderServiceProvider();
         using var invoker = new HttpMessageInvoker(handler, disposeHandler: false);
         var appBuildInfo = new MockAppBuildInfo
         {
@@ -111,7 +111,7 @@ public class TelemetryProxyUnitTests : BaseUnitTest
         var handler = new RecordingHandler(
             (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.NoContent))
         );
-        using var serviceProvider = CreateForwarderServiceProvider();
+        await using var serviceProvider = CreateForwarderServiceProvider();
         using var invoker = new HttpMessageInvoker(handler, disposeHandler: false);
         var context = CreateContext(HttpMethods.Get, "/i/v1/e");
         context.Request.Headers[HeaderNames.Authorization] = "Bearer application-secret";
@@ -148,9 +148,9 @@ public class TelemetryProxyUnitTests : BaseUnitTest
         var customHandler = new RecordingHandler(
             (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.NoContent))
         );
-        using var euProvider = CreateForwarderServiceProvider();
-        using var usProvider = CreateForwarderServiceProvider();
-        using var customProvider = CreateForwarderServiceProvider();
+        await using var euProvider = CreateForwarderServiceProvider();
+        await using var usProvider = CreateForwarderServiceProvider();
+        await using var customProvider = CreateForwarderServiceProvider();
         using var euInvoker = new HttpMessageInvoker(euHandler, disposeHandler: false);
         using var usInvoker = new HttpMessageInvoker(usHandler, disposeHandler: false);
         using var customInvoker = new HttpMessageInvoker(customHandler, disposeHandler: false);
@@ -238,7 +238,7 @@ public class TelemetryProxyUnitTests : BaseUnitTest
             (_, _) =>
                 Task.FromException<HttpResponseMessage>(new InvalidOperationException("upstream must not be contacted"))
         );
-        using var serviceProvider = CreateForwarderServiceProvider();
+        await using var serviceProvider = CreateForwarderServiceProvider();
         using var invoker = new HttpMessageInvoker(handler, disposeHandler: false);
         var feature = new MaxRequestBodySizeFeature();
         var context = CreateContext(HttpMethods.Post, "/i/v1/e", [1, 2, 3]);
@@ -266,7 +266,7 @@ public class TelemetryProxyUnitTests : BaseUnitTest
             (_, _) =>
                 Task.FromException<HttpResponseMessage>(new InvalidOperationException("upstream must not be contacted"))
         );
-        using var serviceProvider = CreateForwarderServiceProvider();
+        await using var serviceProvider = CreateForwarderServiceProvider();
         using var invoker = new HttpMessageInvoker(handler, disposeHandler: false);
         var feature = new MaxRequestBodySizeFeature();
         var context = CreateContext(HttpMethods.Put, "/i/v1/e", [1, 2, 3]);
@@ -298,7 +298,7 @@ public class TelemetryProxyUnitTests : BaseUnitTest
         var failureHandler = new RecordingHandler(
             (_, _) => Task.FromException<HttpResponseMessage>(new HttpRequestException("upstream unavailable"))
         );
-        using var failureProvider = CreateForwarderServiceProvider();
+        await using var failureProvider = CreateForwarderServiceProvider();
         using var failureInvoker = new HttpMessageInvoker(failureHandler, disposeHandler: false);
         var failureContext = CreateContext(HttpMethods.Get, "/i/v1/e");
         var failureProxy = new TelemetryProxy(
@@ -313,14 +313,14 @@ public class TelemetryProxyUnitTests : BaseUnitTest
         );
 
         using var cancellation = new CancellationTokenSource();
-        cancellation.Cancel();
+        await cancellation.CancelAsync();
         var cancellationHandler = new RecordingHandler(
             (_, _) =>
                 Task.FromException<HttpResponseMessage>(
                     new InvalidOperationException("canceled request must not complete")
                 )
         );
-        using var cancellationProvider = CreateForwarderServiceProvider();
+        await using var cancellationProvider = CreateForwarderServiceProvider();
         using var cancellationInvoker = new HttpMessageInvoker(cancellationHandler, disposeHandler: false);
         var cancellationContext = CreateContext(HttpMethods.Get, "/i/v1/e");
         cancellationContext.RequestAborted = cancellation.Token;
@@ -352,7 +352,7 @@ public class TelemetryProxyUnitTests : BaseUnitTest
         var handler = new RecordingHandler(
             (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.NoContent))
         );
-        using var forwarderProvider = CreateForwarderServiceProvider();
+        await using var forwarderProvider = CreateForwarderServiceProvider();
         using var invoker = new HttpMessageInvoker(handler, disposeHandler: false);
         var telemetry = new Mock<ITelemetry>(MockBehavior.Strict);
         telemetry.Setup(x => x.BeginRequest(null)).Returns(Disposable.Empty).Verifiable(Times.Once());
@@ -371,7 +371,7 @@ public class TelemetryProxyUnitTests : BaseUnitTest
             )
             .AddSingleton(telemetry.Object)
             .BuildServiceProvider();
-        using (services)
+        await using (services)
         {
             var ordinaryPathReached = false;
             var application = new ApplicationBuilder(services);

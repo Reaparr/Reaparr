@@ -307,7 +307,7 @@ public class SyncPlexMoviesCommandHandlerUnitTests : BaseCommandUnitTest<SyncPle
         var library = IDbContext.PlexLibraries.First();
         var originalIds = IDbContext.PlexMovies.Select(x => x.Id).Order().ToList();
         using var cancellationTokenSource = new CancellationTokenSource();
-        cancellationTokenSource.Cancel();
+        await cancellationTokenSource.CancelAsync();
 
         // Act
         var result = await Mock.Create<SyncPlexMoviesCommandHandler>()
@@ -1007,7 +1007,7 @@ public class SyncPlexMoviesCommandHandlerUnitTests : BaseCommandUnitTest<SyncPle
             })
             .Single();
         using var cancellation = new CancellationTokenSource();
-        cancellation.Cancel();
+        await cancellation.CancelAsync();
         SetIds(library, [movie]);
         library.Movies.Clear();
         library.Movies.Add(movie);

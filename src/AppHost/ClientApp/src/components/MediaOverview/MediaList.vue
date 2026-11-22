@@ -124,11 +124,6 @@ import {
 	useSettingsStore,
 } from '#imports';
 
-const mediaOverviewStore = useMediaOverviewStore();
-const settingsStore = useSettingsStore();
-
-const defaultOpened = ref(false);
-const { t } = useI18n();
 const props = withDefaults(
 	defineProps<{
 		mediaItem?: PlexMediaDTO | null;
@@ -143,8 +138,13 @@ const props = withDefaults(
 	},
 );
 
+const defaultOpened = ref(false);
 const selected = ref<ISelection[]>([]);
 const itemExpanded = ref<boolean[]>([]);
+
+const mediaOverviewStore = useMediaOverviewStore();
+const settingsStore = useSettingsStore();
+const { t } = useI18n();
 
 const rootSelected = computed((): boolean | null => {
 	const allSelected = get(selected).map((x) => x.allSelected);
@@ -158,75 +158,11 @@ const rootSelected = computed((): boolean | null => {
 
 	return null;
 });
-
 // region Selection
 
 const selectedCount = computed((): number => {
 	return get(selected)?.reduce((acc, x) => (x.keys?.length ?? 0) + acc, 0);
 });
-
-function rootSetSelected(value: boolean) {
-	for (const child of props.mediaItem?.children ?? []) {
-		setSelected(child.id, child.children, value);
-	}
-}
-
-function isSelected(id: number): boolean | null {
-	if (get(selected).length === 0) {
-		return false;
-	}
-	const result = get(selected).find((x) => x.indexKey === id);
-	if (result === undefined) {
-		return false;
-	}
-	return result.allSelected;
-}
-
-function getSelected(id: number): ISelection | null {
-	if (get(selected).length === 0) {
-		return null;
-	}
-	const result = get(selected).find((x) => x.indexKey === id);
-	if (result === undefined) {
-		return null;
-	}
-	return result;
-}
-
-function setSelected(id: number, children: PlexMediaSlimDTO[], value: boolean) {
-	const selection = get(selected).find((x) => x.indexKey === id);
-	if (selection) {
-		if (value) {
-			selection.allSelected = true;
-			selection.keys = children.map((x) => x.id);
-		} else {
-			selection.allSelected = false;
-			selection.keys = [];
-		}
-	}
-}
-
-function onSelection(id: number, payload: ISelection) {
-	const list = get(selected) ?? [];
-	const i = list.findIndex((x) => x.indexKey === id);
-	if (i === -1) {
-		list.push({ indexKey: id, keys: payload.keys, allSelected: payload.allSelected });
-		return;
-	}
-
-	const item = list[i];
-	if (!item)
-		return;
-
-	item.allSelected = payload.allSelected;
-	item.keys = payload.keys;
-}
-
-// endregion
-
-function expandAll() {
-	defaultOpened.value = true;
-}
 
 // region EventBus
 watch(selectedCount, () =>
@@ -287,6 +223,65 @@ useMediaOverviewBarDownloadCommandBus().on(() => {
 
 	sendMediaOverviewDownloadCommand(downloadMedia);
 });
+
+function rootSetSelected(value: boolean) {
+	for (const child of props.mediaItem?.children ?? []) {
+		setSelected(child.id, child.children, value);
+	}
+}
+function isSelected(id: number): boolean | null {
+	if (get(selected).length === 0) {
+		return false;
+	}
+	const result = get(selected).find((x) => x.indexKey === id);
+	if (result === undefined) {
+		return false;
+	}
+	return result.allSelected;
+}
+function getSelected(id: number): ISelection | null {
+	if (get(selected).length === 0) {
+		return null;
+	}
+	const result = get(selected).find((x) => x.indexKey === id);
+	if (result === undefined) {
+		return null;
+	}
+	return result;
+}
+function setSelected(id: number, children: PlexMediaSlimDTO[], value: boolean) {
+	const selection = get(selected).find((x) => x.indexKey === id);
+	if (selection) {
+		if (value) {
+			selection.allSelected = true;
+			selection.keys = children.map((x) => x.id);
+		} else {
+			selection.allSelected = false;
+			selection.keys = [];
+		}
+	}
+}
+function onSelection(id: number, payload: ISelection) {
+	const list = get(selected) ?? [];
+	const i = list.findIndex((x) => x.indexKey === id);
+	if (i === -1) {
+		list.push({ indexKey: id, keys: payload.keys, allSelected: payload.allSelected });
+		return;
+	}
+
+	const item = list[i];
+	if (!item)
+		return;
+
+	item.allSelected = payload.allSelected;
+	item.keys = payload.keys;
+}
+// endregion
+
+function expandAll() {
+	defaultOpened.value = true;
+}
+
 // endregion
 onMounted(() => {
 	const children = props.mediaItem?.children ?? [];

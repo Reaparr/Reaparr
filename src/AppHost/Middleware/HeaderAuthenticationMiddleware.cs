@@ -219,7 +219,7 @@ public class HeaderAuthenticationMiddleware
             Array.Reverse(maskBytes);
             return new IPAddress(maskBytes);
         }
-        else // IPv6
+        // IPv6
         {
             if (prefixLength < 0 || prefixLength > 128)
                 throw new ArgumentOutOfRangeException(
@@ -231,7 +231,7 @@ public class HeaderAuthenticationMiddleware
             var fullBytes = prefixLength / 8;
             var remainingBits = prefixLength % 8;
 
-            for (int i = 0; i < fullBytes; i++)
+            for (var i = 0; i < fullBytes; i++)
             {
                 mask[i] = 0xFF;
             }
@@ -255,7 +255,7 @@ public class HeaderAuthenticationMiddleware
         if (ipBytes.Length != networkBytes.Length || ipBytes.Length != maskBytes.Length)
             return false;
 
-        for (int i = 0; i < ipBytes.Length; i++)
+        for (var i = 0; i < ipBytes.Length; i++)
         {
             if ((ipBytes[i] & maskBytes[i]) != (networkBytes[i] & maskBytes[i]))
                 return false;
@@ -282,5 +282,4 @@ public class HeaderAuthenticationMiddleware
             _ => null,
         };
     }
-
 }

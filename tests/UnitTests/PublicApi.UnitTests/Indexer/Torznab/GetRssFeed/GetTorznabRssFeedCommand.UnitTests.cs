@@ -888,7 +888,7 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
         await SetupDatabase(7655, ConfigureMovieFeed);
         var command = await CreateMovieFeedCommand();
         using var cancellationTokenSource = new CancellationTokenSource();
-        cancellationTokenSource.Cancel();
+        await cancellationTokenSource.CancelAsync();
         var handler = new GetTorznabRssFeedCommandHandler(
             Serilog.Log.Logger,
             IDbContext,

@@ -53,11 +53,11 @@ import { useLogsStore } from '@store';
 import { useSubscription } from '@vueuse/rxjs';
 import { exhaustMap, Subject } from 'rxjs';
 
+const sendTestEvent = new Subject<void>();
+
 const { t } = useI18n();
 const logsStore = useLogsStore();
 const telemetry = useTelemetry();
-const sendTestEvent = new Subject<void>();
-
 useSubscription(sendTestEvent.pipe(
 	exhaustMap(() => logsStore.sendTelemetryDiagnostics()),
 ).subscribe());
@@ -66,7 +66,6 @@ function requestDiagnostics(): void {
 	telemetry.diagnosticsRequested();
 	sendTestEvent.next();
 }
-
 function statusText(status: boolean | null): string {
 	if (status === true) return t('pages.debug.telemetry.accepted');
 	if (status === false) return t('pages.debug.telemetry.failed');

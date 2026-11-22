@@ -54,7 +54,7 @@ export default defineComponent({
 				push: props.push,
 				onClick(event: MouseEvent) {
 					if (props.to) {
-						useRouter().push({
+						void useRouter().push({
 							path: props.to,
 						});
 					} else {

@@ -42,7 +42,6 @@ function onDownloadSegmentsChanged(value: number): void {
 	settingsStore.downloadManagerSettings.downloadSegments = value;
 	telemetry.downloadManagerSettingsChanged();
 }
-
 function onKeepCompletedChanged(value: boolean): void {
 	settingsStore.downloadManagerSettings.keepCompletedInDownloadFolder = value;
 	telemetry.downloadManagerSettingsChanged();

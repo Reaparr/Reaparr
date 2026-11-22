@@ -223,27 +223,15 @@ import { toDownloadActions, translateDownloadStatus } from '@composables';
 import Convert from '@class/Convert';
 import { useI18n } from '#imports';
 
-const telemetry = useTelemetry();
-const serverStore = useServerStore();
-const downloadStore = useDownloadStore();
-const dialogStore = useDialogStore();
-const serverConnectionStore = useServerConnectionStore();
-const accountStore = useAccountStore();
-const $q = useQuasar();
-
-const { t } = useI18n();
-
 interface DownloadTreeNode extends TreeNode {
 	data: IDownloadTableNode;
 	children?: DownloadTreeNode[];
 }
-
 interface MobileDownloadNode {
 	node: DownloadTreeNode;
 	depth: number;
 	hasChildren: boolean;
 }
-
 interface MappedDownloadNodeCache {
 	treeNode: DownloadTreeNode;
 	children: DownloadTreeNode[];
@@ -259,151 +247,15 @@ interface MappedDownloadNodeCache {
 	loadingAction: DownloadActions | undefined;
 }
 
-const loadingIds = ref<{
-	id: string;
-	action: DownloadActions;
-}[]>([]);
-const isExpanded = ref(true);
-const clearCompletedLoading = ref(false);
-const collapsedMobileNodeKeys = shallowRef<ReadonlySet<string>>(new Set());
-const loadingActionById = computed(() => new Map(get(loadingIds).map(({ id, action }) => [id, action])));
-const treeNodeCache = new WeakMap<DownloadProgressDTO, MappedDownloadNodeCache>();
-const treeNodeListCache = new WeakMap<DownloadProgressDTO[], DownloadTreeNode[]>();
-
 const props = defineProps<{
 	loading?: boolean;
 	plexServer: PlexServerDTO;
 	downloadRows: DownloadProgressDTO[];
 }>();
 
-defineEmits<{
-	(e: 'selected', payload: ISelection): void;
-}>();
-
-const nodes = computed((): DownloadTreeNode[] => {
-	return mapToTreeNodes(props.downloadRows);
-});
-const mobileNodes = computed(() => flattenNodes(get(nodes)));
-
-function flattenNodes(value: DownloadTreeNode[], depth = 0): MobileDownloadNode[] {
-	return value.flatMap((node) => {
-		const hasChildren = (node.children?.length ?? 0) > 0;
-		const entry = { node, depth, hasChildren };
-
-		if (!hasChildren || !isMobileNodeExpanded(node)) {
-			return [entry];
-		}
-
-		return [entry, ...flattenNodes(node.children ?? [], depth + 1)];
-	});
-}
-
-function isMobileNodeExpanded(node: DownloadTreeNode): boolean {
-	return !get(collapsedMobileNodeKeys).has(String(node.key));
-}
-
-function toggleMobileNode(node: DownloadTreeNode): void {
-	const key = String(node.key);
-	const collapsedKeys = new Set(get(collapsedMobileNodeKeys));
-
-	if (collapsedKeys.has(key)) {
-		collapsedKeys.delete(key);
-	} else {
-		collapsedKeys.add(key);
-	}
-
-	set(collapsedMobileNodeKeys, collapsedKeys);
-}
-
-const hasCompletedDownloads = computed((): boolean => {
-	return containsCompletedTasks(props.downloadRows);
-});
-
-function mapToTreeNodes(value: DownloadProgressDTO[], loadingActions = get(loadingActionById)): DownloadTreeNode[] {
-	const previous = treeNodeListCache.get(value);
-	let next = previous;
-	let changed = previous === undefined || previous.length !== value.length;
-
-	if (changed) {
-		next = previous?.slice(0, value.length) ?? new Array<DownloadTreeNode>(value.length);
-	}
-
-	for (let index = 0; index < value.length; index++) {
-		const mappedNode = mapToTreeNode(value[index]!, loadingActions);
-		if (next![index] === mappedNode) continue;
-
-		if (!changed) {
-			next = previous!.slice();
-			changed = true;
-		}
-
-		next![index] = mappedNode;
-	}
-
-	if (!changed) return previous!;
-
-	treeNodeListCache.set(value, next!);
-	return next!;
-}
-
-function mapToTreeNode(node: DownloadProgressDTO, loadingActions: Map<string, DownloadActions>): DownloadTreeNode {
-	const children = mapToTreeNodes(node.children, loadingActions);
-	const loadingAction = loadingActions.get(node.id);
-	const cached = treeNodeCache.get(node);
-
-	if (cached
-		&& cached.children === children
-		&& cached.status === node.status
-		&& cached.percentage === node.percentage
-		&& cached.dataReceived === node.dataReceived
-		&& cached.dataTotal === node.dataTotal
-		&& cached.downloadSpeed === node.downloadSpeed
-		&& cached.timeRemaining === node.timeRemaining
-		&& cached.title === node.title
-		&& cached.mediaType === node.mediaType
-		&& cached.loadingAction === loadingAction) {
-		return cached.treeNode;
-	}
-
-	const childrenData = cached?.children === children
-		? cached.childrenData
-		: children.map((child) => child.data);
-	const data = {
-		...node,
-		key: node.id,
-		label: node.title,
-		children: childrenData,
-		actions: toDownloadActions(node.status).map((action) => ({
-			type: action,
-			loading: loadingAction === action,
-			disabled: loadingAction !== undefined && action !== loadingAction,
-		})),
-	};
-	const treeNode = {
-		key: node.id,
-		label: node.title,
-		data,
-		children,
-	};
-
-	treeNodeCache.set(node, {
-		treeNode,
-		children,
-		childrenData,
-		status: node.status,
-		percentage: node.percentage,
-		dataReceived: node.dataReceived,
-		dataTotal: node.dataTotal,
-		downloadSpeed: node.downloadSpeed,
-		timeRemaining: node.timeRemaining,
-		title: node.title,
-		mediaType: node.mediaType,
-		loadingAction,
-	});
-
-	return treeNode;
-}
-
+const treeNodeCache = new WeakMap<DownloadProgressDTO, MappedDownloadNodeCache>();
+const treeNodeListCache = new WeakMap<DownloadProgressDTO[], DownloadTreeNode[]>();
+const { t } = useI18n();
 const getDownloadTableColumns: QTreeTableColumn[] = [
 	{
 		header: t('components.downloads-table.columns.title'),
@@ -461,11 +313,145 @@ const getDownloadTableColumns: QTreeTableColumn[] = [
 	},
 ];
 
+const loadingIds = ref<{
+	id: string;
+	action: DownloadActions;
+}[]>([]);
+const isExpanded = ref(true);
+const clearCompletedLoading = ref(false);
+const collapsedMobileNodeKeys = shallowRef<ReadonlySet<string>>(new Set());
+
+const telemetry = useTelemetry();
+const serverStore = useServerStore();
+const downloadStore = useDownloadStore();
+const dialogStore = useDialogStore();
+const serverConnectionStore = useServerConnectionStore();
+const accountStore = useAccountStore();
+const $q = useQuasar();
+
+const loadingActionById = computed(() => new Map(get(loadingIds).map(({ id, action }) => [id, action])));
+const nodes = computed((): DownloadTreeNode[] => {
+	return mapToTreeNodes(props.downloadRows);
+});
+const mobileNodes = computed(() => flattenNodes(get(nodes)));
+const hasCompletedDownloads = computed((): boolean => {
+	return containsCompletedTasks(props.downloadRows);
+});
+
+function flattenNodes(value: DownloadTreeNode[], depth = 0): MobileDownloadNode[] {
+	return value.flatMap((node) => {
+		const hasChildren = (node.children?.length ?? 0) > 0;
+		const entry = { node, depth, hasChildren };
+
+		if (!hasChildren || !isMobileNodeExpanded(node)) {
+			return [entry];
+		}
+
+		return [entry, ...flattenNodes(node.children ?? [], depth + 1)];
+	});
+}
+function isMobileNodeExpanded(node: DownloadTreeNode): boolean {
+	return !get(collapsedMobileNodeKeys).has(String(node.key));
+}
+function toggleMobileNode(node: DownloadTreeNode): void {
+	const key = String(node.key);
+	const collapsedKeys = new Set(get(collapsedMobileNodeKeys));
+
+	if (collapsedKeys.has(key)) {
+		collapsedKeys.delete(key);
+	} else {
+		collapsedKeys.add(key);
+	}
+
+	set(collapsedMobileNodeKeys, collapsedKeys);
+}
+function mapToTreeNodes(value: DownloadProgressDTO[], loadingActions = get(loadingActionById)): DownloadTreeNode[] {
+	const previous = treeNodeListCache.get(value);
+	let next = previous;
+	let changed = previous === undefined || previous.length !== value.length;
+
+	if (changed) {
+		next = previous?.slice(0, value.length) ?? new Array<DownloadTreeNode>(value.length);
+	}
+
+	for (let index = 0; index < value.length; index++) {
+		const mappedNode = mapToTreeNode(value[index]!, loadingActions);
+		if (next![index] === mappedNode) continue;
+
+		if (!changed) {
+			next = previous!.slice();
+			changed = true;
+		}
+
+		next![index] = mappedNode;
+	}
+
+	if (!changed) return previous!;
+
+	treeNodeListCache.set(value, next!);
+	return next!;
+}
+function mapToTreeNode(node: DownloadProgressDTO, loadingActions: Map<string, DownloadActions>): DownloadTreeNode {
+	const children = mapToTreeNodes(node.children, loadingActions);
+	const loadingAction = loadingActions.get(node.id);
+	const cached = treeNodeCache.get(node);
+
+	if (cached
+		&& cached.children === children
+		&& cached.status === node.status
+		&& cached.percentage === node.percentage
+		&& cached.dataReceived === node.dataReceived
+		&& cached.dataTotal === node.dataTotal
+		&& cached.downloadSpeed === node.downloadSpeed
+		&& cached.timeRemaining === node.timeRemaining
+		&& cached.title === node.title
+		&& cached.mediaType === node.mediaType
+		&& cached.loadingAction === loadingAction) {
+		return cached.treeNode;
+	}
+
+	const childrenData = cached?.children === children
+		? cached.childrenData
+		: children.map((child) => child.data);
+	const data = {
+		...node,
+		key: node.id,
+		label: node.title,
+		children: childrenData,
+		actions: toDownloadActions(node.status).map((action) => ({
+			type: action,
+			loading: loadingAction === action,
+			disabled: loadingAction !== undefined && action !== loadingAction,
+		})),
+	};
+	const treeNode = {
+		key: node.id,
+		label: node.title,
+		data,
+		children,
+	};
+
+	treeNodeCache.set(node, {
+		treeNode,
+		children,
+		childrenData,
+		status: node.status,
+		percentage: node.percentage,
+		dataReceived: node.dataReceived,
+		dataTotal: node.dataTotal,
+		downloadSpeed: node.downloadSpeed,
+		timeRemaining: node.timeRemaining,
+		title: node.title,
+		mediaType: node.mediaType,
+		loadingAction,
+	});
+
+	return treeNode;
+}
 function getMobileSelectionValue(node: DownloadTreeNode): boolean | null {
 	const selection = downloadStore.getSelectedDownloadTasks(props.plexServer.id)[String(node.key)];
 	return selection?.checked ? true : selection?.partialChecked ? null : false;
 }
-
 function toggleMobileSelection(node: DownloadTreeNode, selected: boolean): void {
 	const current = downloadStore.getSelectedDownloadTasks(props.plexServer.id);
 	const checkedKeys = getCheckedKeys(current, get(nodes));
@@ -482,11 +468,9 @@ function toggleMobileSelection(node: DownloadTreeNode, selected: boolean): void 
 
 	downloadStore.updateSelectedDownloadTasks(props.plexServer.id, normalizeSelectionKeys(get(nodes), checkedKeys));
 }
-
 function getNodeAndDescendantKeys(node: DownloadTreeNode): string[] {
 	return [String(node.key), ...(node.children ?? []).flatMap(getNodeAndDescendantKeys)];
 }
-
 function getAncestorKeys(tree: DownloadTreeNode[], targetKey: string, ancestors: string[] = []): string[] {
 	for (const node of tree) {
 		if (String(node.key) === targetKey)
@@ -499,7 +483,6 @@ function getAncestorKeys(tree: DownloadTreeNode[], targetKey: string, ancestors:
 
 	return [];
 }
-
 function getCheckedKeys(selection: Record<string, {
 	checked: boolean;
 	partialChecked: boolean;
@@ -514,7 +497,6 @@ function getCheckedKeys(selection: Record<string, {
 	}
 	return checkedKeys;
 }
-
 function normalizeSelectionKeys(tree: DownloadTreeNode[], checkedKeys: Set<string>): Record<string, {
 	checked: boolean;
 	partialChecked: boolean;
@@ -537,7 +519,6 @@ function normalizeSelectionKeys(tree: DownloadTreeNode[], checkedKeys: Set<strin
 	tree.forEach(visit);
 	return selection;
 }
-
 function onTableAction({ action, data }: { action: DownloadActions; data: IDownloadTableNode }) {
 	const ids: string[] = [data.id];
 
@@ -559,7 +540,6 @@ function onTableAction({ action, data }: { action: DownloadActions; data: IDownl
 		},
 	}));
 }
-
 function toButtonIcon(action: DownloadActions): string {
 	switch (action) {
 		case DownloadActions.Details:
@@ -587,16 +567,13 @@ function toButtonIcon(action: DownloadActions): string {
 			return Convert.buttonTypeToIcon(ButtonType.None);
 	}
 }
-
 function toggleExpanded() {
 	set(isExpanded, !get(isExpanded));
 }
-
 function getToggleServerLabel(serverName: string): string {
 	const action = get(isExpanded) ? t('components.downloads-table.collapse') : t('components.downloads-table.expand');
 	return t('components.downloads-table.toggle-server', { action, serverName });
 }
-
 function openClearCompletedDialog() {
 	if (!get(hasCompletedDownloads)) {
 		return;
@@ -604,11 +581,9 @@ function openClearCompletedDialog() {
 
 	dialogStore.openDialog(DialogType.ClearCompletedDownloadsConfirmationDialog, props.plexServer.id);
 }
-
 function closeClearCompletedDialog() {
 	dialogStore.closeDialog(DialogType.ClearCompletedDownloadsConfirmationDialog, props.plexServer.id);
 }
-
 function clearCompletedByServer() {
 	if (get(clearCompletedLoading)) {
 		return;
@@ -631,7 +606,6 @@ function clearCompletedByServer() {
 		}),
 	);
 }
-
 function containsCompletedTasks(downloadRows: DownloadProgressDTO[]): boolean {
 	for (const downloadRow of downloadRows) {
 		if (downloadRow.status === DownloadStatus.Completed || containsCompletedTasks(downloadRow.children ?? [])) {
@@ -641,13 +615,16 @@ function containsCompletedTasks(downloadRows: DownloadProgressDTO[]): boolean {
 
 	return false;
 }
-
 function getAllIds(nodes: IDownloadTableNode[]): string[] {
 	return flatMapDeep(nodes, (node) => [
 		node.id, // Assuming `key` holds the ID in TreeNode
 		...getAllIds(node.children || []),
 	]);
 }
+
+defineEmits<{
+	(e: 'selected', payload: ISelection): void;
+}>();
 </script>
 
 <style lang="scss">

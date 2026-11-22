@@ -130,24 +130,20 @@ import type { CreatePlexServerConnectionEndpointRequest, ServerIdentityDTO } fro
 import { PlexConnectionTypes } from '@dto';
 import { useServerConnectionStore, useServerStore, useSubscription } from '#imports';
 
+const url = ref<string>('');
+const plexServerId = ref<number>(0);
+const plexServerConnectionId = ref<number>(0);
+const loadingTestConnection = ref(false);
+const isValidTestConnection = ref(false);
+const loadingCreateConnection = ref(false);
+const response = ref<ServerIdentityDTO | null>(null);
+
 const serverStore = useServerStore();
 const connectionStore = useServerConnectionStore();
 const telemetry = useTelemetry();
-
-const url = ref<string>('');
 const { t } = useI18n();
-const plexServerId = ref<number>(0);
-const plexServerConnectionId = ref<number>(0);
-
-const loadingTestConnection = ref(false);
-const isValidTestConnection = ref(false);
-
-const loadingCreateConnection = ref(false);
 
 const plexServerName = computed((): string => serverStore.getServerName(get(plexServerId)));
-
-const response = ref<ServerIdentityDTO | null>(null);
-
 const parsedUrl = computed((): URL | null => {
 	try {
 		const parsed = new URL(get(url));
@@ -156,7 +152,6 @@ const parsedUrl = computed((): URL | null => {
 		return e === 'TypeError' ? null : null;
 	}
 });
-
 const connection = computed((): CreatePlexServerConnectionEndpointRequest => {
 	const url = get(parsedUrl);
 	if (url === null) {
@@ -183,7 +178,6 @@ const connection = computed((): CreatePlexServerConnectionEndpointRequest => {
 		plexServerId: get(plexServerId),
 	};
 });
-
 const urlValidation = computed((): { valid: ValidationLevel; text: string } => {
 	const url = get(parsedUrl);
 	if (url === null) {
@@ -208,7 +202,6 @@ const urlValidation = computed((): { valid: ValidationLevel; text: string } => {
 		text: t('components.add-connection-dialog.url-has-valid-format'),
 	};
 });
-
 const isLocalIp = computed(() => {
 	// Check for IPv4 local ranges
 	const ipv4LocalRanges = [
@@ -232,7 +225,6 @@ const isLocalIp = computed(() => {
 	// Check if IP matches any of the IPv6 local prefixes
 	return ipv6LocalPrefixes.some((prefix) => prefix.test(get(connection).address));
 });
-
 const type = computed(() => {
 	if (get(isLocalIp)) {
 		return PlexConnectionTypes.Local;
@@ -261,7 +253,6 @@ function checkConnection() {
 		},
 	}));
 }
-
 function createConnection(close: () => void) {
 	set(loadingCreateConnection, true);
 	set(response, null);
@@ -279,7 +270,6 @@ function createConnection(close: () => void) {
 		},
 	}));
 }
-
 function updateConnection(close: () => void) {
 	set(loadingCreateConnection, true);
 	set(response, null);
@@ -300,7 +290,6 @@ function updateConnection(close: () => void) {
 		},
 	}));
 }
-
 function deleteConnection(close: () => void) {
 	set(response, null);
 	useSubscription(connectionStore.deleteServerConnection(get(plexServerConnectionId)).subscribe({
@@ -311,13 +300,11 @@ function deleteConnection(close: () => void) {
 		},
 	}));
 }
-
 function onOpen(data: IConnectionDialog) {
 	set(plexServerId, data.plexServerId);
 	set(plexServerConnectionId, data.plexServerConnectionId);
 	set(url, connectionStore.getServerConnection(data.plexServerConnectionId)?.url ?? '');
 }
-
 function onClose() {
 	set(url, '');
 	set(plexServerId, 0);

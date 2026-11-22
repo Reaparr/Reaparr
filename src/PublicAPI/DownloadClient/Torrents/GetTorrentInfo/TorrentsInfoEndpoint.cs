@@ -158,12 +158,12 @@ public sealed class TorrentsInfoEndpoint : Endpoint<TorrentsInfoEndpointRequest,
 
         await Task.WhenAll(episodeFilesTask, movieFilesTask);
 
-        var episodeInfos = episodeFilesTask
-            .Result.Where(x => MatchesCategory(x, categoryFilter))
+        var episodeInfos = (await episodeFilesTask)
+            .Where(x => MatchesCategory(x, categoryFilter))
             .Select(MapToTorrentInfo)
             .ToList();
-        var movieInfos = movieFilesTask
-            .Result.Where(x => MatchesCategory(x, categoryFilter))
+        var movieInfos = (await movieFilesTask)
+            .Where(x => MatchesCategory(x, categoryFilter))
             .Select(MapToTorrentInfo)
             .ToList();
 

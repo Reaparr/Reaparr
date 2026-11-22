@@ -202,11 +202,26 @@ import { useDialogStore, useIntegrationStore, useSignalrStore } from '@store';
 import { formatErrorResponse } from '@composables/common';
 import { useSubscription } from '@vueuse/rxjs';
 
+type StepStatus = 'pending' | 'running' | 'success' | 'error';
+type Step = { status: StepStatus; error: string };
+
+const activeStep = ref(1);
+const closeIntegrationDialogOnClose = ref(false);
+const steps = reactive<{ connect: Step; downloadClient: Step; indexer: Step; validation: Step; done: Step }>({
+	connect: { status: 'pending', error: '' },
+	downloadClient: { status: 'pending', error: '' },
+	indexer: { status: 'pending', error: '' },
+	validation: { status: 'pending', error: '' },
+	done: { status: 'pending', error: '' },
+});
+
 const store = useIntegrationStore();
 const signalrStore = useSignalrStore();
 const dialogStore = useDialogStore();
-const activeStep = ref(1);
-const closeIntegrationDialogOnClose = ref(false);
+useSubscription(signalrStore.integrationSetupProgressSubject.subscribe((progress) => {
+	if (progress.integrationId === store.detail?.id) updateStep(progress);
+}));
+
 const integrationLogo = computed(() => store.draft.type === IntegrationType.Radarr ? '/img/logo/radarr.png' : '/img/logo/sonarr.png');
 const setupTexts = computed(() => {
 	const values = { type: store.draft.type };
@@ -232,35 +247,26 @@ const setupTexts = computed(() => {
 		},
 	};
 });
-type StepStatus = 'pending' | 'running' | 'success' | 'error';
+
+watch(() => store.isSettingUp, (isSettingUp) => {
+	if (isSettingUp) reset();
+});
 
 function getStepActiveIcon(status: StepStatus): string {
 	if (status === 'error') return 'mdi-alert';
 	if (status === 'success') return 'mdi-check';
 	return 'mdi-loading';
 }
-
 function getStepActiveColor(status: StepStatus): 'positive' | 'negative' | 'info' | 'primary' {
 	if (status === 'error') return 'negative';
 	if (status === 'success') return 'positive';
 	if (status === 'running') return 'info';
 	return 'primary';
 }
-
-type Step = { status: StepStatus; error: string };
-const steps = reactive<{ connect: Step; downloadClient: Step; indexer: Step; validation: Step; done: Step }>({
-	connect: { status: 'pending', error: '' },
-	downloadClient: { status: 'pending', error: '' },
-	indexer: { status: 'pending', error: '' },
-	validation: { status: 'pending', error: '' },
-	done: { status: 'pending', error: '' },
-});
-
 function open(closeParent: unknown): void {
 	set(closeIntegrationDialogOnClose, closeParent === true);
 	reset();
 }
-
 function reset(): void {
 	activeStep.value = 1;
 	for (const step of Object.values(steps)) {
@@ -268,7 +274,6 @@ function reset(): void {
 		step.error = '';
 	}
 }
-
 function formatStepErrors(error: string): string[] {
 	const sections = error
 		.split(/;\s+(?=Failed to validate)/)
@@ -285,7 +290,6 @@ function formatStepErrors(error: string): string[] {
 		return details ? `${summary}: ${details}` : section.replace(/\s+/g, ' ');
 	});
 }
-
 function updateStep(progress: IntegrationSetupProgressDTO): void {
 	const setupStage = {
 		[IntegrationSetupProgressStage.Connecting]: { step: steps.connect, number: 1 },
@@ -305,7 +309,6 @@ function updateStep(progress: IntegrationSetupProgressDTO): void {
 	setupStage.step.error = isDone ? '' : progress.error ?? '';
 	set(activeStep, setupStage.number);
 }
-
 function hasPreviousError(stage: IntegrationSetupProgressStage): boolean {
 	if (stage === IntegrationSetupProgressStage.Connecting) return false;
 	if (steps.connect.status === 'error') return true;
@@ -315,20 +318,9 @@ function hasPreviousError(stage: IntegrationSetupProgressStage): boolean {
 	if (steps.indexer.status === 'error') return true;
 	return stage === IntegrationSetupProgressStage.Done && steps.validation.status === 'error';
 }
-
-useSubscription(signalrStore.integrationSetupProgressSubject.subscribe((progress) => {
-	if (progress.integrationId === store.detail?.id) updateStep(progress);
-}));
-
-onMounted(reset);
-watch(() => store.isSettingUp, (isSettingUp) => {
-	if (isSettingUp) reset();
-});
-
 function refresh(): void {
 	useSubscription(store.refresh().subscribe());
 }
-
 function close(): void {
 	const closeParent = get(closeIntegrationDialogOnClose);
 	set(closeIntegrationDialogOnClose, false);
@@ -337,6 +329,8 @@ function close(): void {
 	if (closeParent)
 		dialogStore.closeDialog(DialogType.IntegrationDialog);
 }
+
+onMounted(reset);
 </script>
 
 <style lang="scss">

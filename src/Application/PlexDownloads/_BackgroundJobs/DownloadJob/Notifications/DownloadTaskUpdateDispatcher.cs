@@ -104,7 +104,7 @@ public class DownloadTaskUpdateDispatcher : BackgroundService, IDownloadTaskUpda
         DownloadTaskKey key,
         DownloadStatus newStatus,
         Result? errorResult,
-        CancellationToken cancellationToken
+        CancellationToken cancellationToken = default
     )
     {
         var result = await Result.Try(async Task () =>

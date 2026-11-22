@@ -101,16 +101,28 @@ const props = defineProps<{
 	timeFormat: string;
 	timeZone: string;
 }>();
-const emit = defineEmits<{ select: [range: DownloadScheduleRange] }>();
-const grid = useTemplateRef<HTMLElement>('grid');
+
+let touchSelection = false;
+
 const focusedSlot = ref(0);
 const anchor = ref(0);
 const dragging = ref(false);
-let touchSelection = false;
+
+const grid = useTemplateRef<HTMLElement>('grid');
+const times = useDownloadScheduleTimes(() => props.timeFormat, () => props.locale);
+useEventListener(grid, 'pointermove', (event: PointerEvent) => {
+	if (!get(dragging)) return;
+	const button = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLButtonElement>('button[data-schedule-slot]');
+	if (!button || !get(grid)?.contains(button)) return;
+	const slot = Number(button.dataset.scheduleSlot);
+	set(focusedSlot, slot);
+	selectBetween(get(anchor), slot);
+});
+useEventListener(grid, 'pointerup', () => set(dragging, false));
+useEventListener(grid, 'pointercancel', () => set(dragging, false));
+
 const selectedSlots = computed(() => new Set(props.selection));
 const numberFormat = computed(() => new Intl.NumberFormat(props.locale));
-const times = useDownloadScheduleTimes(() => props.timeFormat, () => props.locale);
-
 const bands = computed(() => props.days.map((_, day) => {
 	const result: { from: number; until: number; limit: number | null; selected: boolean }[] = [];
 	for (let halfHour = 0; halfHour < 48; halfHour++) {
@@ -129,14 +141,12 @@ const bands = computed(() => props.days.map((_, day) => {
 function slotLimit(slot: number): number | null {
 	return get(selectedSlots).has(slot) && props.previewLimit !== undefined ? props.previewLimit : props.limits[slot]!;
 }
-
 function cellLabel(day: string, slot: number): string {
 	const daySlot = slot % 48;
 	const until = get(times)[daySlot + 1]!.label;
 	const limit = slotLimit(slot);
-	return `${day} ${get(times)[daySlot]!.label}–${until}: ${limit === null ? props.unlimitedLabel : `${get(numberFormat).format(limit!)} kB/s`}`;
+	return `${day} ${get(times)[daySlot]!.label}–${until}: ${limit === null ? props.unlimitedLabel : `${get(numberFormat).format(limit)} kB/s`}`;
 }
-
 function selectBetween(first: number, last: number) {
 	const firstDay = Math.min(Math.floor(first / 48), Math.floor(last / 48));
 	const lastDay = Math.max(Math.floor(first / 48), Math.floor(last / 48));
@@ -146,7 +156,6 @@ function selectBetween(first: number, last: number) {
 		until: Math.max(first % 48, last % 48) + 1,
 	});
 }
-
 function onPointerDown(event: PointerEvent, slot: number) {
 	if (!event.isPrimary || event.button !== 0) return;
 	touchSelection = event.pointerType === 'touch';
@@ -160,7 +169,6 @@ function onPointerDown(event: PointerEvent, slot: number) {
 	button.setPointerCapture(event.pointerId);
 	set(dragging, true);
 }
-
 function onClick(event: Event, slot: number) {
 	if (!touchSelection && event instanceof MouseEvent && event.detail !== 0) return;
 	touchSelection = false;
@@ -168,18 +176,6 @@ function onClick(event: Event, slot: number) {
 	set(focusedSlot, slot);
 	selectBetween(get(anchor), slot);
 }
-
-useEventListener(grid, 'pointermove', (event: PointerEvent) => {
-	if (!get(dragging)) return;
-	const button = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLButtonElement>('button[data-schedule-slot]');
-	if (!button || !get(grid)?.contains(button)) return;
-	const slot = Number(button.dataset.scheduleSlot);
-	set(focusedSlot, slot);
-	selectBetween(get(anchor), slot);
-});
-useEventListener(grid, 'pointerup', () => set(dragging, false));
-useEventListener(grid, 'pointercancel', () => set(dragging, false));
-
 function onKeyDown(event: KeyboardEvent, slot: number) {
 	let target = slot;
 	const day = Math.floor(slot / 48);
@@ -218,6 +214,8 @@ function onKeyDown(event: KeyboardEvent, slot: number) {
 	set(focusedSlot, target);
 	get(grid)?.querySelector<HTMLButtonElement>(`button[data-schedule-slot="${target}"]`)?.focus();
 }
+
+const emit = defineEmits<{ select: [range: DownloadScheduleRange] }>();
 </script>
 
 <style scoped lang="scss">

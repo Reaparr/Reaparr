@@ -5,11 +5,7 @@ public static partial class PlexMediaDTOMapper
     public static PlexMediaDTO ToDTO(this PlexTvShow plexTvShow)
     {
         var dto = plexTvShow.ToDTOMapper();
-        dto.Children = [];
-
-        foreach (var tvShowSeason in plexTvShow.Seasons)
-            dto.Children.Add(tvShowSeason.ToDTO());
-
+        dto.Children = plexTvShow.Seasons.Select(season => season.ToDTO()).ToList();
         return dto;
     }
 

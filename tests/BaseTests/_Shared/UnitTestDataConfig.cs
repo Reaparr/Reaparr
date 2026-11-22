@@ -9,7 +9,7 @@ public class UnitTestDataConfig : BaseConfig<UnitTestDataConfig>
 
     public IConfigManager? MockConfigManager { get; set; }
 
-    public int DownloadSpeedLimitInKib { get; set; } = 0;
+    public int DownloadSpeedLimitInKib { get; set; }
 
     public int PlexServerSettingsCount { get; set; } = 5;
 

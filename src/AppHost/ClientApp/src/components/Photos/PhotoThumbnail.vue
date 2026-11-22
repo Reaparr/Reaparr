@@ -65,13 +65,13 @@ const props = withDefaults(defineProps<{
 	height: 72,
 	cy: undefined,
 });
-
-const { t } = useI18n();
-const mediaStore = useMediaStore();
 const requests = new Subject<void>();
+
 const imageUrl = ref('');
 const loading = ref(false);
 
+const { t } = useI18n();
+const mediaStore = useMediaStore();
 useSubscription(requests.pipe(
 	tap(() => {
 		set(imageUrl, '');

@@ -30,12 +30,9 @@ defineProps<{
 	selectedType: PlexMediaType;
 }>();
 
-const emit = defineEmits<{
-	(e: 'select', type: PlexMediaType): void;
-}>();
+const overviewTypes = [PlexMediaType.Movie, PlexMediaType.TvShow, PlexMediaType.MusicArtist, PlexMediaType.PhotoAlbum, PlexMediaType.OtherVideos];
 
 const { t } = useI18n();
-const overviewTypes = [PlexMediaType.Movie, PlexMediaType.TvShow, PlexMediaType.MusicArtist, PlexMediaType.PhotoAlbum, PlexMediaType.OtherVideos];
 
 function mediaTypeToAllText(type: PlexMediaType): string {
 	switch (type) {
@@ -53,4 +50,8 @@ function mediaTypeToAllText(type: PlexMediaType): string {
 			return t('general.error.unknown');
 	}
 }
+
+const emit = defineEmits<{
+	(e: 'select', type: PlexMediaType): void;
+}>();
 </script>

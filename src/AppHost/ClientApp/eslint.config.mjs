@@ -1,5 +1,6 @@
 import vueI18n from '@intlify/eslint-plugin-vue-i18n';
 import withNuxt from './.nuxt/eslint.config.mjs';
+import vueSetupRules from 'eslint-vue-setup-rules';
 
 export default withNuxt([{
 	ignores: ['.idea/'],
@@ -37,6 +38,24 @@ export default withNuxt([{
 		},
 	})
 	.append({
+		files: ['src/**/*.{ts,tsx,vue}'],
+		languageOptions: {
+			parserOptions: {
+				projectService: true,
+				tsconfigRootDir: import.meta.dirname,
+			},
+		},
+		rules: {
+			'@typescript-eslint/no-floating-promises': 'warn',
+			'@typescript-eslint/no-misused-promises': ['error', {
+				checksVoidReturn: { arguments: false, attributes: false },
+			}],
+			'@typescript-eslint/no-unnecessary-type-assertion': 'warn',
+			'vue/no-setup-props-reactivity-loss': 'error',
+			'vue/no-ref-object-reactivity-loss': 'error',
+		},
+	})
+	.append({
 		rules: {
 			'@intlify/vue-i18n/no-dynamic-keys': 'error',
 			'@intlify/vue-i18n/no-unused-keys': [
@@ -60,6 +79,33 @@ export default withNuxt([{
 				// If not specified, the message will be parsed twice.
 				messageSyntaxVersion: '^9.0.0',
 			},
+		},
+	})
+	.append({
+		files: ['**/*.vue'],
+		plugins: {
+			'vue3-script-setup': vueSetupRules,
+		},
+		rules: {
+			// Source: https://github.com/KumJungMin/eslint-vue-setup-order
+			'vue3-script-setup/declaration-order': [
+				'error',
+				{
+					sectionOrder: ['definePageMeta', 'type', 'setup'],
+					sectionConfigurations: [ // Add plugin-native classifications for declarations not recognized by default.
+						{
+							sectionName: 'definePageMeta', // Classify Nuxt's definePageMeta macro in its own section.
+							regex: '^definePageMeta\\s*\\(', // Match a call to definePageMeta, allowing whitespace before the parenthesis.
+						},
+						{
+							// Group executable statements together: the sorter does not track initialization dependencies.
+							sectionName: 'setup',
+							regex: '^(?!(?:export\\s+)?(?:type|interface)\\s+)',
+						},
+					],
+					spaceBetweenItems: 'preserve',
+				},
+			],
 		},
 	});
 

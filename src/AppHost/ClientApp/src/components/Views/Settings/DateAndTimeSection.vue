@@ -108,14 +108,6 @@ import { orderBy } from 'lodash-es';
 import { get, set } from '@vueuse/core';
 import { useSettingsStore } from '@store';
 
-const telemetry = useTelemetry();
-const i18n = useI18n();
-const settingsStore = useSettingsStore();
-
-function onDateTimeSettingChanged(): void {
-	telemetry.dateTimeSettingsChanged();
-}
-
 interface ISelectOption {
 	value: string;
 	label: string;
@@ -123,6 +115,15 @@ interface ISelectOption {
 
 // region Settings
 const defaultSelectOption: ISelectOption = { value: '', label: '' };
+const supportedTimeZones = Intl.supportedValuesOf('timeZone');
+
+const timeZoneDate = ref(new Date());
+const timeZoneFilter = ref('');
+
+const telemetry = useTelemetry();
+const i18n = useI18n();
+const settingsStore = useSettingsStore();
+
 const shortDateFormat = computed({
 	get: (): ISelectOption =>
 		get(shortDateOptions).find((x) => x.value === settingsStore.dateTimeSettings.shortDateFormat) ?? defaultSelectOption,
@@ -138,7 +139,6 @@ const timeFormat = computed({
 		get(timeFormatOptions).find((x) => x.value === settingsStore.dateTimeSettings.timeFormat) ?? defaultSelectOption,
 	set: (value: ISelectOption) => (settingsStore.dateTimeSettings.timeFormat = value.value),
 });
-
 // endregion
 
 const getLocale = computed(() => {
@@ -151,7 +151,6 @@ const getLocale = computed(() => {
 			return { locale: enUS };
 	}
 });
-
 const shortDateOptions = computed(() => {
 	const values: string[] = ['MMM dd yyyy', 'dd MMM yyyy', 'MM/dd/yyyy', 'dd/MM/yyyy', 'yyyy-MM-dd'];
 	const date = Date.now();
@@ -163,7 +162,6 @@ const shortDateOptions = computed(() => {
 		};
 	});
 });
-
 const longDateOptions = computed(() => {
 	const values: string[] = ['EEEE, MMMM dd, yyyy', 'EEEE, dd MMMM yyyy'];
 	const date = Date.now();
@@ -175,7 +173,6 @@ const longDateOptions = computed(() => {
 		};
 	});
 });
-
 const timeFormatOptions = computed(() => {
 	const values: string[] = ['HH:mm:ss', 'pp'];
 	const date = new TZDate(Date.now(), settingsStore.dateTimeSettings.timeZone);
@@ -186,9 +183,6 @@ const timeFormatOptions = computed(() => {
 		};
 	});
 });
-
-const supportedTimeZones = Intl.supportedValuesOf('timeZone');
-const timeZoneDate = ref(new Date());
 const timeZoneOptions = computed<ISelectOption[]>(() => {
 	const date = get(timeZoneDate);
 	const options = [...new Set(['UTC', settingsStore.dateTimeSettings.timeZone, ...supportedTimeZones])].map((zone) => {
@@ -201,12 +195,14 @@ const timeZoneOptions = computed<ISelectOption[]>(() => {
 	});
 	return orderBy(options, ['offset', 'value']);
 });
-const timeZoneFilter = ref('');
 const filteredTimeZoneOptions = computed(() => {
 	const query = get(timeZoneFilter).trim().toLowerCase();
 	return query ? get(timeZoneOptions).filter((option) => option.label.toLowerCase().includes(query)) : get(timeZoneOptions);
 });
 
+function onDateTimeSettingChanged(): void {
+	telemetry.dateTimeSettingsChanged();
+}
 function filterTimeZones(value: string, update: (callback: () => void) => void) {
 	update(() => set(timeZoneFilter, value));
 }

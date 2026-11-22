@@ -9,11 +9,12 @@
 import { PlexConnectionTypes } from '@dto';
 import type { QIconTooltipData } from '@interfaces';
 
-const { t } = useI18n();
 defineProps<{
 	type?: PlexConnectionTypes;
 	cy?: string;
 }>();
+
+const { t } = useI18n();
 
 const options = computed((): QIconTooltipData[] => {
 	return [{

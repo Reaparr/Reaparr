@@ -36,7 +36,7 @@ public static partial class MockDatabase
                 PlexMediaType.OtherVideos => pathProvider.DefaultOtherDestinationFolder,
                 PlexMediaType.Games => pathProvider.DefaultGamesDestinationFolder,
                 _ => throw new ArgumentOutOfRangeException(
-                    nameof(child.MediaType),
+                    nameof(downloadTasks),
                     child.MediaType,
                     $"Unsupported PlexMediaType '{child.MediaType}' while mapping seeded movie download task destination root path."
                 ),

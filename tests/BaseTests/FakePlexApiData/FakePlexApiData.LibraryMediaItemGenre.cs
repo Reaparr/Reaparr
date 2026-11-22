@@ -10,8 +10,6 @@ public partial class FakePlexApiData
             .RuleFor(x => x.Key, (_, x) => x.Name.ToMd5Hash())
             .RuleFor(x => x.Filter, (_, x) => $"genre={x.PlexId}");
 
-    public static Faker<LibraryMediaItemGenreDTO> GetLibraryMediaItemGenreDTO(
-        Seed seed,
-        Action<FakeDataConfig>? options = null
-    ) => _libraryMediaItemGenreDTO.UseSeed(seed.Next());
+    public static Faker<LibraryMediaItemGenreDTO> GetLibraryMediaItemGenreDTO(Seed seed) =>
+        _libraryMediaItemGenreDTO.UseSeed(seed.Next());
 }

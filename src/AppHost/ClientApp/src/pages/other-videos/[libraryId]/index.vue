@@ -15,8 +15,10 @@
 
 <script setup lang="ts">
 definePageMeta({ scrollToTop: false });
+
 const route = useRoute();
 const { t } = useI18n();
+
 const libraryId = computed(() => Number(route.params.libraryId));
 const validLibraryId = computed(() => Number.isSafeInteger(libraryId.value) && libraryId.value > 0);
 </script>

@@ -17,13 +17,29 @@ import { DownloadActions, type DownloadProgressDTO } from '@dto';
 import { useDownloadStore, useGlobalStore, useDialogStore } from '@store';
 import { useSubscription } from '@vueuse/rxjs';
 
+const dialogName = 'download-details-dialog';
+const plexServer = generatePlexServer({
+	id: 1,
+});
+const downloadTasks = generateDownloadProgressTvShows({
+	plexLibraryId: 1,
+	plexServerId: plexServer.id,
+	config: {
+		tvShowDownloadTask: 500,
+		seasonDownloadTask: 2,
+		episodeDownloadTask: 2,
+	},
+	seed: new Seed(1),
+});
+
 const globalStore = useGlobalStore();
 const downloadStore = useDownloadStore();
 const dialogStore = useDialogStore();
-const dialogName = 'download-details-dialog';
 
-const plexServer = generatePlexServer({
-	id: 1,
+downloadStore.updateServerDownloadProgress({
+	id: plexServer.id,
+	downloads: downloadTasks,
+	downloadableTasksCount: 10,
 });
 
 function commandSwitch({ action, item }: { action: DownloadActions; item: DownloadProgressDTO }) {
@@ -36,26 +52,8 @@ function commandSwitch({ action, item }: { action: DownloadActions; item: Downlo
 
 	useSubscription(downloadStore.executeDownloadCommand(action, ids).subscribe());
 }
-
 function onAction() {
 	globalStore.$reset();
 	useSubscription(globalStore.setup().subscribe());
 }
-
-const downloadTasks = generateDownloadProgressTvShows({
-	plexLibraryId: 1,
-	plexServerId: plexServer.id,
-	config: {
-		tvShowDownloadTask: 500,
-		seasonDownloadTask: 2,
-		episodeDownloadTask: 2,
-	},
-	seed: new Seed(1),
-});
-
-downloadStore.updateServerDownloadProgress({
-	id: plexServer.id,
-	downloads: downloadTasks,
-	downloadableTasksCount: 10,
-});
 </script>

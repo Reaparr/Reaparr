@@ -15,14 +15,13 @@ import { SortDirection } from '@dto';
 import type { QTreeViewTableHeader } from '@props';
 import { useMediaOverviewStore } from '@store';
 
-const mediaOverviewStore = useMediaOverviewStore();
-
 const props = defineProps<{
 	column: QTreeViewTableHeader;
 }>();
 
-const sortField = computed(() => props.column.sortField);
+const mediaOverviewStore = useMediaOverviewStore();
 
+const sortField = computed(() => props.column.sortField);
 const sorted = computed(() => {
 	if (!props.column.sortable) {
 		return false;
@@ -30,7 +29,6 @@ const sorted = computed(() => {
 
 	return get(mediaOverviewStore.getActiveSort).field === get(sortField);
 });
-
 const icon = computed(() => {
 	if (!get(sorted)) {
 		return '';

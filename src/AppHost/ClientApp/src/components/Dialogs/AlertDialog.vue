@@ -24,7 +24,7 @@
 						{{ `${error.method} — HTTP ${error.statusCode}` }}
 					</div>
 					<div style="overflow-wrap: anywhere">
-						{{ $t('components.alert-dialog.endpoint') }}: {{ error.url }}
+						{{ $t('components.alert-dialog.endpoint-display', { label: $t('components.alert-dialog.endpoint'), url: error.url }) }}
 					</div>
 					<pre style="white-space: break-spaces">{{ error.message }}</pre>
 				</div>
@@ -75,9 +75,9 @@ import type { IAlert } from '@interfaces';
 import { DialogType } from '@enums';
 import { useAlertStore, useDialogStore, useGlobalStore } from '@store';
 
-const alertStore = useAlertStore();
-
 const props = defineProps<{ alert: IAlert }>();
+
+const alertStore = useAlertStore();
 const dialogStore = useDialogStore();
 const { t } = useI18n();
 const globalStore = useGlobalStore();
@@ -92,12 +92,6 @@ const browserOptions: [boolean | undefined, string][] = [
 	[$q.platform.is.chrome, 'Google Chrome'],
 ];
 const browser = browserOptions.find(([detected]) => detected)?.[1];
-
-onMounted(() => dialogStore.openAlertInfoDialog(props.alert));
-
-watch(() => props.alert, () => {
-	dialogStore.openAlertInfoDialog(props.alert);
-}, { flush: 'post' });
 
 const issueUrl = computed(() => {
 	const apiErrors = props.alert.apiErrors;
@@ -143,11 +137,16 @@ const issueUrl = computed(() => {
 	}
 	return `https://github.com/Reaparr/Reaparr/issues/new?${params}`;
 });
-
 const errors = computed(() => {
 	if (props.alert?.result?.errors) {
 		return props.alert.result.errors;
 	}
 	return null;
 });
+
+watch(() => props.alert, () => {
+	dialogStore.openAlertInfoDialog(props.alert);
+}, { flush: 'post' });
+
+onMounted(() => dialogStore.openAlertInfoDialog(props.alert));
 </script>

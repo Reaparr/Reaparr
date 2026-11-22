@@ -326,7 +326,7 @@ public class InspectPlexServerJobUnitTests : BaseUnitTest<InspectPlexServerJob>
         const int plexServerId = 90004;
         var cancellationSource = new CancellationTokenSource();
         var cancellationToken = cancellationSource.Token;
-        cancellationSource.Cancel();
+        await cancellationSource.CancelAsync();
         var context = SetupJobContext(new List<int> { plexServerId }, cancellationToken);
         var cancellation = new OperationCanceledException(cancellationToken);
         var capturedResult = (ResultBase?)null;

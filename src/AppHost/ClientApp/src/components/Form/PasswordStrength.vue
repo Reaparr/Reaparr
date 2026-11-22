@@ -17,8 +17,6 @@
 import { get, set } from '@vueuse/core';
 import { ValidationLevel } from '@enums';
 
-const { t } = useI18n();
-
 const isValid = defineModel<boolean>('isValid', {
 	default: false,
 });
@@ -30,6 +28,8 @@ const props = withDefaults(defineProps<{
 	value: '',
 	minPasswordLength: 8,
 });
+
+const { t } = useI18n();
 
 const requirements = computed((): { text: string; valid: boolean }[] => {
 	const value = props.value ?? '';

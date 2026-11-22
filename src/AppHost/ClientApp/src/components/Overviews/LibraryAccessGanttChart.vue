@@ -10,7 +10,7 @@ import { get } from '@vueuse/core';
 import dayjs from 'dayjs';
 import 'jsgantt-improved/dist/jsgantt.css';
 import JSGantt from 'jsgantt-improved';
-import type { GanttChartFormat } from 'jsgantt-improved';
+import type { GanttChartFormat, GanttTask, GanttTaskInput } from 'jsgantt-improved';
 import type { LibraryAccessTimelineInterval, LibraryAccessTimelineZoomPreset } from '@store';
 
 const props = withDefaults(defineProps<{
@@ -23,45 +23,15 @@ const props = withDefaults(defineProps<{
 	zoomPreset: '30d',
 	cy: undefined,
 });
-
-const emit = defineEmits<{
-	(e: 'select-row', rowId: string): void;
-}>();
-
 const validGanttFormats = new Set<GanttChartFormat>(['hour', 'day', 'week', 'month', 'quarter']);
-const ganttContainerRef = ref<HTMLElement>();
 let ganttChart: ReturnType<typeof createGanttChart> | undefined;
 let refreshNowLineInterval: ReturnType<typeof setInterval> | undefined;
 let pendingResizeRenderFrame: number | undefined;
 let lastMeasuredContainerWidth = 0;
-
 const LEFT_PANE_WIDTH_PX = 240;
 const COLUMN_BORDER_COMPENSATION_PX = 2;
 
-const sortedIntervals = computed(() => [...props.intervals].sort((left, right) => {
-	const serverCompare = left.serverName.localeCompare(right.serverName);
-	if (serverCompare !== 0) {
-		return serverCompare;
-	}
-
-	const libraryCompare = left.libraryName.localeCompare(right.libraryName);
-	if (libraryCompare !== 0) {
-		return libraryCompare;
-	}
-
-	return left.start.getTime() - right.start.getTime();
-}));
-
-watch([sortedIntervals, () => props.selectedRowId, () => props.zoomPreset], () => {
-	renderGanttChart();
-}, { deep: true });
-
-onMounted(() => {
-	renderGanttChart();
-	refreshNowLineInterval = setInterval(() => {
-		renderGanttChart();
-	}, 60000);
-});
+const ganttContainerRef = ref<HTMLElement>();
 
 useResizeObserver(ganttContainerRef, (entries) => {
 	const width = entries[0]?.contentRect.width ?? 0;
@@ -80,17 +50,23 @@ useResizeObserver(ganttContainerRef, (entries) => {
 	});
 });
 
-onBeforeUnmount(() => {
-	if (refreshNowLineInterval) {
-		clearInterval(refreshNowLineInterval);
-		refreshNowLineInterval = undefined;
+const sortedIntervals = computed(() => [...props.intervals].sort((left, right) => {
+	const serverCompare = left.serverName.localeCompare(right.serverName);
+	if (serverCompare !== 0) {
+		return serverCompare;
 	}
 
-	if (pendingResizeRenderFrame) {
-		cancelAnimationFrame(pendingResizeRenderFrame);
-		pendingResizeRenderFrame = undefined;
+	const libraryCompare = left.libraryName.localeCompare(right.libraryName);
+	if (libraryCompare !== 0) {
+		return libraryCompare;
 	}
-});
+
+	return left.start.getTime() - right.start.getTime();
+}));
+
+watch([sortedIntervals, () => props.selectedRowId, () => props.zoomPreset], () => {
+	renderGanttChart();
+}, { deep: true });
 
 function renderGanttChart() {
 	const ganttContainer = get(ganttContainerRef);
@@ -171,16 +147,13 @@ function renderGanttChart() {
 	bindTaskSelection();
 	applyPostDrawViewportAdjustments(ganttContainer);
 }
-
 function createGanttChart(container: HTMLElement, format: GanttChartFormat) {
 	return new JSGantt.GanttChart(container, format);
 }
-
 function chartSetDateBounds(chart: ReturnType<typeof createGanttChart>, min: Date, max: Date) {
 	chart.setMinDate(min);
 	chart.setMaxDate(max);
 }
-
 function buildLocalSevenDayRange(now = new Date()) {
 	const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
 	const start = new Date(end);
@@ -189,7 +162,6 @@ function buildLocalSevenDayRange(now = new Date()) {
 
 	return { start, end };
 }
-
 function clampIntervalsToRange(
 	intervals: LibraryAccessTimelineInterval[],
 	start: Date,
@@ -221,7 +193,6 @@ function clampIntervalsToRange(
 		})
 		.filter((interval): interval is LibraryAccessTimelineInterval => interval !== null);
 }
-
 function clampActiveIntervalsToNow(
 	intervals: LibraryAccessTimelineInterval[],
 	now: Date,
@@ -231,7 +202,6 @@ function clampActiveIntervalsToNow(
 		end: getEffectiveIntervalEnd(interval, now),
 	}));
 }
-
 function getEffectiveIntervalEnd(interval: LibraryAccessTimelineInterval, now: Date): Date {
 	if (interval.revokedAt !== null || interval.end.getTime() <= now.getTime()) {
 		return interval.end;
@@ -239,7 +209,6 @@ function getEffectiveIntervalEnd(interval: LibraryAccessTimelineInterval, now: D
 
 	return now;
 }
-
 function applyVisibleRangePadding(
 	chart: ReturnType<typeof createGanttChart>,
 	intervals: LibraryAccessTimelineInterval[],
@@ -284,10 +253,9 @@ function applyVisibleRangePadding(
 
 	chartSetDateBounds(chart, paddedStart, paddedEnd);
 }
-
 function buildChartTasks(intervals: LibraryAccessTimelineInterval[]) {
 	const serverGroups = groupIntervalsByServer(intervals);
-	const tasks: Record<string, unknown>[] = [];
+	const tasks: GanttTaskInput[] = [];
 
 	for (const serverGroup of serverGroups) {
 		tasks.push(buildServerGroupTask(serverGroup));
@@ -298,7 +266,6 @@ function buildChartTasks(intervals: LibraryAccessTimelineInterval[]) {
 
 	return tasks;
 }
-
 function groupIntervalsByServer(intervals: LibraryAccessTimelineInterval[]) {
 	const groups = new Map<string, {
 		id: string;
@@ -330,8 +297,7 @@ function groupIntervalsByServer(intervals: LibraryAccessTimelineInterval[]) {
 
 	return Array.from(groups.values()).sort((left, right) => left.name.localeCompare(right.name) || left.id.localeCompare(right.id));
 }
-
-function buildServerGroupTask(serverGroup: { id: string; name: string; min: Date; max: Date }) {
+function buildServerGroupTask(serverGroup: { id: string; name: string; min: Date; max: Date }): GanttTaskInput {
 	return {
 		pID: serverGroup.id,
 		pName: serverGroup.name,
@@ -350,8 +316,7 @@ function buildServerGroupTask(serverGroup: { id: string; name: string; min: Date
 		pNotes: '',
 	};
 }
-
-function mapIntervalToLibraryTask(interval: LibraryAccessTimelineInterval, parentServerId: string) {
+function mapIntervalToLibraryTask(interval: LibraryAccessTimelineInterval, parentServerId: string): GanttTaskInput {
 	const isSelected = interval.rowId === props.selectedRowId;
 	const isActive = interval.revokedAt === null;
 
@@ -373,7 +338,6 @@ function mapIntervalToLibraryTask(interval: LibraryAccessTimelineInterval, paren
 		pNotes: buildTaskNotes(interval),
 	};
 }
-
 function bindHeaderScrollSync(ganttContainer: HTMLElement) {
 	const grid = ganttContainer.querySelector<HTMLElement>('.gchartgrid');
 	const header = ganttContainer.querySelector<HTMLElement>('.gchartlbl');
@@ -388,7 +352,6 @@ function bindHeaderScrollSync(ganttContainer: HTMLElement) {
 	grid.onscroll = sync;
 	sync();
 }
-
 function applyPostDrawViewportAdjustments(ganttContainer: HTMLElement) {
 	const grid = ganttContainer.querySelector<HTMLElement>('.gchartgrid');
 	const header = ganttContainer.querySelector<HTMLElement>('.gchartlbl');
@@ -413,7 +376,6 @@ function applyPostDrawViewportAdjustments(ganttContainer: HTMLElement) {
 		header.scrollLeft = 0;
 	}
 }
-
 function constrainSevenDayViewport(ganttContainer: HTMLElement) {
 	const grid = ganttContainer.querySelector<HTMLElement>('.gchartgrid');
 	const header = ganttContainer.querySelector<HTMLElement>('.gchartlbl');
@@ -461,7 +423,6 @@ function constrainSevenDayViewport(ganttContainer: HTMLElement) {
 		applySevenDayTableClip(footerTable, tableWidth, translatedLeft, scale);
 	}
 }
-
 function applySevenDayTableClip(table: HTMLElement, tableWidth: number, translatedLeft: number, scale: number) {
 	const wrapper = table.parentElement;
 	if (wrapper) {
@@ -478,7 +439,6 @@ function applySevenDayTableClip(table: HTMLElement, tableWidth: number, translat
 	table.style.setProperty('transform', `scaleX(${scale})`, 'important');
 	table.style.setProperty('transform-origin', 'left top', 'important');
 }
-
 function buildLocalSevenDayLabels(): string[] {
 	const today = new Date();
 	return Array.from({ length: 7 }, (_, index) => {
@@ -487,11 +447,9 @@ function buildLocalSevenDayLabels(): string[] {
 		return formatSevenDayHeaderLabel(day);
 	});
 }
-
 function formatSevenDayHeaderLabel(value: Date): string {
 	return dayjs(value).format('DD MMM');
 }
-
 function findConsecutiveDayLabelIndex(headerCells: HTMLElement[], expectedDays: string[]): number {
 	const headerDays = headerCells.map((cell) => (cell.textContent || '').trim());
 	for (let index = 0; index <= headerDays.length - expectedDays.length; index++) {
@@ -503,7 +461,6 @@ function findConsecutiveDayLabelIndex(headerCells: HTMLElement[], expectedDays: 
 
 	return -1;
 }
-
 function alignCurrentDayCell(ganttContainer: HTMLElement) {
 	const headerCells = Array.from(ganttContainer.querySelectorAll<HTMLElement>('.gcharttableh .gminorheading, .gcharttableh .gminorheadingwkend'));
 	if (headerCells.length === 0) {
@@ -540,7 +497,6 @@ function alignCurrentDayCell(ganttContainer: HTMLElement) {
 	const markerLeft = todayRect.left - gridRect.left + (todayRect.width * dayProgress);
 	grid.style.setProperty('--library-access-current-day-left', `${markerLeft}px`);
 }
-
 function alignCurrentTimeMarkerToActiveBars(ganttContainer: HTMLElement) {
 	const grid = ganttContainer.querySelector<HTMLElement>('.gchartgrid');
 	const activeBar = ganttContainer.querySelector<HTMLElement>('.gtaskbarcontainer:has(.gtaskgreen)');
@@ -555,19 +511,12 @@ function alignCurrentTimeMarkerToActiveBars(ganttContainer: HTMLElement) {
 		grid.classList.remove('has-library-access-current-time-marker');
 		return;
 	}
-
 	grid.style.setProperty('--library-access-current-day-left', `${markerLeft}px`);
 	grid.classList.add('has-library-access-current-time-marker');
 }
-
-type GanttTask = {
-	getOriginalID(): string;
-	getListChildRow(): HTMLTableRowElement | null;
-};
-
 function bindTaskSelection() {
 	const tasksById = new Map<string, GanttTask>(
-		ganttChart!.getList().map((task) => [task.getOriginalID(), task as GanttTask] as const),
+		ganttChart!.getList().map((task) => [task.getOriginalID(), task] as const),
 	);
 	for (const interval of get(sortedIntervals)) {
 		const taskElement = tasksById.get(interval.id)?.getListChildRow();
@@ -579,13 +528,11 @@ function bindTaskSelection() {
 		taskElement.addEventListener('click', () => emit('select-row', interval.rowId));
 	}
 }
-
 function buildTaskCaption(interval: LibraryAccessTimelineInterval): string {
 	return interval.revokedAt === null
 		? `${interval.durationLabel} active`
 		: interval.durationLabel;
 }
-
 function buildTaskNotes(interval: LibraryAccessTimelineInterval): string {
 	const revokedAt = interval.revokedAt ? dayjs(interval.revokedAt).format('YYYY-MM-DD HH:mm') : 'Active';
 	return [
@@ -596,7 +543,6 @@ function buildTaskNotes(interval: LibraryAccessTimelineInterval): string {
 		`Revoked: ${revokedAt}`,
 	].join('<br>');
 }
-
 function resolveDisplayFormat(zoomPreset: LibraryAccessTimelineZoomPreset): GanttChartFormat {
 	if (zoomPreset === '1d' || zoomPreset === '7d') {
 		return 'day';
@@ -608,6 +554,28 @@ function resolveDisplayFormat(zoomPreset: LibraryAccessTimelineZoomPreset): Gant
 
 	return 'week';
 }
+
+onMounted(() => {
+	renderGanttChart();
+	refreshNowLineInterval = setInterval(() => {
+		renderGanttChart();
+	}, 60000);
+});
+onBeforeUnmount(() => {
+	if (refreshNowLineInterval) {
+		clearInterval(refreshNowLineInterval);
+		refreshNowLineInterval = undefined;
+	}
+
+	if (pendingResizeRenderFrame) {
+		cancelAnimationFrame(pendingResizeRenderFrame);
+		pendingResizeRenderFrame = undefined;
+	}
+});
+
+const emit = defineEmits<{
+	(e: 'select-row', rowId: string): void;
+}>();
 </script>
 
 <style lang="scss">

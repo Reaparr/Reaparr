@@ -19,9 +19,9 @@ import { useNotificationsStore } from '@store';
 
 const notificationsStore = useNotificationsStore();
 
-const emit = defineEmits<{ (e: 'toggle'): void }>();
-
 function toggleNotificationDrawer() {
 	emit('toggle');
 }
+
+const emit = defineEmits<{ (e: 'toggle'): void }>();
 </script>

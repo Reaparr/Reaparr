@@ -814,7 +814,7 @@ public class SyncPlexOtherVideosCommandUnitTests : BaseCommandUnitTest<SyncPlexO
             })
             .Single();
         using var cancellation = new CancellationTokenSource();
-        cancellation.Cancel();
+        await cancellation.CancelAsync();
         var cancellationVideo = ToIncomingVideo(
             db,
             await db.PlexOtherVideos.AsNoTracking().Include(x => x.MediaDataList).SingleAsync(CancellationToken)

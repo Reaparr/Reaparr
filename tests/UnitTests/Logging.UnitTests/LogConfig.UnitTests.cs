@@ -2,7 +2,6 @@ using System.Collections.Concurrent;
 using System.Text.Json;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http;
 using Reaparr.Environment;
 using Serilog.Events;
 
@@ -15,7 +14,7 @@ public class LogConfigUnitTests : BaseUnitTest
     {
         // Arrange
         var directory = Directory.CreateTempSubdirectory(nameof(LogConfigUnitTests));
-        var pathProvider = new Moq.Mock<IPathProvider>();
+        var pathProvider = new Mock<IPathProvider>();
         pathProvider.SetupGet(x => x.LogsDirectory).Returns(directory.FullName);
         var runtimeInfo = new MockAppRuntimeInfo { SEQ_Url = string.Empty, SEQ_ApiKey = string.Empty };
         var buildInfo = new MockAppBuildInfo { TelemetryHost = string.Empty, TelemetryProjectToken = string.Empty };
@@ -45,7 +44,7 @@ public class LogConfigUnitTests : BaseUnitTest
     {
         // Arrange
         var directory = Directory.CreateTempSubdirectory(nameof(LogConfigUnitTests));
-        var pathProvider = new Moq.Mock<IPathProvider>();
+        var pathProvider = new Mock<IPathProvider>();
         pathProvider.SetupGet(x => x.LogsDirectory).Returns(directory.FullName);
         var received = new ConcurrentQueue<(string ApiKey, string Body)>();
         var builder = WebApplication.CreateSlimBuilder();

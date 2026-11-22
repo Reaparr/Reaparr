@@ -1,6 +1,5 @@
 using System.Net;
 using LukeHagar.PlexAPI.SDK;
-using LukeHagar.PlexAPI.SDK.Models.Requests;
 using Reaparr.PlexApi.Contracts;
 
 namespace Reaparr.PlexApi.UnitTests;
@@ -12,6 +11,7 @@ public class ValidatePlexTvTokenCommandHandlerUnitTests : BaseUnitTest<ValidateP
     {
         // Arrange
         using var cancellation = new CancellationTokenSource();
+        var cancellationToken = cancellation.Token;
         HttpRequestMessage? capturedRequest = null;
         var transport = new Mock<IPlexApiClient>(MockBehavior.Strict);
         transport
@@ -31,12 +31,12 @@ public class ValidatePlexTvTokenCommandHandlerUnitTests : BaseUnitTest<ValidateP
         var sdk = new PlexAPI(client: transport.Object, serverUrl: "https://plex.tv/api/v2", token: "auth-token");
 
         Mock.Mock<IPlexApiClientFactory>()
-            .Setup(x => x.CreateTvClient("auth-token", null, cancellation.Token))
+            .Setup(x => x.CreateTvClient("auth-token", null, cancellationToken))
             .Returns<string, PlexApiClientOptions?, CancellationToken>((_, _, _) => sdk)
             .Verifiable(Times.Once());
 
         // Act
-        var result = await Sut.ExecuteAsync(new ValidatePlexTokenCommand("auth-token"), cancellation.Token);
+        var result = await Sut.ExecuteAsync(new ValidatePlexTokenCommand("auth-token"), cancellationToken);
 
         // Assert
         result.IsFailed.ShouldBeTrue();

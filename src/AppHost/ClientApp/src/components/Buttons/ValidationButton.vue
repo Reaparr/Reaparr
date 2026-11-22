@@ -12,8 +12,6 @@
 import { get, set, watchOnce } from '@vueuse/core';
 import { useI18n } from 'vue-i18n';
 
-const { t } = useI18n();
-
 const props = withDefaults(defineProps<{
 	loading?: boolean;
 	isValidated?: boolean;
@@ -29,13 +27,8 @@ const props = withDefaults(defineProps<{
 });
 
 const isExecuted = ref(false);
-if (props.triggerOnce) {
-	watchOnce(() => props.loading, () => set(isExecuted, true));
-} else {
-	whenever(() => props.loading, () => set(isExecuted, true));
-}
 
-whenever(() => !props.loading, () => setTimeout(() => set(isExecuted, false), 4000));
+const { t } = useI18n();
 
 const validationStyle = computed((): {
 	color: 'default' | 'positive' | 'warning' | 'negative';
@@ -64,6 +57,13 @@ const validationStyle = computed((): {
 		};
 	}
 });
+
+if (props.triggerOnce) {
+	watchOnce(() => props.loading, () => set(isExecuted, true));
+} else {
+	whenever(() => props.loading, () => set(isExecuted, true));
+}
+whenever(() => !props.loading, () => setTimeout(() => set(isExecuted, false), 4000));
 </script>
 
 <style lang="scss">

@@ -59,17 +59,16 @@ import { useI18n } from '#imports';
 
 const size = 32;
 
+const checkPlexServerConnections = ref<Record<string, number[]>>({});
+
 const { t } = useI18n();
 const backgroundJobStore = useBackgroundJobsStore();
 const dialogStore = useDialogStore();
 const libraryStore = useLibraryStore();
-const checkPlexServerConnections = ref<Record<string, number[]>>({});
 
 const hasActiveLibrarySync = computed(() => libraryStore.syncQueues.some((queue) =>
 	queue.status === LibrarySyncJobStatus.Queued || queue.status === LibrarySyncJobStatus.Processing));
-
 const loading = computed(() => get(activeCount) > 0);
-
 const activeCount = computed(() => {
 	let count = 0;
 	if (Object.keys(get(checkPlexServerConnections)).length > 0) {
@@ -82,7 +81,6 @@ const activeCount = computed(() => {
 
 	return count;
 });
-
 const menuItems = computed(() => {
 	const items: {
 		label: string;

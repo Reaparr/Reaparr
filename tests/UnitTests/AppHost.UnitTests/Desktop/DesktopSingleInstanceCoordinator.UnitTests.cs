@@ -180,7 +180,7 @@ public class DesktopSingleInstanceCoordinatorUnitTests : BaseUnitTest<DesktopSin
         var read = DesktopSingleInstanceCoordinator.IsRelaunchSignalAsync(stream, cancelled.Token).AsTask();
         await stream.ReadStarted.Task.WaitAsync(deadline, CancellationToken);
         read.IsCompleted.ShouldBeFalse();
-        cancelled.Cancel();
+        await cancelled.CancelAsync();
         var exception = await Should.ThrowAsync<OperationCanceledException>(async () =>
             await read.WaitAsync(deadline, CancellationToken)
         );

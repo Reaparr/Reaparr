@@ -206,38 +206,31 @@
 </template>
 
 <script setup lang="ts">
+import Log from 'consola';
 import { get, set, useClipboard, useDebounceFn } from '@vueuse/core';
 import { format } from 'date-fns';
 import { useLogsStore } from '@store';
 import type { LiveLogEventDTO } from '@dto';
 import { LogSeverity, SortDirection } from '@dto';
 
-const telemetry = useTelemetry();
-const logsStore = useLogsStore();
-const helpStore = useHelpStore();
-const { copy } = useClipboard({ legacy: true });
-
-const { t } = useI18n();
+type HighlightSegment = {
+	text: string;
+	isMatch: boolean;
+};
 
 const scrollElement = ref<HTMLElement | null>(null);
 const pauseScroll = ref(false);
 const selectedEntries = ref<Set<number>>(new Set());
-const searchInput = ref(logsStore.searchText);
 
+const telemetry = useTelemetry();
+const logsStore = useLogsStore();
+const helpStore = useHelpStore();
+const { copy } = useClipboard({ legacy: true });
+const { t } = useI18n();
+const searchInput = ref(logsStore.searchText);
 const applySearch = useDebounceFn((value: string) => {
 	logsStore.setSearch(value);
 }, 300);
-
-function onSearchInput(value: string | number | null): void {
-	const text = value?.toString() ?? '';
-	set(searchInput, text);
-	applySearch(text);
-}
-
-function onSearchClear(): void {
-	set(searchInput, '');
-	logsStore.clearSearch();
-}
 
 const levelOptions = computed(() => [
 	{ label: t('general.logs.level.verbose'), value: LogSeverity.Verbose },
@@ -248,6 +241,26 @@ const levelOptions = computed(() => [
 	{ label: t('general.logs.level.fatal'), value: LogSeverity.Fatal },
 ] as { label: string; value: LogSeverity }[]);
 
+watch(
+	() => logsStore.getLogs.length,
+	async () => {
+		if (logsStore.sortDirection === SortDirection.Asc) {
+			await scrollToBottom();
+		} else {
+			await scrollToTop();
+		}
+	},
+);
+
+function onSearchInput(value: string | number | null): void {
+	const text = value?.toString() ?? '';
+	set(searchInput, text);
+	applySearch(text).catch((error) => Log.error('Failed to apply live log search', error));
+}
+function onSearchClear(): void {
+	set(searchInput, '');
+	logsStore.clearSearch();
+}
 function levelLabel(level: LogSeverity): string {
 	switch (level) {
 		case LogSeverity.Verbose:
@@ -268,7 +281,6 @@ function levelLabel(level: LogSeverity): string {
 			return t('general.commands.unknown');
 	}
 }
-
 function levelColor(level: LogSeverity): string {
 	switch (level) {
 		case LogSeverity.Debug:
@@ -285,12 +297,6 @@ function levelColor(level: LogSeverity): string {
 			return 'black-1';
 	}
 }
-
-type HighlightSegment = {
-	text: string;
-	isMatch: boolean;
-};
-
 function highlightSegments(text: string): HighlightSegment[] {
 	const query = logsStore.searchText.trim();
 	if (!query) {
@@ -320,11 +326,9 @@ function highlightSegments(text: string): HighlightSegment[] {
 
 	return segments.length > 0 ? segments : [{ text, isMatch: false }];
 }
-
 function formatTimestamp(timestamp: string): string {
 	return format(new Date(timestamp), 'HH:mm:ss.SSS');
 }
-
 function formatLogEntry(item: LiveLogEventDTO): string {
 	const parts = [
 		`[${formatTimestamp(item.timestamp)}] [${levelLabel(item.level)}]`,
@@ -334,13 +338,12 @@ function formatLogEntry(item: LiveLogEventDTO): string {
 	].filter(Boolean);
 	return parts.join(' ');
 }
-
 function copyLogEntry(item: LiveLogEventDTO): void {
-	telemetry.logsCopied(1);
-	copy(formatLogEntry(item));
-	showSuccessNotification(t('pages.settings.logs.copied-to-clipboard'), 2000);
+	copy(formatLogEntry(item)).then(() => {
+		telemetry.logsCopied(1);
+		showSuccessNotification(t('pages.settings.logs.copied-to-clipboard'), 2000);
+	}).catch((error) => Log.error('Failed to copy live log entry', error));
 }
-
 function onEntrySelectionChanged(sequence: number, selected: boolean): void {
 	const entries = get(selectedEntries);
 	const updated = new Set(entries);
@@ -351,28 +354,26 @@ function onEntrySelectionChanged(sequence: number, selected: boolean): void {
 	}
 	set(selectedEntries, updated);
 }
-
 function copySelectedEntries(): void {
 	const sequences = get(selectedEntries);
 	const entries = logsStore.getLogs.filter((x) => sequences.has(x.sequence));
-	telemetry.logsCopied(entries.length);
 	const text = entries.map(formatLogEntry).join('\n');
-	copy(text);
-	showSuccessNotification(t('pages.settings.logs.copied-to-clipboard'), 2000);
+	copy(text).then(() => {
+		telemetry.logsCopied(entries.length);
+		showSuccessNotification(t('pages.settings.logs.copied-to-clipboard'), 2000);
+	}).catch((error) => Log.error('Failed to copy selected live logs', error));
 }
-
 function copyAllEntries(): void {
 	const entries = logsStore.getLogs;
-	telemetry.logsCopied(entries.length);
 	const text = entries.map(formatLogEntry).join('\n');
-	copy(text);
-	showSuccessNotification(t('pages.settings.logs.copied-to-clipboard'), 2000);
+	copy(text).then(() => {
+		telemetry.logsCopied(entries.length);
+		showSuccessNotification(t('pages.settings.logs.copied-to-clipboard'), 2000);
+	}).catch((error) => Log.error('Failed to copy live logs', error));
 }
-
 function onSelectedLevelsChanged(value: LogSeverity[] | null): void {
 	logsStore.setSelectedLevels(value ?? []);
 }
-
 function onSortDirectionToggled(): void {
 	logsStore.toggleSortDirection();
 	if (logsStore.sortDirection === SortDirection.Asc) {
@@ -381,7 +382,6 @@ function onSortDirectionToggled(): void {
 		void scrollToTop();
 	}
 }
-
 function onPauseScrollChanged(value: boolean): void {
 	set(pauseScroll, value);
 	telemetry.logScrollingPaused(value);
@@ -394,16 +394,13 @@ function onPauseScrollChanged(value: boolean): void {
 		}
 	}
 }
-
 function onClearLogs(): void {
 	logsStore.clearLogs();
 }
-
 function onRefreshLogs(): void {
 	telemetry.logsRefreshRequested();
 	useSubscription(logsStore.refreshLogs().subscribe());
 }
-
 async function scrollToBottom(): Promise<void> {
 	if (logsStore.sortDirection !== SortDirection.Asc || get(pauseScroll)) {
 		return;
@@ -417,7 +414,6 @@ async function scrollToBottom(): Promise<void> {
 
 	element.scrollTop = element.scrollHeight;
 }
-
 async function scrollToTop(): Promise<void> {
 	if (logsStore.sortDirection !== SortDirection.Desc || get(pauseScroll)) {
 		return;
@@ -432,23 +428,11 @@ async function scrollToTop(): Promise<void> {
 	element.scrollTop = 0;
 }
 
-watch(
-	() => logsStore.getLogs.length,
-	async () => {
-		if (logsStore.sortDirection === SortDirection.Asc) {
-			await scrollToBottom();
-		} else {
-			await scrollToTop();
-		}
-	},
-);
-
 onMounted(() => {
 	useSubscription(logsStore.refreshLogs().subscribe());
 
 	void scrollToBottom();
 });
-
 onUnmounted(() => logsStore.$reset());
 </script>
 

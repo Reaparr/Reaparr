@@ -67,16 +67,18 @@ public class SignalRLogConfigUnitTests : BaseUnitTest
             buffer,
             Mock.Container.Resolve<IAppBuildInfo>()
         );
-        using var logger = config.GetLogger(LogEventLevel.Debug);
-        var contextualLogger = logger.ForContext("Regression", true);
-        contextualLogger.Debug("Before SignalR attachment");
-
         try
         {
-            // Act
-            config.AttachSignalR(app, LogEventLevel.Debug);
-            contextualLogger.Debug("After SignalR attachment");
-            logger.Dispose();
+            await using (var logger = config.GetLogger())
+            {
+                var contextualLogger = logger.ForContext("Regression", true);
+                contextualLogger.Debug("Before SignalR attachment");
+
+                // Act
+                config.AttachSignalR(app, LogEventLevel.Debug);
+                contextualLogger.Debug("After SignalR attachment");
+            }
+
             if (enableSeq)
                 await seqReceived.Task.WaitAsync(TimeSpan.FromSeconds(10));
 

@@ -50,10 +50,9 @@ public class DirectPlexDownloadClientStopAsyncUnitTests : BaseUnitTest<DirectPle
         var mock = new Mock<IDownloadService>();
         mock.Setup(x => x.Clear()).Returns(Task.CompletedTask);
         mock.Setup(x => x.CancelTaskAsync())
-            .Returns(() =>
+            .Returns(async () =>
             {
-                cts.Cancel();
-                return Task.CompletedTask;
+                await cts.CancelAsync();
             });
 
         mock.Setup(x => x.DownloadFileTaskAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -390,11 +389,10 @@ public class DirectPlexDownloadClientStopAsyncUnitTests : BaseUnitTest<DirectPle
         var localCts = new CancellationTokenSource();
         downloadServiceMock
             .Setup(x => x.CancelTaskAsync())
-            .Returns(() =>
+            .Returns(async () =>
             {
                 cancelCallCount++;
-                localCts.Cancel();
-                return Task.CompletedTask;
+                await localCts.CancelAsync();
             });
 
         downloadServiceMock

@@ -77,20 +77,17 @@ import { get, set } from '@vueuse/core';
 import { SetupPanelType } from '@enums';
 import { useFolderPathStore } from '#imports';
 
+const props = defineProps<{ maxPages: number }>();
+
+const model = defineModel<number>({
+	default: 1,
+});
+
 const settingsStore = useSettingsStore();
 const authStore = useAuthenticationStore();
 const folderPathStore = useFolderPathStore();
 const accountStore = useAccountStore();
 const telemetry = useTelemetry();
-const model = defineModel<number>({
-	default: 1,
-});
-
-const props = defineProps<{ maxPages: number }>();
-
-const emits = defineEmits<{
-	(e: 'finish'): void;
-}>();
 
 const stepValidation = computed((): { allowed: boolean; tooltip?: string } => {
 	switch (get(model)) {
@@ -125,11 +122,9 @@ const stepValidation = computed((): { allowed: boolean; tooltip?: string } => {
 const isBackDisabled = computed(() => {
 	return get(model) === 1;
 });
-
 const isNextDisabled = computed(() => {
 	return get(model) === props.maxPages;
 });
-
 const isFinishButtonVisible = computed(() => {
 	return get(model) === props.maxPages;
 });
@@ -143,7 +138,6 @@ function next(capture = true) {
 		set(model, nextStep);
 	}
 }
-
 function back() {
 	if (get(model) > 1) {
 		const previousStep = get(model) - 1;
@@ -154,11 +148,9 @@ function back() {
 function onLanguageChanged(): void {
 	telemetry.setupLanguageChanged();
 }
-
 function onBackgroundChanged(): void {
 	telemetry.setupBackgroundChanged();
 }
-
 function onDisclaimerAgree() {
 	telemetry.setupDisclaimerAccepted();
 	settingsStore.$patch({
@@ -168,6 +160,10 @@ function onDisclaimerAgree() {
 	});
 	next(false);
 }
+
+const emits = defineEmits<{
+	(e: 'finish'): void;
+}>();
 </script>
 
 <style lang="scss">

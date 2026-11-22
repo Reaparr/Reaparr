@@ -50,18 +50,17 @@ import { useSubscription } from '@vueuse/rxjs';
 import type { PlexServerConnectionDTO } from '@dto';
 import { useServerConnectionStore, useDialogStore } from '@store';
 
-const dialogStore = useDialogStore();
-const serverConnectionStore = useServerConnectionStore();
-
 const props = defineProps<{
 	plexServerId: number;
 	isVisible: boolean;
 }>();
 
+const dialogStore = useDialogStore();
+const serverConnectionStore = useServerConnectionStore();
+
 const checkAllLoading = computed(() =>
 	serverConnectionStore.isAnyConnectionLoadingForServer(props.plexServerId),
 );
-
 const connections = computed((): {
 	plexApiConnections: PlexServerConnectionDTO[];
 	customConnections: PlexServerConnectionDTO[];

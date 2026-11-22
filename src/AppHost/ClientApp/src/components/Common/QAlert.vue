@@ -71,7 +71,6 @@ const classConfig = computed(() => {
 		[`q-alert--${normalizedType}`]: true,
 	};
 });
-
 const alertIcon = computed((): string => {
 	switch (props.type) {
 		case 'success':

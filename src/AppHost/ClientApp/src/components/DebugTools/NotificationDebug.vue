@@ -37,15 +37,12 @@ import { showErrorNotification, showSuccessNotification } from '#imports';
 function triggerError() {
 	showErrorNotification('Debug error notification');
 }
-
 function triggerErrorWithTimeout() {
 	showErrorNotification('Debug error notification (5 seconds)', 5000);
 }
-
 function triggerSuccess() {
 	showSuccessNotification('Debug success notification');
 }
-
 function triggerSuccessWithTimeout() {
 	showSuccessNotification('Debug success notification (5 seconds)', 5000);
 }

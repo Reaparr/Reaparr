@@ -47,12 +47,9 @@ const props = withDefaults(defineProps<{
 	serverName: '',
 });
 
-const emit = defineEmits<{
-	(e: 'select', forceMediaRefresh: boolean): void;
-}>();
-
 const { t } = useI18n();
 const dialogStore = useDialogStore();
+
 const title = computed(() => props.scope === 'server'
 	? t('components.refresh-mode-dialog.server.title', { serverName: props.serverName })
 	: t('components.refresh-mode-dialog.library.title', { libraryName: props.libraryName }));
@@ -66,9 +63,12 @@ const warning = computed(() => props.scope === 'server'
 function close(): void {
 	dialogStore.closeDialog(DialogType.RefreshMediaDialog);
 }
-
 function select(forceMediaRefresh: boolean): void {
 	close();
 	emit('select', forceMediaRefresh);
 }
+
+const emit = defineEmits<{
+	(e: 'select', forceMediaRefresh: boolean): void;
+}>();
 </script>

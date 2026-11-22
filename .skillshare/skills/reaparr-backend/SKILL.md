@@ -19,6 +19,13 @@ Backend work includes code, tests, configuration, plans, reviews, debugging, and
 
 Do not use this skill for frontend-only work under `src/AppHost/ClientApp/`; use the Reaparr frontend skills instead.
 
+## String ordering
+
+- Leave ordinary LINQ sorting and string equality on their established .NET defaults; do not scatter explicit comparers merely to silence culture-sensitive warnings.
+- Use the existing `OrderByNatural` / `OrderByNaturalDesc` helpers for media-title ordering that needs case-insensitive numeric-aware sorting; these centrally use `StringComparison.OrdinalIgnoreCase.WithNaturalSort()`. Use that comparer directly only for a specialized ordering chain that the helpers do not cover, such as `ThenBy`.
+- Preserve deliberate canonical identity/fingerprint ordering and existing equality/hash semantics. Keep database `IQueryable` ordering provider-translatable and reuse established natural-sort collation where the query contract requires it; do not materialize early just to apply a comparer.
+- Keep MA0002 disabled and culture-sensitive ordering inspections off under this policy; EditorConfig configures diagnostics, not a process-wide runtime comparer. Do not introduce analyzer projects or wrappers to manufacture a global default.
+
 ## Vertical-slice structure
 
 Application endpoints are organized by operation, not grouped into product-level aggregate files.
@@ -338,7 +345,7 @@ Rules:
 8. Keep behavior deterministic, especially in tests and background jobs.
 9. Before finishing any backend code file creation, check whether a new folder was introduced. If yes, use the root project namespace in the code file and update the owning `.csproj.DotSettings` `NamespaceFoldersToSkip` entry.
 10. Re-read changed files after edits to confirm the intended changes landed.
-11. Use native diagnostics and language-server analysis to find errors that need fixing before claiming completion. Do not run a build as an error-discovery mechanism.
+11. Run Rider/native diagnostics over the changed files and affected scope. Resolve every relevant warning and error before claiming the backend task is done; warnings-as-errors count as errors.
 
 ## Run and Test Commands
 
@@ -363,13 +370,14 @@ All backend test execution should use the documented test route. Never use an ex
 
 ## Verification Gates
 
-Never rely on a build alone to determine whether backend code has errors. Use native language-server diagnostics, project diagnostics, and targeted tests.
+Never rely on a build alone to determine whether backend code has errors. Use Rider/native language-server diagnostics, project diagnostics, and targeted tests.
 
-Required error-checking flow:
-1. Run `lsp` diagnostics for each changed backend file when a language server is available.
-2. If diagnostics are incomplete or fail, retry with narrower file ranges and repository-native checks.
-3. Fix all relevant reported errors.
-4. Only after diagnostics are clean, run tests when the change requires behavioral verification.
+Required diagnostic completion gate:
+1. Inspect changed files and the full relevant affected scope with the native diagnostics appropriate to the task.
+2. Fix every relevant compiler, analyzer, Rider, and language-server warning/error, including diagnostics promoted to errors. Repository-disabled rules and lower-severity suggestions/hints are excluded unless the task explicitly includes them.
+3. Refresh diagnostics after fixes. Done requires zero unresolved relevant warnings/errors in the covered scope. Report any unavailable diagnostic coverage or explicit exception; never describe partial coverage as clean.
+4. Run behavior-covering tests required by the change only after implementation and diagnostics are complete. Passing tests do not excuse unresolved warnings/errors.
+5. For backend changes to C# source, run JetBrains InspectCode against every changed `.cs` file, targeting each solution-relative path with `--include='<path>'` and `--severity=WARNING` (or higher). Fix warning-or-higher findings in the changed files and rerun the scoped inspection; retain SARIF output under `/tmp`. This supplements the relevant diagnostic coverage above and does not require a whole-solution InspectCode run.
 
 Build commands are not a substitute for diagnostics. Use them only when required by the requested workflow or as part of test execution.
 
@@ -385,7 +393,7 @@ Test routing:
 - Cross-project or public contract changes: diagnostics across affected files and symbols first, then affected tests.
 - Job, SignalR, EF Core, or endpoint changes: diagnostics first, then tests covering the runtime path when available; otherwise explain the missing behavioral verifier.
 
-Do not claim success unless native diagnostics and required tests passed. If the language server is unavailable, state that explicitly and use the strongest available native checks.
+Do not claim success unless relevant native diagnostics report no unresolved warnings or errors and the required tests passed. If the diagnostic or test route is unavailable or blocked, state the exact uncovered scope and blocker.
 
 ## Common Mistakes
 

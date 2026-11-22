@@ -216,12 +216,12 @@ import { generateDefaultFolderPaths } from '@factories';
 import { DialogType } from '@enums';
 import { useAlertStore, useHelpStore, useDialogStore } from '@store';
 
+const folderPath = generateDefaultFolderPaths({})[0]!;
+
 const { t } = useI18n();
 const helpStore = useHelpStore();
 const alertStore = useAlertStore();
 const dialogStore = useDialogStore();
-
-const folderPath = generateDefaultFolderPaths({})[0]!;
 
 function openDownloadConfirmationDialog(): void {
 	const demo: DownloadMediaDTO[] = [
@@ -236,7 +236,6 @@ function openDownloadConfirmationDialog(): void {
 	];
 	dialogStore.openMediaConfirmationDownloadDialog(demo);
 }
-
 function openHelpDialog(): void {
 	helpStore.openHelpDialog({
 		label: t('help.settings.ui.language.language-selection.label'),
@@ -244,11 +243,9 @@ function openHelpDialog(): void {
 		text: t('help.settings.ui.language.language-selection.text'),
 	});
 }
-
 function openCheckServerConnectionsDialog(): void {
 	dialogStore.openDialog(DialogType.CheckServerConnectionDialogName);
 }
-
 function addAlert(): void {
 	alertStore.showAlert({ id: 0, title: 'Alert Title 1', text: 'random alert' });
 	alertStore.showAlert({ id: 0, title: 'Alert Title 2', text: 'random alert' });
