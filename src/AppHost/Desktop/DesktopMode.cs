@@ -172,7 +172,7 @@ public class DesktopMode : IDesktopMode
                 desktopReadyCompletion.TrySetResult();
                 break;
             default:
-                throw new ArgumentOutOfRangeException();
+                throw new ArgumentOutOfRangeException(nameof(message), message.Type, null);
         }
     }
 

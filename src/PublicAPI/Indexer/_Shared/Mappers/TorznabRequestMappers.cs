@@ -8,12 +8,12 @@ public static class TorznabRequestMappers
 
     public static TorznabRequest ToTorznabRequest(this TorznabEndpointRequest request, IntegrationIdentity integration)
     {
-        TryParseEpisodeSelector(request.Season, request.Episode, out var episode, out var airDate);
+        var parsed = TryParseEpisodeSelector(request.Season, request.Episode, out var episode, out var airDate);
         return new TorznabRequest
         {
             Type = ParseType(request.Type),
             Query = request.Query ?? string.Empty,
-            Season = airDate.HasValue ? null : request.Season,
+            Season = parsed && airDate.HasValue ? null : request.Season,
             Episode = episode,
             AirDate = airDate,
             TvdbId = request.TvdbId ?? 0,

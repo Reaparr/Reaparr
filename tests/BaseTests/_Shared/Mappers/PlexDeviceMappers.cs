@@ -35,7 +35,9 @@ public static class PlexDeviceMappers
     public static Connections ToPlexApiDTO(this PlexServerConnection connection) =>
         new()
         {
-            Protocol = connection.Protocol.ToLower() == "https" ? PlexDeviceProtocol.Https : PlexDeviceProtocol.Http,
+            Protocol = connection.Protocol.Equals("https", StringComparison.OrdinalIgnoreCase)
+                ? PlexDeviceProtocol.Https
+                : PlexDeviceProtocol.Http,
             Address = connection.Address,
             Port = connection.Port,
             Uri = connection.Url,

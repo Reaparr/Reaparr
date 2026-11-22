@@ -20,7 +20,7 @@ public sealed class DownloadSpeedLimitProvider : IDownloadSpeedLimitProvider
     public void SetScheduledDownloadSpeedLimits(IReadOnlyDictionary<string, long> limits)
     {
         foreach (var limit in limits.Values)
-            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(limit);
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(limit, nameof(limits));
 
         _scheduledLimits.OnNext(new Dictionary<string, long>(limits, StringComparer.Ordinal));
     }

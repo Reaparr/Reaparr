@@ -150,7 +150,10 @@ public class MediaFileNameExtensionsUnitTests : BaseUnitTest
     [Arguments("Movie 4K.mkv", "4k")]
     [Arguments("Movie 2160p.mkv", "2160p")]
     [Arguments("Movie 1080p.mkv", "1080p")]
-    public void ShouldReturnExactResolutionToken_WhenFilenameContainsSupportedResolution(string fileName, string expected)
+    public void ShouldReturnExactResolutionToken_WhenFilenameContainsSupportedResolution(
+        string fileName,
+        string expected
+    )
     {
         // Arrange
 
@@ -160,5 +163,4 @@ public class MediaFileNameExtensionsUnitTests : BaseUnitTest
         // Assert
         quality.ShouldBe(expected);
     }
-
 }
