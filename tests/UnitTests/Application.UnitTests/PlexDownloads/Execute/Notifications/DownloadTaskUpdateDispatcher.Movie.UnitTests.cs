@@ -276,7 +276,7 @@ public class DownloadTaskUpdateDispatcherMovieUnitTests : BaseUnitTest<DownloadT
         try
         {
             var pause = sut.OnStatusChangedAsync(key, DownloadStatus.Paused, cancellation.Token);
-            cancellation.Cancel();
+            await cancellation.CancelAsync();
             await pause;
         }
         finally

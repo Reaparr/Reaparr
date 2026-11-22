@@ -377,6 +377,7 @@ Required diagnostic completion gate:
 2. Fix every relevant compiler, analyzer, Rider, and language-server warning/error, including diagnostics promoted to errors. Repository-disabled rules and lower-severity suggestions/hints are excluded unless the task explicitly includes them.
 3. Refresh diagnostics after fixes. Done requires zero unresolved relevant warnings/errors in the covered scope. Report any unavailable diagnostic coverage or explicit exception; never describe partial coverage as clean.
 4. Run behavior-covering tests required by the change only after implementation and diagnostics are complete. Passing tests do not excuse unresolved warnings/errors.
+5. For backend changes to C# source, run JetBrains InspectCode against every changed `.cs` file, targeting each solution-relative path with `--include='<path>'` and `--severity=WARNING` (or higher). Fix warning-or-higher findings in the changed files and rerun the scoped inspection; retain SARIF output under `/tmp`. This supplements the relevant diagnostic coverage above and does not require a whole-solution InspectCode run.
 
 Build commands are not a substitute for diagnostics. Use them only when required by the requested workflow or as part of test execution.
 
