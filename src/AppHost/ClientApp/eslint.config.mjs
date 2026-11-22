@@ -87,7 +87,39 @@ export default withNuxt([{
 			'vue3-script-setup': vueSetupRules,
 		},
 		rules: {
-			'vue3-script-setup/declaration-order': 'error',
+			// Source: https://github.com/KumJungMin/eslint-vue-setup-order
+			'vue3-script-setup/declaration-order': [
+				'error',
+				{
+					sectionOrder: [
+						'definePageMeta', // Nuxt page metadata macro, matched below.
+						'type', // Type aliases, interfaces, and enums.
+						'defineProps', // Vue props macro.
+						'defineEmits', // Vue emits macro.
+						'defineSlots', // Vue slots macro.
+						'defineModel', // Vue model macro.
+						'defineOptions', // Vue component options macro.
+						'class', // Class declarations.
+						'plainVars', // Variable declarations not classified into another section.
+						'reactiveVars', // ref/reactive/shallow* and markRaw declarations.
+						'composables', // Calls named use*; includes VueUse useSubscription().
+						'computed', // Declarations initialized with computed().
+						'watchers', // Direct watch() calls; watchEffect variants are not included.
+						'provides', // Direct provide() calls.
+						'unknowns', // Declarations and statements not recognized above.
+						'functions', // Function declarations and function-valued variables.
+						'lifecycle', // Vue lifecycle hook calls, ordered by hook name.
+						'defineExpose', // Vue expose macro.
+					],
+					sectionConfigurations: [ // Add plugin-native classifications for declarations not recognized by default.
+						{
+							sectionName: 'definePageMeta', // Classify Nuxt's definePageMeta macro in its own section.
+							regex: '^definePageMeta\\s*\\(', // Match a call to definePageMeta, allowing whitespace before the parenthesis.
+						},
+					],
+					spaceBetweenItems: 'never', // Keep declarations adjacent within sections; the plugin separates distinct sections with a blank line.
+				},
+			],
 		},
 	});
 
