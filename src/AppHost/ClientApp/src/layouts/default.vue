@@ -52,10 +52,8 @@ import {
 	useAuthenticationStore,
 } from '@store';
 
-const { alerts } = storeToRefs(alertStore);
 const pendingPageCallbacks = new Set<ReturnType<typeof setTimeout>>();
 
-const showNavigationDrawerState = ref($q.screen.gt.sm);
 const showNotificationsDrawerState = ref(false);
 const pageLoading = ref(true);
 const pageApiLoading = ref(true);
@@ -70,6 +68,8 @@ const settingsStore = useSettingsStore();
 const globalStore = useGlobalStore();
 const authStore = useAuthenticationStore();
 const $q = useQuasar();
+const { alerts } = storeToRefs(alertStore);
+const showNavigationDrawerState = ref($q.screen.gt.sm);
 
 const isLoading = computed((): boolean => get(pageLoading) || get(pageApiLoading));
 const isEmptyLayout = computed((): boolean => route.fullPath.includes('setup') || route.fullPath.includes('login'),

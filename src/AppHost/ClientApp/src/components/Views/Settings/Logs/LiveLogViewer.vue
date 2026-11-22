@@ -221,13 +221,13 @@ type HighlightSegment = {
 const scrollElement = ref<HTMLElement | null>(null);
 const pauseScroll = ref(false);
 const selectedEntries = ref<Set<number>>(new Set());
-const searchInput = ref(logsStore.searchText);
 
 const telemetry = useTelemetry();
 const logsStore = useLogsStore();
 const helpStore = useHelpStore();
 const { copy } = useClipboard({ legacy: true });
 const { t } = useI18n();
+const searchInput = ref(logsStore.searchText);
 const applySearch = useDebounceFn((value: string) => {
 	logsStore.setSearch(value);
 }, 300);

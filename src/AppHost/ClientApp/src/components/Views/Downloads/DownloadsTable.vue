@@ -255,6 +255,7 @@ const props = defineProps<{
 
 const treeNodeCache = new WeakMap<DownloadProgressDTO, MappedDownloadNodeCache>();
 const treeNodeListCache = new WeakMap<DownloadProgressDTO[], DownloadTreeNode[]>();
+const { t } = useI18n();
 const getDownloadTableColumns: QTreeTableColumn[] = [
 	{
 		header: t('components.downloads-table.columns.title'),
@@ -327,7 +328,6 @@ const dialogStore = useDialogStore();
 const serverConnectionStore = useServerConnectionStore();
 const accountStore = useAccountStore();
 const $q = useQuasar();
-const { t } = useI18n();
 
 const loadingActionById = computed(() => new Map(get(loadingIds).map(({ id, action }) => [id, action])));
 const nodes = computed((): DownloadTreeNode[] => {

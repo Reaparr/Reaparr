@@ -78,6 +78,12 @@ import { useRouter, useI18n } from '#imports';
 import { useSubscription } from '@vueuse/rxjs';
 
 const stepIndex = ref(1);
+const telemetry = useTelemetry();
+const { t } = useI18n();
+const router = useRouter();
+const settingsStore = useSettingsStore();
+const globalStore = useGlobalStore();
+
 const headers = ref([
 	{ name: t('pages.setup.disclaimer.header') },
 	{ name: t('pages.setup.intro.header') },
@@ -85,12 +91,6 @@ const headers = ref([
 	{ name: t('pages.setup.paths.header') },
 	{ name: t('pages.setup.accounts.header') },
 	{ name: t('pages.setup.finished.header') }]);
-
-const telemetry = useTelemetry();
-const { t } = useI18n();
-const router = useRouter();
-const settingsStore = useSettingsStore();
-const globalStore = useGlobalStore();
 
 function finishSetup() {
 	telemetry.setupFinishRequested();

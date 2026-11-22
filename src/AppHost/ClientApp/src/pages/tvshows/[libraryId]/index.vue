@@ -12,7 +12,6 @@ definePageMeta({
 	scrollToTop: false,
 });
 
-const libraryId = +(route.params.libraryId as string);
-
 const route = useRoute();
+const libraryId = +(route.params.libraryId as string);
 </script>

@@ -199,14 +199,6 @@ const { copy } = useClipboard({ legacy: true });
 const dialogStore = useDialogStore();
 const telemetry = useTelemetry();
 const logRefreshTimer = useIntervalFn(() => refreshLogs(), 1000, { immediate: false });
-// TanStack Virtual — variable height rows via measureElement
-const virtualizer = useVirtualizer(computed(() => ({
-	count: filteredLogs.value.length,
-	getScrollElement: () => get(scrollEl),
-	estimateSize: () => 120,
-	overscan: 5,
-	getItemKey: (i: number) => filteredLogs.value[i]!.id,
-})));
 
 const logLevelLabels = computed<Record<NotificationLevel, string>>(() => ({
 	[NotificationLevel.None]: t('general.commands.unknown'),
@@ -226,6 +218,14 @@ const filteredLogs = computed(() => {
 	});
 });
 
+// TanStack Virtual — variable height rows via measureElement
+const virtualizer = useVirtualizer(computed(() => ({
+	count: filteredLogs.value.length,
+	getScrollElement: () => get(scrollEl),
+	estimateSize: () => 120,
+	overscan: 5,
+	getItemKey: (i: number) => filteredLogs.value[i]!.id,
+})));
 // Sync initial logs from parent pre-fetch (first 50)
 watch(
 	() => props.initialLogs,

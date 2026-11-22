@@ -77,6 +77,12 @@ import { useAlertStore, useDialogStore, useGlobalStore } from '@store';
 
 const props = defineProps<{ alert: IAlert }>();
 
+const alertStore = useAlertStore();
+const dialogStore = useDialogStore();
+const { t } = useI18n();
+const globalStore = useGlobalStore();
+const route = useRoute();
+const $q = useQuasar();
 const browserOptions: [boolean | undefined, string][] = [
 	[$q.platform.is.edge, 'Microsoft Edge (LOL)'],
 	[$q.platform.is.opera, 'Opera'],
@@ -86,13 +92,6 @@ const browserOptions: [boolean | undefined, string][] = [
 	[$q.platform.is.chrome, 'Google Chrome'],
 ];
 const browser = browserOptions.find(([detected]) => detected)?.[1];
-
-const alertStore = useAlertStore();
-const dialogStore = useDialogStore();
-const { t } = useI18n();
-const globalStore = useGlobalStore();
-const route = useRoute();
-const $q = useQuasar();
 
 const issueUrl = computed(() => {
 	const apiErrors = props.alert.apiErrors;

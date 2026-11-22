@@ -37,12 +37,12 @@ import VueMarkdown from 'vue-markdown-render';
 import type MarkdownIt from 'markdown-it';
 import type { Options, Renderer, Token } from 'markdown-it';
 
+const { t } = useI18n();
+
 const helpTitle = ref('');
 const helpText = ref('');
 const missingHelpTitle = ref(t('help.default.title'));
 const missingHelpText = ref(t('help.default.text'));
-
-const { t } = useI18n();
 
 function onOpen(event: IHelp): void {
 	set(helpTitle, event.title ? event.title : get(missingHelpTitle));

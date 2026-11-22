@@ -247,6 +247,7 @@ const requestedRange = ref('');
 
 const $q = useQuasar();
 const slots = useSlots();
+const controlled = computed(() => props.itemCount !== undefined && props.itemAt !== undefined);
 const rowVirtualizer = useVirtualizer(
 	computed(() => ({
 		count: get(controlled) ? Math.max(0, props.itemCount ?? 0) : 0,
@@ -265,7 +266,6 @@ const rowVirtualizer = useVirtualizer(
 	})),
 );
 
-const controlled = computed(() => props.itemCount !== undefined && props.itemAt !== undefined);
 const safeTotalSize = computed(() => Math.min(get(rowVirtualizer).getTotalSize(), MAX_CSS_HEIGHT));
 const controlledIndeterminate = computed(() => (props.selectedCount ?? 0) > 0 && !props.allSelected);
 const forwardedSlots = computed(() => {

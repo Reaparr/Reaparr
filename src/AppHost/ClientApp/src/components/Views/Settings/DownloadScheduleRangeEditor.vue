@@ -130,6 +130,7 @@ const props = defineProps<{
 	saving: boolean;
 	disabled?: boolean;
 }>();
+const emit = defineEmits<{ change: [range: DownloadScheduleRange]; apply: [limit: number | null]; preview: [limit: number | null | undefined] }>();
 
 let hasLocalEdits = false;
 let hasAppliedLimit = false;
@@ -175,6 +176,4 @@ function applyLimit() {
 	hasLocalEdits = false;
 	emit('apply', submittedLimit);
 }
-
-const emit = defineEmits<{ change: [range: DownloadScheduleRange]; apply: [limit: number | null]; preview: [limit: number | null | undefined] }>();
 </script>

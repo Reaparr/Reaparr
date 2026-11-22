@@ -34,10 +34,10 @@ import type { IntegrationSummary } from '@dto';
 import { useDialogStore, useIntegrationStore } from '@store';
 import { storeToRefs } from 'pinia';
 
-const { items } = storeToRefs(integrationStore);
-
 const dialogStore = useDialogStore();
 const integrationStore = useIntegrationStore();
+
+const { items } = storeToRefs(integrationStore);
 
 function refresh(): void {
 	useSubscription(integrationStore.refresh().subscribe());

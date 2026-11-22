@@ -123,6 +123,10 @@ const posterCardWidthCss = useCssVar('--poster-card-width', scrollContainerRef);
 const posterImageWidthCss = useCssVar('--poster-image-width', scrollContainerRef);
 const posterCardPaddingCss = useCssVar('--poster-card-padding', scrollContainerRef);
 const router = useRouter();
+const controlled = computed(() => props.itemCount !== undefined || Boolean(slots.item));
+// Number of rows = ceil(total items / columns). Controlled photo grids own their item count.
+const totalItemCount = computed(() => controlled.value ? Math.max(0, props.itemCount ?? 0) : mediaOverviewStore.totalCount);
+const rowCount = computed(() => Math.ceil(totalItemCount.value / get(gridItems)));
 // Row virtualizer — re-configures reactively when rowCount or posterCardHeight changes
 const rowVirtualizer = useVirtualizer(
 	computed(() => ({
@@ -156,10 +160,6 @@ const rowVirtualizer = useVirtualizer(
 // causes rowCount = ceil(N/1) = N rows and getTotalSize() to exceed browser CSS height limits.
 const { width: containerWidth } = useElementBounding(scrollContainerRef);
 
-const controlled = computed(() => props.itemCount !== undefined || Boolean(slots.item));
-// Number of rows = ceil(total items / columns). Controlled photo grids own their item count.
-const totalItemCount = computed(() => controlled.value ? Math.max(0, props.itemCount ?? 0) : mediaOverviewStore.totalCount);
-const rowCount = computed(() => Math.ceil(totalItemCount.value / get(gridItems)));
 const safeTotalSize = computed(() => Math.min(rowVirtualizer.value.getTotalSize(), BROWSER_MAX_CSS_HEIGHT));
 
 watch(containerWidth, (width) => {

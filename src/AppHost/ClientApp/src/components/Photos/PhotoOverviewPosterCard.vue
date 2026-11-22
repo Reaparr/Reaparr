@@ -79,9 +79,8 @@ const props = defineProps<{ item: PhotoOverviewItem }>();
 const { t } = useI18n();
 const settingsStore = useSettingsStore();
 const visibilityTarget = useTemplateRef<{ $el: HTMLElement }>('visibilityTarget');
-usePhotoImagePreloadCandidate(visibilityElement, () => props.item);
+usePhotoImagePreloadCandidate(() => get(visibilityTarget)?.$el ?? null, () => props.item);
 
-const visibilityElement = computed(() => get(visibilityTarget)?.$el ?? null);
 const title = computed(() => {
 	const item = props.item;
 	switch (item.kind) {

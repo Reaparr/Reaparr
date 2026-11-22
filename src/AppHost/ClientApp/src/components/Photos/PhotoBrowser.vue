@@ -178,7 +178,6 @@ let focusRestoreGeneration = 0;
 
 const overviewListRef = ref<FocusableOverviewList | null>(null);
 const ready = shallowRef(false);
-const restoreScrollIndex = shallowRef(photoStore.scrollIndex);
 
 const telemetry = useTelemetry();
 const route = useRoute();
@@ -190,6 +189,7 @@ const dialogStore = useDialogStore();
 const downloadStore = useDownloadStore();
 const settingsStore = useSettingsStore();
 const globalStore = useGlobalStore();
+const restoreScrollIndex = shallowRef(photoStore.scrollIndex);
 useSubscription(globalStore.getPageSetupReady.subscribe((value) => set(ready, value)));
 
 const queue = computed(() => props.libraryId > 0 ? libraryStore.getLibrarySyncQueue(props.libraryId) : null);

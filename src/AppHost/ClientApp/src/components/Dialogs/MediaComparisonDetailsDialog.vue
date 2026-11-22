@@ -239,42 +239,6 @@ interface IComparisonDetailTreeNode extends TreeNode {
 }
 
 const comparisonRequests = new Subject<PlexMediaSlimDTO | null>();
-const comparisonColumns: QTreeTableColumn[] = [
-	{
-		header: t('components.media-overview.comparison.details-column-title'),
-		field: 'title',
-	},
-	{
-		header: t('components.media-overview.comparison.details-column-owned-quality'),
-		field: 'ownedQuality',
-		type: QTreeTableColumnType.Custom,
-		width: 160,
-		align: 'left',
-	},
-	{
-		header: t('components.media-overview.comparison.details-column-remote-quality'),
-		field: 'remoteQuality',
-		type: QTreeTableColumnType.Custom,
-		width: 160,
-		align: 'left',
-	},
-	{
-		header: t('components.media-overview.comparison.details-column-location'),
-		field: 'location',
-		type: QTreeTableColumnType.Custom,
-		width: 240,
-		align: 'left',
-	},
-	{
-		header: t('components.downloads-table.columns.actions'),
-		field: 'actions',
-		type: QTreeTableColumnType.Actions,
-		width: 110,
-		align: 'right',
-		sortable: false,
-	},
-];
-
 const loading = ref(false);
 const comparisonFailed = ref(false);
 const comparisonRows = ref<IComparisonDetailsRow[]>([]);
@@ -312,6 +276,41 @@ useSubscription(
 		}),
 	).subscribe((rows) => set(comparisonRows, rows)),
 );
+const comparisonColumns: QTreeTableColumn[] = [
+	{
+		header: t('components.media-overview.comparison.details-column-title'),
+		field: 'title',
+	},
+	{
+		header: t('components.media-overview.comparison.details-column-owned-quality'),
+		field: 'ownedQuality',
+		type: QTreeTableColumnType.Custom,
+		width: 160,
+		align: 'left',
+	},
+	{
+		header: t('components.media-overview.comparison.details-column-remote-quality'),
+		field: 'remoteQuality',
+		type: QTreeTableColumnType.Custom,
+		width: 160,
+		align: 'left',
+	},
+	{
+		header: t('components.media-overview.comparison.details-column-location'),
+		field: 'location',
+		type: QTreeTableColumnType.Custom,
+		width: 240,
+		align: 'left',
+	},
+	{
+		header: t('components.downloads-table.columns.actions'),
+		field: 'actions',
+		type: QTreeTableColumnType.Actions,
+		width: 110,
+		align: 'right',
+		sortable: false,
+	},
+];
 
 const detailTreeRows = computed(() => mapToTreeNodes(get(comparisonRows)));
 const selectedDownloadRows = computed(() => getSelectedDownloadRows(get(comparisonRows)));
