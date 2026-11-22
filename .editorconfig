@@ -72,8 +72,10 @@ dotnet_analyzer_diagnostic.category-roslynator.severity = default
 dotnet_diagnostic.MA0004.severity = none
 # MA0006 prefers String.Equals over ==/!=; disable because the repository deliberately uses ==/is for canonical string equality.
 dotnet_diagnostic.MA0006.severity = none
-# MA0051 flags long methods; disable because length thresholds prompt arbitrary extraction, not evidence of a clearer operation.
+# MA0051 flags long methods; disable because method length alone is not evidence that extracting cohesive work improves clarity.
 dotnet_diagnostic.MA0051.severity = none
+# MA0158 requires System.Threading.Lock for lock-only fields; error blocks the old monitor type when behavior is preserved.
+dotnet_diagnostic.MA0158.severity = error
 
 # IDE0007 enforces var for locals; warning keeps declarations concise and consistent.
 dotnet_diagnostic.IDE0007.severity = warning
@@ -141,9 +143,12 @@ dotnet_diagnostic.MA0048.severity = none
 dotnet_diagnostic.MA0074.severity = none
 # MA0016 prefers interfaces over List/Dictionary; suggestion only because concrete types may be required by mutation/DTO contracts, not worth changing signatures blindly.
 dotnet_diagnostic.MA0016.severity = suggestion
-# MA0002 requires explicit string comparers; disable because ordinary ordering/equality follows project defaults unless identity requires otherwise.
+# MA0002 requires explicit string comparers; disabled because project policy follows platform defaults unless string identity has a defined comparison contract.
 dotnet_diagnostic.MA0002.severity = none
-# CA1508 flags conditions statically known to be constant; suggestion because dataflow analysis can produce false positives that need human review.
+# MA0011 requires IFormatProvider on culture-sensitive Parse/TryParse/ToString calls; disabled because provider arguments are unnecessary for this project's intended parsing usage.
+dotnet_diagnostic.MA0011.severity = none
+# MA0026 treats TODO comments as diagnostics; disabled because TODOs are planning notes, not build failures.
+dotnet_diagnostic.MA0026.severity = none
 dotnet_diagnostic.CA1508.severity = suggestion
 # CA2000 flags undisposed IDisposable instances; suggestion because ownership sometimes transfers across layers and needs review.
 dotnet_diagnostic.CA2000.severity = suggestion
@@ -205,4 +210,6 @@ dotnet_code_quality.CA1822.api_surface = private, internal
 dotnet_code_quality.CA1822.api_surface = private, internal
 
 # Disable ReSharper's using-resource-initialization suggestion here: explicit disposal scopes are intentional across async test flows.
+# TODO comments remain useful reminders, but must not turn unfinished notes into errors.
+resharper_todo_comment_highlighting = suggestion
 resharper_using_statement_resource_initialization_highlighting = none
