@@ -5,7 +5,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import type { Router } from 'vue-router';
 import type { BaseResultDTO } from '@dto';
 import { baseSetup, baseVars, getAxiosMock, subscribeSpyTo } from '@services-test-base';
-import { useAlertStore, useAuthenticationStore, useGlobalStore, useIntegrationStore, useSignalrStore, useUpdateStore } from '@store';
+import { useAlertStore, useAuthenticationStore, useGlobalStore, useIntegrationStore, useSettingsStore, useSignalrStore, useUpdateStore } from '@store';
 import { AuthenticationPaths, DebugPaths, DownloadPaths } from '@api-urls';
 import { generateFailedResultDTO, generateResultDTO } from '@mock';
 import { of } from 'rxjs';
@@ -209,20 +209,27 @@ describe('setupAxios()', () => {
 	});
 
 	test.each([
-		['network failure', () => mock.onGet('/api/Offline').networkError()],
-		['timeout', () => mock.onGet('/api/Offline').timeout()],
-	])('Should show only a translated connectivity toast for a %s', async (_name, arrangeFailure) => {
+		{ name: 'network failure with debug mode disabled', debugModeEnabled: false, arrange: () => mock.onGet('/api/Offline').networkError(), showsNotice: false },
+		{ name: 'network failure with debug mode enabled', debugModeEnabled: true, arrange: () => mock.onGet('/api/Offline').networkError(), showsNotice: true },
+		{ name: 'timeout with debug mode disabled', debugModeEnabled: false, arrange: () => mock.onGet('/api/Offline').timeout(), showsNotice: false },
+		{ name: 'timeout with debug mode enabled', debugModeEnabled: true, arrange: () => mock.onGet('/api/Offline').timeout(), showsNotice: false },
+	])('Should show a connectivity notice only for debug-mode network failures: $name', async ({ debugModeEnabled, arrange, showsNotice }) => {
 		// Arrange
+		useSettingsStore().debugSettings.debugModeEnabled = debugModeEnabled;
 		const alertStore = useAlertStore();
-		arrangeFailure();
+		arrange();
 
 		// Act
 		await Axios.get('/api/Offline').catch((error) => error);
 
 		// Assert
-		expect(notificationMocks.showErrorNotification).toHaveBeenCalledWith(
-			'translated:components.alert-dialog.connection-failed',
-		);
+		if (showsNotice) {
+			expect(notificationMocks.showErrorNotification).toHaveBeenCalledWith(
+				'translated:components.alert-dialog.connection-failed',
+			);
+		} else {
+			expect(notificationMocks.showErrorNotification).not.toHaveBeenCalled();
+		}
 		expect(alertStore.alerts).toEqual([]);
 	});
 
