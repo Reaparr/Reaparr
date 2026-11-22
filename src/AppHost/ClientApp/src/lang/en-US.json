@@ -92,6 +92,7 @@
             "details-loading": "Loading asset details",
             "memberships-loading": "Loading album memberships",
             "asset-viewer": "Photo viewer",
+            "asset-counter": "{current} / {total}",
             "close-asset-viewer": "Close photo viewer",
             "close-details": "Close asset details",
             "previous-asset": "Previous asset",
