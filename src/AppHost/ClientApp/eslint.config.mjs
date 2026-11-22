@@ -95,9 +95,8 @@ export default withNuxt([{
 						'definePageMeta', // Nuxt page metadata macro, matched below.
 						'type', // Type aliases, interfaces, and enums.
 						'defineProps', // Vue props macro.
-						'defineEmits', // Vue emits macro.
-						'defineSlots', // Vue slots macro.
 						'defineModel', // Vue model macro.
+						'defineSlots', // Vue slots macro.
 						'defineOptions', // Vue component options macro.
 						'class', // Class declarations.
 						'plainVars', // Variable declarations not classified into another section.
@@ -109,6 +108,7 @@ export default withNuxt([{
 						'unknowns', // Declarations and statements not recognized above.
 						'functions', // Function declarations and function-valued variables.
 						'lifecycle', // Vue lifecycle hook calls, ordered by hook name.
+						'defineEmits', // Vue emits macro.
 						'defineExpose', // Vue expose macro.
 					],
 					sectionConfigurations: [ // Add plugin-native classifications for declarations not recognized by default.
