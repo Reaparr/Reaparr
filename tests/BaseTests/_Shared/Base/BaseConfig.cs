@@ -1,6 +1,7 @@
 namespace Reaparr.BaseTests;
 
-public abstract class BaseConfig<T> where T : new()
+public abstract class BaseConfig<T>
+    where T : new()
 {
     public static T FromOptions(Action<T>? action = null, T? defaultValue = default)
     {

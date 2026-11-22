@@ -2166,7 +2166,10 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
                 HttpRequestError.ResponseEnded,
                 "The response ended prematurely."
             ),
-            CompletionFailureKind.Argument => new ArgumentException("Invalid downloader argument.", nameof(failureKind)),
+            CompletionFailureKind.Argument => new ArgumentException(
+                "Invalid downloader argument.",
+                nameof(failureKind)
+            ),
             CompletionFailureKind.NotSupported => new NotSupportedException("Unsupported operation."),
             CompletionFailureKind.Format => new FormatException("Malformed response."),
             _ => new InvalidOperationException("Unexpected downloader failure."),
