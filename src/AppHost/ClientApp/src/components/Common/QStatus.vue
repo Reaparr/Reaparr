@@ -24,7 +24,6 @@ const props = defineProps<{ value: boolean; cy?: string }>();
 const status = computed(() => {
 	return props.value ? 'positive' : 'negative';
 });
-
 const pulse = computed(() => {
 	return props.value;
 });

@@ -103,15 +103,16 @@ import { DialogType } from '@enums';
 import { useMediaOverviewStore } from '@store';
 import { clamp } from 'lodash-es';
 
-const mediaOverviewStore = useMediaOverviewStore();
+type RangeField = typeof rangeFields[number];
 
 const rangeFields = ['min', 'max'] as const;
-type RangeField = typeof rangeFields[number];
 
 const selectedRange = ref({
 	min: 1,
 	max: 1,
 });
+
+const mediaOverviewStore = useMediaOverviewStore();
 
 const numberInput = computed({
 	get: () => selectedRange.value,
@@ -136,12 +137,10 @@ function adjustValue(type: RangeField, value: number) {
 	}
 	get(selectedRange)[type] = clamp(get(selectedRange)[type] + value, minValue, maxValue);
 }
-
 function setSelection(close: () => void) {
 	mediaOverviewStore.setSelectionRange(selectedRange.value.min, selectedRange.value.max);
 	close();
 }
-
 function onOpen(): void {
 	set(selectedRange, {
 		min: 1,

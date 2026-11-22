@@ -15,12 +15,12 @@ import { sendDesktopMessage } from '@composables';
 import { useGlobalStore } from '@store';
 import { DesktopMessageType } from '@dto';
 
-const telemetry = useTelemetry();
 const props = defineProps<{
 	href?: string;
 	cy?: string;
 }>();
 
+const telemetry = useTelemetry();
 const globalStore = useGlobalStore();
 
 function onClick(): void {

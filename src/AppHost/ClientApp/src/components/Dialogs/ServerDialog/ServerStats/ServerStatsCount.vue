@@ -28,8 +28,10 @@ const props = withDefaults(defineProps<{
 	iconSize?: number;
 }>(), { iconSize: 24 });
 
-const { t, locale } = useI18n();
 const tooltipVisible = ref(false);
+
+const { t, locale } = useI18n();
+
 const labels = computed(() => ({
 	[PlexMediaType.Movie]: t('components.server-dialog.tabs.server-stats.movies'),
 	[PlexMediaType.TvShow]: t('components.server-dialog.tabs.server-stats.tv-shows'),

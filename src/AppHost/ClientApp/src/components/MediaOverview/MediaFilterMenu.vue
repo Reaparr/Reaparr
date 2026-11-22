@@ -167,21 +167,15 @@ import { MediaMetaDataTypes } from '@enums';
 import IconButton from '@components/Buttons/IconButton.vue';
 import { useLibraryStore, useMediaOverviewStore, useServerStore } from '@store';
 
-const telemetry = useTelemetry();
 const menuIndex = ref<MediaMetaDataTypes>(MediaMetaDataTypes.None);
+const showMenuSearch = ref(false);
+const menuFilterQuery = ref<string>('');
+
+const telemetry = useTelemetry();
 const mediaOverviewStore = useMediaOverviewStore();
 const libraryStore = useLibraryStore();
 const serverStore = useServerStore();
 const { t } = useI18n();
-
-const showMenuSearch = ref(false);
-const menuFilterQuery = ref<string>('');
-
-withDefaults(defineProps<{
-	libraryId?: number;
-}>(), {
-	libraryId: 0,
-});
 
 const menuItems = computed((): { text: string; type: MediaMetaDataTypes }[] => [
 	{
@@ -221,7 +215,6 @@ const menuItems = computed((): { text: string; type: MediaMetaDataTypes }[] => [
 			return false;
 	}
 }));
-
 const isOwnedLibrary = computed(() => {
 	if (mediaOverviewStore.allMediaMode)
 		return false;
@@ -229,7 +222,6 @@ const isOwnedLibrary = computed(() => {
 	const serverId = libraryStore.getLibrary(mediaOverviewStore.libraryId)?.plexServerId ?? 0;
 	return serverStore.getServer(serverId)?.owned ?? false;
 });
-
 const possibleComparisonStates = computed((): PlexMediaComparisonState[] => {
 	if (mediaOverviewStore.getMediaType === PlexMediaType.MusicArtist) {
 		return [
@@ -258,7 +250,6 @@ const possibleComparisonStates = computed((): PlexMediaComparisonState[] => {
 		PlexMediaComparisonState.PartialAndHigherQuality,
 	];
 });
-
 const comparisonStateOptions = computed(() => {
 	return mediaOverviewStore.getComparisonStateOptions.filter((x) => {
 		if (!get(possibleComparisonStates).includes(x.value))
@@ -268,21 +259,24 @@ const comparisonStateOptions = computed(() => {
 	});
 });
 
+withDefaults(defineProps<{
+	libraryId?: number;
+}>(), {
+	libraryId: 0,
+});
+
 function onMenuOpen(category: MediaMetaDataTypes) {
 	set(menuIndex, category);
 }
-
 function toggleMenuSearch() {
 	set(showMenuSearch, !get(showMenuSearch));
 	set(menuFilterQuery, '');
 }
-
 function goBackToMainMenu() {
 	set(menuIndex, MediaMetaDataTypes.None);
 	set(showMenuSearch, false);
 	set(menuFilterQuery, '');
 }
-
 function clearMetadataFilter() {
 	const hadActiveFilter = mediaOverviewStore.hasActiveFilter;
 	mediaOverviewStore.clearMetaDataFilter();

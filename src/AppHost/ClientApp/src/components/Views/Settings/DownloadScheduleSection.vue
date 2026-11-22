@@ -85,34 +85,19 @@ import { DialogType } from '@enums';
 import type { DownloadScheduleDTO } from '@dto';
 import type { DownloadScheduleRange } from '@composables/download-schedule';
 
-const settingsStore = useSettingsStore();
-const dialogStore = useDialogStore();
-const { t, locale } = useI18n();
-const telemetry = useTelemetry();
+const saveRequests = new Subject<{ policy: DownloadScheduleDTO; action: 'toggle' | 'apply' | 'reset' }>();
+
 const pendingPolicy = shallowRef<DownloadScheduleDTO | null>(null);
-const policy = computed(() => get(pendingPolicy) ?? settingsStore.confirmedDownloadSchedule);
 const saveState = ref<'idle' | 'toggle' | 'apply' | 'reset' | 'error'>('idle');
-const isSaving = computed(() => get(saveState) !== 'idle' && get(saveState) !== 'error');
 const saveError = ref<string | null>(null);
 const range = ref<DownloadScheduleRange>({ days: [], from: 18, until: 36 });
 const previewLimit = ref<number | null>();
 const editorKey = ref(0);
-const selection = computed(() => getDownloadScheduleSlots(get(range)));
-const limits = computed(() => decodeDownloadScheduleDays(get(policy).days));
-const highestLimit = computed(() => max(get(limits)) ?? null);
-const dayLabels = computed(() => [
-	t('components.download-schedule.monday'), t('components.download-schedule.tuesday'), t('components.download-schedule.wednesday'),
-	t('components.download-schedule.thursday'), t('components.download-schedule.friday'), t('components.download-schedule.saturday'), t('components.download-schedule.sunday'),
-]);
-const helpText = computed(() => [
-	t('components.download-schedule.description'),
-	t('components.download-schedule.grid-help'),
-	t('components.download-schedule.selection-help'),
-	t('components.download-schedule.fairness-help'),
-	t('components.download-schedule.timezone-help', { timezone: settingsStore.dateTimeSettings.timeZone }),
-].join('\n\n'));
-const saveRequests = new Subject<{ policy: DownloadScheduleDTO; action: 'toggle' | 'apply' | 'reset' }>();
 
+const settingsStore = useSettingsStore();
+const dialogStore = useDialogStore();
+const { t, locale } = useI18n();
+const telemetry = useTelemetry();
 useSubscription(saveRequests.pipe(
 	exhaustMap(({ policy: candidate, action }) => {
 		set(saveState, action);
@@ -146,11 +131,27 @@ useSubscription(saveRequests.pipe(
 	}),
 ).subscribe());
 
+const policy = computed(() => get(pendingPolicy) ?? settingsStore.confirmedDownloadSchedule);
+const isSaving = computed(() => get(saveState) !== 'idle' && get(saveState) !== 'error');
+const selection = computed(() => getDownloadScheduleSlots(get(range)));
+const limits = computed(() => decodeDownloadScheduleDays(get(policy).days));
+const highestLimit = computed(() => max(get(limits)) ?? null);
+const dayLabels = computed(() => [
+	t('components.download-schedule.monday'), t('components.download-schedule.tuesday'), t('components.download-schedule.wednesday'),
+	t('components.download-schedule.thursday'), t('components.download-schedule.friday'), t('components.download-schedule.saturday'), t('components.download-schedule.sunday'),
+]);
+const helpText = computed(() => [
+	t('components.download-schedule.description'),
+	t('components.download-schedule.grid-help'),
+	t('components.download-schedule.selection-help'),
+	t('components.download-schedule.fairness-help'),
+	t('components.download-schedule.timezone-help', { timezone: settingsStore.dateTimeSettings.timeZone }),
+].join('\n\n'));
+
 function onScheduleEnabledChanged(enabled: boolean): void {
 	telemetry.downloadManagerSettingsChanged();
 	saveRequests.next({ policy: { ...cloneDeep(get(policy)), enabled }, action: 'toggle' });
 }
-
 function applySelection(limit: number | null) {
 	if (!get(selection).length || !isDownloadScheduleLimit(limit)) return;
 	const updatedLimits = [...get(limits)];
@@ -161,7 +162,6 @@ function applySelection(limit: number | null) {
 		action: 'apply',
 	});
 }
-
 function resetSchedule() {
 	if (get(isSaving)) return;
 	telemetry.downloadScheduleResetRequested();

@@ -75,9 +75,6 @@ import { useSettingsStore } from '@store';
 const settingsStore = useSettingsStore();
 const telemetry = useTelemetry();
 
-function onNetworkSettingChanged(): void {
-	telemetry.networkSettingsChanged();
-}
 const allowedProxyIps = computed({
 	get: () => settingsStore.networkSettings.allowedProxyIps.join(', '),
 	set: (value: string) => {
@@ -89,4 +86,8 @@ const allowedProxyIps = computed({
 		settingsStore.networkSettings.allowedProxyIps = entries;
 	},
 });
+
+function onNetworkSettingChanged(): void {
+	telemetry.networkSettingsChanged();
+}
 </script>

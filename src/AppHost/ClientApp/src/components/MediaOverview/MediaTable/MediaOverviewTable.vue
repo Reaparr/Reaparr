@@ -202,12 +202,8 @@ type TableColumns = NonNullable<QTableProps['columns']>;
 type TableColumn = TableColumns[number];
 type TableSelected = NonNullable<QTableProps['selected']>;
 type TableSelection = readonly TableRow[];
-
 type ControlledRowProvider = (index: number) => TableRow | null;
 type RangeRequest = (start: number, end: number) => Observable<void>;
-
-const $q = useQuasar();
-const slots = useSlots();
 
 const props = withDefaults(defineProps<{
 	rows?: QTableProps['rows'];
@@ -243,20 +239,14 @@ const props = withDefaults(defineProps<{
 	initialScrollIndex: 0,
 	onScrollIndex: undefined,
 });
-
-const emit = defineEmits<{
-	(e: 'selection', selected: TableSelection): void;
-	(e: 'row-click', payload: { row: TableRow; event: Event }): void;
-	(e: 'select-all', selected: boolean): void;
-	(e: 'row-selection', payload: { row: TableRow; selected: boolean }): void;
-}>();
-
-const controlled = computed(() => props.itemCount !== undefined && props.itemAt !== undefined);
-const controlledScrollRef = ref<HTMLElement | null>(null);
-const requestedRange = ref('');
 const ROW_HEIGHT = 42;
 const MAX_CSS_HEIGHT = 33_000_000;
 
+const controlledScrollRef = ref<HTMLElement | null>(null);
+const requestedRange = ref('');
+
+const $q = useQuasar();
+const slots = useSlots();
 const rowVirtualizer = useVirtualizer(
 	computed(() => ({
 		count: get(controlled) ? Math.max(0, props.itemCount ?? 0) : 0,
@@ -274,6 +264,42 @@ const rowVirtualizer = useVirtualizer(
 		},
 	})),
 );
+
+const controlled = computed(() => props.itemCount !== undefined && props.itemAt !== undefined);
+const safeTotalSize = computed(() => Math.min(get(rowVirtualizer).getTotalSize(), MAX_CSS_HEIGHT));
+const controlledIndeterminate = computed(() => (props.selectedCount ?? 0) > 0 && !props.allSelected);
+const forwardedSlots = computed(() => {
+	const forwarded = { ...slots };
+	delete forwarded.item;
+	delete forwarded['body-selection'];
+	delete forwarded['body-cell-title'];
+	delete forwarded['body-cell-actions'];
+	delete forwarded.actions;
+	delete forwarded['controlled-row'];
+	return forwarded;
+});
+const mobileColumns = computed(() => props.columns.filter((column) =>
+	column.name !== 'title' && column.name !== 'actions' && column.align !== 'left'));
+
+watch(() => props.rangeContextKey, () => {
+	set(requestedRange, '');
+	nextTick(() => {
+		if (get(controlled))
+			requestControlledRange();
+	}).catch((error) => Log.error('Failed to request the updated controlled table range', error));
+});
+watch(() => props.itemCount, () => {
+	nextTick(() => {
+		get(rowVirtualizer).measure();
+		if (get(controlled))
+			requestControlledRange();
+	}).catch((error) => Log.error('Failed to update the controlled table after item count changed', error));
+});
+watch(() => props.initialScrollIndex, (index) => {
+	if (get(controlled) && index > 0)
+		nextTick(() => scrollToIndex(index)).catch((error) => Log.error('Failed to scroll to the initial controlled table index', error));
+});
+
 function requestControlledRange(): number | null {
 	const visible = get(rowVirtualizer).getVirtualItems();
 	const first = visible.at(0)?.index ?? 0;
@@ -287,59 +313,34 @@ function requestControlledRange(): number | null {
 	}
 	return first;
 }
-
-const safeTotalSize = computed(() => Math.min(get(rowVirtualizer).getTotalSize(), MAX_CSS_HEIGHT));
-const controlledIndeterminate = computed(() => (props.selectedCount ?? 0) > 0 && !props.allSelected);
-
-const forwardedSlots = computed(() => {
-	const forwarded = { ...slots };
-	delete forwarded.item;
-	delete forwarded['body-selection'];
-	delete forwarded['body-cell-title'];
-	delete forwarded['body-cell-actions'];
-	delete forwarded.actions;
-	delete forwarded['controlled-row'];
-	return forwarded;
-});
-
-const mobileColumns = computed(() => props.columns.filter((column) =>
-	column.name !== 'title' && column.name !== 'actions' && column.align !== 'left'));
 function getControlledRowTitle(row: TableRow): string {
 	return props.rowTitle?.(row) ?? getRowTitle(row);
 }
-
 function getControlledRow(index: number): TableRow | null {
 	return get(controlled) ? props.itemAt?.(index) ?? null : null;
 }
-
 function getRowKey(row: TableRow): unknown {
 	const rowKey = props.rowKey ?? 'id';
 	return typeof rowKey === 'function' ? rowKey(row) : row?.[rowKey];
 }
-
 function getRowTitle(row: TableRow): string {
 	const title = row?.title;
 	return title === undefined || title === null ? String(getRowKey(row) ?? '') : String(title);
 }
-
 function getColumnValue(row: TableRow, column: TableColumn): string {
 	const value = typeof column.field === 'function' ? column.field(row) : row?.[column.field];
 	const formattedValue = column.format?.(value, row);
 	return String(formattedValue ?? value ?? '');
 }
-
 function emitSelection(selected: TableSelection): void {
 	emit('selection', selected);
 }
-
 function emitRowClick(event: Event, row: TableRow): void {
 	emit('row-click', { row, event });
 }
-
 function emitItemRowClick(row: TableRow, event: Event): void {
 	emit('row-click', { row, event });
 }
-
 function updateItemSelection(row: TableRow, selected: boolean): void {
 	const rowKey = getRowKey(row);
 	if (!selected) {
@@ -351,7 +352,6 @@ function updateItemSelection(row: TableRow, selected: boolean): void {
 		: [...props.selected, row];
 	emit('selection', nextSelected);
 }
-
 function scrollToIndex(index: number): void {
 	if (!get(controlled) || index < 0)
 		return;
@@ -373,24 +373,6 @@ async function focusItem(index: number): Promise<boolean> {
 	return true;
 }
 
-watch(() => props.rangeContextKey, () => {
-	set(requestedRange, '');
-	nextTick(() => {
-		if (get(controlled))
-			requestControlledRange();
-	}).catch((error) => Log.error('Failed to request the updated controlled table range', error));
-});
-watch(() => props.itemCount, () => {
-	nextTick(() => {
-		get(rowVirtualizer).measure();
-		if (get(controlled))
-			requestControlledRange();
-	}).catch((error) => Log.error('Failed to update the controlled table after item count changed', error));
-});
-watch(() => props.initialScrollIndex, (index) => {
-	if (get(controlled) && index > 0)
-		nextTick(() => scrollToIndex(index)).catch((error) => Log.error('Failed to scroll to the initial controlled table index', error));
-});
 onMounted(() => {
 	if (!get(controlled))
 		return;
@@ -400,6 +382,13 @@ onMounted(() => {
 		requestControlledRange();
 	}).catch((error) => Log.error('Failed to initialize the controlled table after mount', error));
 });
+
+const emit = defineEmits<{
+	(e: 'selection', selected: TableSelection): void;
+	(e: 'row-click', payload: { row: TableRow; event: Event }): void;
+	(e: 'select-all', selected: boolean): void;
+	(e: 'row-selection', payload: { row: TableRow; selected: boolean }): void;
+}>();
 
 defineExpose({ scrollToIndex, focusItem });
 </script>

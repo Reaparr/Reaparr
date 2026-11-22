@@ -21,7 +21,6 @@ const { t } = useI18n();
 const serverStore = useServerStore();
 
 const getButtonIcon = computed(() => (props.isDownloadsPausedByUser ? 'mdi-play' : 'mdi-pause'));
-
 const getButtonText = computed(() =>
 	props.isDownloadsPausedByUser ? t('components.server-download-status.start') : t('components.server-download-status.pause'),
 );

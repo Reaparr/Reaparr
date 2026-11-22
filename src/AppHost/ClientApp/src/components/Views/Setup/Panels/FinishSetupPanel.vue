@@ -17,11 +17,11 @@
 import type { SetupPanelType } from '@enums';
 import { useI18n } from '#imports';
 
-const { t } = useI18n();
-
 defineProps<{
 	name: SetupPanelType;
 }>();
+
+const { t } = useI18n();
 
 const list = computed(() => {
 	return [{

@@ -58,9 +58,10 @@ const props = defineProps<{
 	plexLibraries: PlexLibraryDTO[];
 }>();
 
+const updatingLibraryIds = ref<number[]>([]);
+
 const folderPathStore = useFolderPathStore();
 const libraryStore = useLibraryStore();
-const updatingLibraryIds = ref<number[]>([]);
 
 const libraries = computed(() => get(props.plexLibraries));
 
@@ -78,11 +79,9 @@ function getDefaultDestination(libraryId: number): { id: number; displayName: st
 		displayName: folderPathStore.getFolderPath(library.defaultDestinationId)?.displayName ?? 'Not set',
 	};
 }
-
 function isLibraryUpdating(libraryId: number): boolean {
 	return get(updatingLibraryIds).includes(libraryId);
 }
-
 function onLibraryEnabledChanged(libraryId: number, isEnabled: boolean): void {
 	set(updatingLibraryIds, [...get(updatingLibraryIds), libraryId]);
 	useSubscription(libraryStore.setLibraryEnabled(libraryId, isEnabled).subscribe({
@@ -90,7 +89,6 @@ function onLibraryEnabledChanged(libraryId: number, isEnabled: boolean): void {
 		error: () => removeUpdatingLibraryId(libraryId),
 	}));
 }
-
 function removeUpdatingLibraryId(libraryId: number): void {
 	set(updatingLibraryIds, get(updatingLibraryIds).filter((id) => id !== libraryId));
 }

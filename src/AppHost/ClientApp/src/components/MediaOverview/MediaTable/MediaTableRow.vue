@@ -158,10 +158,6 @@ const router = useRouter();
 const mediaOverviewStore = useMediaOverviewStore();
 const { t, n } = useI18n();
 
-defineEmits<{
-	(e: 'selected', state: boolean): void;
-}>();
-
 function onRowAction(action: IMediaOverviewCommands) {
 	switch (action.command) {
 		case 'download':
@@ -180,6 +176,10 @@ function onRowAction(action: IMediaOverviewCommands) {
 			throw new Error(`Unknown action: ${action.command} in MediaTableRow.vue`);
 	}
 }
+
+defineEmits<{
+	(e: 'selected', state: boolean): void;
+}>();
 </script>
 
 <style lang="scss">

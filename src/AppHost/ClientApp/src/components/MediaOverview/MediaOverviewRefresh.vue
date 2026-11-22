@@ -211,11 +211,6 @@ import { useI18n } from '#imports';
 import { NotificationLevel } from '@dto';
 import { LibrarySyncWaitingReason } from '@enums';
 
-const { t } = useI18n();
-const libraryStore = useLibraryStore();
-const serverStore = useServerStore();
-const dialogStore = useDialogStore();
-
 const props = withDefaults(defineProps<{
 	libraryId: number;
 	mode?: 'processing' | 'queued';
@@ -227,6 +222,11 @@ const props = withDefaults(defineProps<{
 
 const cancelling = ref(false);
 
+const { t } = useI18n();
+const libraryStore = useLibraryStore();
+const serverStore = useServerStore();
+const dialogStore = useDialogStore();
+
 const library = computed(() => libraryStore.getLibrary(props.libraryId));
 const libraryProgress = computed(() => libraryStore.getLibraryProgress(props.libraryId));
 const progressIndeterminate = computed(() => {
@@ -234,7 +234,6 @@ const progressIndeterminate = computed(() => {
 	return !progress || progress.items.length === 0 || progress.items.some((item) => item.total < 0);
 });
 const queue = computed(() => libraryStore.getLibrarySyncQueue(props.libraryId));
-
 const refreshingText = computed(() => {
 	const server = libraryStore.getServerByLibraryId(props.libraryId);
 	return t('components.media-overview.is-refreshing', {
@@ -242,7 +241,6 @@ const refreshingText = computed(() => {
 		server: server ? serverStore.getServerName(server.id) : t('general.commands.unknown'),
 	});
 });
-
 const queuedMessage = computed(() => {
 	const currentQueue = get(queue);
 	const reason = libraryStore.getLibrarySyncWaitingReason(props.libraryId);
@@ -272,7 +270,6 @@ function openActivity(): void {
 
 	dialogStore.openSyncServerMediaDialog();
 }
-
 function cancelSync(): void {
 	if (get(cancelling)) {
 		return;

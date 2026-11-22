@@ -19,8 +19,10 @@
 import { get } from '@vueuse/core';
 
 definePageMeta({ scrollToTop: false });
+
 const route = useRoute();
 const { t } = useI18n();
+
 const libraryId = computed(() => Number(route.params.id));
 const validLibraryId = computed(() => typeof route.params.id === 'string'
 	&& /^[1-9]\d*$/.test(route.params.id)

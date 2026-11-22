@@ -190,6 +190,21 @@ import MediaPosterCard from './MediaPosterCard.vue';
 
 defineOptions({ inheritAttrs: false });
 
+const props = withDefaults(defineProps<{
+	mediaItem: PlexMediaSlimDTO;
+	active?: boolean;
+}>(), {
+	active: true,
+});
+const thumbWidth = 200;
+const thumbHeight = 300;
+let currentSubscription: Subscription | null = null;
+
+const loading = ref(false);
+const thumbnailLoading = ref(true);
+const imageUrl = ref('');
+const mobileMenuVisible = shallowRef(false);
+
 const mediaOverviewStore = useMediaOverviewStore();
 const mediaStore = useMediaStore();
 const serverStore = useServerStore();
@@ -197,32 +212,11 @@ const settingsStore = useSettingsStore();
 const libraryStore = useLibraryStore();
 const dialogStore = useDialogStore();
 const $q = useQuasar();
-const props = withDefaults(defineProps<{
-	mediaItem: PlexMediaSlimDTO;
-	active?: boolean;
-}>(), {
-	active: true,
-});
-
-const emit = defineEmits<{
-	(e: 'download', downloadMediaCommands: DownloadMediaDTO[]): void;
-	(e: 'open-media-details', payload: PlexMediaSlimDTO): void;
-}>();
-
-const loading = ref(false);
-const thumbnailLoading = ref(true);
-const imageUrl = ref('');
-const thumbWidth = 200;
-const thumbHeight = 300;
-let currentSubscription: Subscription | null = null;
-const mobileMenuVisible = shallowRef(false);
 
 const mediaType = computed(() => props.mediaItem?.type ?? PlexMediaType.Unknown);
-
 const hasDetailsAction = computed(() => Convert.mediaTypeToDetailsPath(props.mediaItem) !== null);
 const supportsComparison = computed(() => [PlexMediaType.Movie, PlexMediaType.TvShow, PlexMediaType.MusicArtist].includes(get(mediaType)));
 const supportsMediaQuality = computed(() => [PlexMediaType.Movie, PlexMediaType.TvShow, PlexMediaType.MusicArtist, PlexMediaType.OtherVideos].includes(get(mediaType)));
-
 const comparisonBadgeClickable = computed(() => {
 	return [
 		PlexMediaComparisonState.Missing,
@@ -231,6 +225,11 @@ const comparisonBadgeClickable = computed(() => {
 		PlexMediaComparisonState.PartialAndHigherQuality,
 	].includes(getPlexMediaComparisonState(props.mediaItem));
 });
+
+watch([() => props.mediaItem.id, () => props.active], ([, isActive]) => {
+	if (isActive)
+		loadThumbnail(props.mediaItem);
+}, { immediate: true });
 
 function onDownload(mediaQualities: PlexMediaQualityDTO[]) {
 	if (get(mediaType) === PlexMediaType.MusicArtist && mediaQualities.length > 0)
@@ -243,19 +242,16 @@ function onDownload(mediaQualities: PlexMediaQualityDTO[]) {
 
 	emit('download', [downloadCommand]);
 }
-
 function openMobileActions(event: MouseEvent) {
 	if (!$q.screen.lt.md || isMobileMenuExcludedTarget(event.target))
 		return;
 
 	set(mobileMenuVisible, true);
 }
-
 function openMobileActionsMenu() {
 	if ($q.screen.lt.md)
 		set(mobileMenuVisible, true);
 }
-
 function onContextMenu(event: MouseEvent) {
 	if (!$q.screen.lt.md)
 		return;
@@ -263,16 +259,13 @@ function onContextMenu(event: MouseEvent) {
 	event.preventDefault();
 	openMobileActions(event);
 }
-
 function isMobileMenuExcludedTarget(target: EventTarget | null): boolean {
 	return target instanceof Element && !!target.closest('button, a, .media-poster-quality-bar');
 }
-
 function openComparisonDetails() {
 	if (get(comparisonBadgeClickable))
 		dialogStore.openMediaComparisonDetailsDialog(props.mediaItem);
 }
-
 function loadThumbnail(mediaItem: PlexMediaSlimDTO) {
 	if (currentSubscription) {
 		currentSubscription.unsubscribe();
@@ -306,15 +299,15 @@ function loadThumbnail(mediaItem: PlexMediaSlimDTO) {
 	});
 }
 
-watch([() => props.mediaItem.id, () => props.active], ([, isActive]) => {
-	if (isActive)
-		loadThumbnail(props.mediaItem);
-}, { immediate: true });
-
 onUnmounted(() => {
 	if (currentSubscription)
 		currentSubscription.unsubscribe();
 });
+
+const emit = defineEmits<{
+	(e: 'download', downloadMediaCommands: DownloadMediaDTO[]): void;
+	(e: 'open-media-details', payload: PlexMediaSlimDTO): void;
+}>();
 </script>
 
 <style lang="scss">

@@ -191,21 +191,13 @@ import { useDialogStore, useDownloadStore, useFolderPathStore } from '@store';
 import Convert from '@class/Convert';
 import Log from 'consola';
 
-const telemetry = useTelemetry();
-const { t } = useI18n();
-const downloadStore = useDownloadStore();
-const folderPathStore = useFolderPathStore();
-const dialogStore = useDialogStore();
-const mediaType = ref(PlexMediaType.Unknown);
+const previewRequests = new Subject<DownloadPreviewRequest | null>();
 
-const emits = defineEmits<{
-	(e: 'download', downloadCommand: CreateDownloadTasksRequest): void;
-}>();
+const mediaType = ref(PlexMediaType.Unknown);
 const expandedKeys = ref<Record<string, boolean>>({});
 const loading = ref(true);
 const previewFailed = ref(false);
 const noEligibleFiles = ref(false);
-const previewRequests = new Subject<DownloadPreviewRequest | null>();
 const downloadPreview = ref<DownloadPreviewDTO[]>([]);
 const downloadMediaCommand = ref<DownloadMediaDTO[]>([]);
 const totalSize = ref(0);
@@ -218,6 +210,37 @@ const customDirectory = ref<FolderPathDTO>({
 	isValid: true,
 	isDefault: false,
 });
+const selectedFolderPath = ref<FolderPathDTO>(get(customDirectory));
+
+const telemetry = useTelemetry();
+const { t } = useI18n();
+const downloadStore = useDownloadStore();
+const folderPathStore = useFolderPathStore();
+const dialogStore = useDialogStore();
+useSubscription(
+	previewRequests.pipe(
+		switchMap((data) => data
+			? downloadStore.previewDownload(data).pipe(catchError(() => of(null)))
+			: EMPTY),
+	).subscribe((result) => {
+		if (!result) {
+			onPreviewError();
+			return;
+		}
+		if (result.previews.length === 0) {
+			reset();
+			set(previewFailed, false);
+			set(noEligibleFiles, true);
+			set(loading, false);
+			return;
+		}
+		set(noEligibleFiles, false);
+		set(downloadPreview, Object.freeze(result.previews));
+		set(totalSize, result.totalSize);
+		set(expandedKeys, result.expanded);
+		set(loading, false);
+	}),
+);
 
 const getDownloadPreviewTableColumns = computed((): {
 	label: string;
@@ -248,19 +271,19 @@ const getDownloadPreviewTableColumns = computed((): {
 		},
 	];
 });
-
 const hasAnyChildren = computed(() => get(downloadPreview).some((x) => x.children && x.children.length > 0));
-
-const selectedFolderPath = ref<FolderPathDTO>(get(customDirectory));
-
 const folderPathDestinations = computed(() => folderPathStore.getFolderPaths().filter((path) =>
 	Convert.mediaTypeToFolderType(path.mediaType) === Convert.mediaTypeToFolderType(get(mediaType)),
 ));
 const canDownload = computed(() =>
 	!get(loading) && !get(previewFailed) && !get(noEligibleFiles) && get(downloadPreview).length > 0,
 );
-
 const selectedDestination = computed(() => get(selectedFolderPath).directory || t('components.download-confirmation.destination.not-set'));
+
+watch(selectedFolderPath, () => {
+	if (get(downloadMediaCommand).length > 0)
+		requestPreview();
+}, { deep: true, flush: 'sync' });
 
 function openDialog(data: DownloadMediaDTO[]): void {
 	set(mediaType, data.find((item) => item.type === PlexMediaType.Movie)?.type ?? data[0]?.type ?? PlexMediaType.Unknown);
@@ -275,7 +298,6 @@ function openDialog(data: DownloadMediaDTO[]): void {
 	set(downloadMediaCommand, data);
 	requestPreview('open');
 }
-
 function requestPreview(reason: 'open' | 'destination' | 'retry' = 'destination'): void {
 	cancelPreview();
 	reset();
@@ -286,7 +308,6 @@ function requestPreview(reason: 'open' | 'destination' | 'retry' = 'destination'
 	telemetry.downloadPreviewRequested(request, get(mediaType), reason === 'retry');
 	previewRequests.next(request);
 }
-
 function onPreviewError(): void {
 	Log.error('Download preview failed');
 	reset();
@@ -294,11 +315,9 @@ function onPreviewError(): void {
 	set(noEligibleFiles, false);
 	set(loading, false);
 }
-
 function cancelPreview(): void {
 	previewRequests.next(null);
 }
-
 function buildDownloadRequest(): DownloadPreviewRequest {
 	const destination = get(selectedFolderPath);
 	const custom = destination.id === 0;
@@ -311,60 +330,30 @@ function buildDownloadRequest(): DownloadPreviewRequest {
 		customDestinationFolderPath: customPath,
 	};
 }
-
-useSubscription(
-	previewRequests.pipe(
-		switchMap((data) => data
-			? downloadStore.previewDownload(data).pipe(catchError(() => of(null)))
-			: EMPTY),
-	).subscribe((result) => {
-		if (!result) {
-			onPreviewError();
-			return;
-		}
-		if (result.previews.length === 0) {
-			reset();
-			set(previewFailed, false);
-			set(noEligibleFiles, true);
-			set(loading, false);
-			return;
-		}
-		set(noEligibleFiles, false);
-		set(downloadPreview, Object.freeze(result.previews));
-		set(totalSize, result.totalSize);
-		set(expandedKeys, result.expanded);
-		set(loading, false);
-	}),
-);
-
 function onCustomDirectorySelected(path: FolderPathDTO): void {
 	set(customDirectory, path);
 	set(selectedFolderPath, get(customDirectory));
 	dialogStore.closeDialog(DialogType.DirectoryBrowserDialog);
 }
-
-watch(selectedFolderPath, () => {
-	if (get(downloadMediaCommand).length > 0)
-		requestPreview();
-}, { deep: true, flush: 'sync' });
-
 function onDownload(close: () => void): void {
 	if (!get(canDownload))
 		return;
 	emits('download', buildDownloadRequest());
 	close();
 }
-
 function onDismiss(close: () => void): void {
 	telemetry.downloadDismissed(get(downloadMediaCommand), get(mediaType));
 	close();
 }
-
 function reset() {
 	set(downloadPreview, []);
 	set(totalSize, 0);
 	set(expandedKeys, {});
 }
+
+const emits = defineEmits<{
+	(e: 'download', downloadCommand: CreateDownloadTasksRequest): void;
+}>();
 </script>
 
 <style lang="scss">

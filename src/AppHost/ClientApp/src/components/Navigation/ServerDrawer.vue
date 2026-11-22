@@ -142,12 +142,10 @@ function hasLibraryAccess(serverId: number, libraryId: number): boolean {
 	return accountStore.getHasAccountServerAccess(serverId)
 		&& accountStore.getHasAccountLibraryAccess(libraryId);
 }
-
 function isActiveLibrary(libraryId: number): boolean {
 	const currentLibraryId = route.params.libraryId ?? route.params.id;
 	return currentLibraryId !== undefined && Number(currentLibraryId) === libraryId;
 }
-
 function filterLibraries(plexServerId: number): PlexLibraryDTO[] {
 	return orderBy(
 		libraryStore.getLibrariesByServerId(plexServerId),
@@ -155,7 +153,6 @@ function filterLibraries(plexServerId: number): PlexLibraryDTO[] {
 		[getSortOrder(SortDirection.Asc), getSortOrder(SortDirection.Asc)],
 	);
 }
-
 function getLibraryTypeSortOrder(type: PlexMediaType): number {
 	switch (type) {
 		case PlexMediaType.Movie:
@@ -166,12 +163,10 @@ function getLibraryTypeSortOrder(type: PlexMediaType): number {
 			return 2;
 	}
 }
-
 function isServerSyncing(serverId: number): boolean {
 	const libraries = filterLibraries(serverId);
 	return libraries.some((library) => libraryStore.getIsLibrarySyncing(library.id));
 }
-
 function navigateToLibrary(path: string): void {
 	router.push(path).catch((error) => Log.error(`Failed to navigate to library: ${path}`, error));
 }
@@ -200,7 +195,6 @@ function openMediaPage(library: PlexLibraryDTO): void {
 			navigateToLibrary(`/unknown/${library.id}`);
 	}
 }
-
 function runReSyncAccount(serverId: number): void {
 	if (accountStore.refreshingServerIds.has(serverId)) {
 		return;

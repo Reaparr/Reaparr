@@ -59,20 +59,18 @@ definePageMeta({
 	scrollToTop: false,
 });
 
-const route = useRoute();
+const loading = ref(true);
+const mediaItemDetail = ref<PlexMediaDTO | null>(null);
+const defaultImage = ref(false);
 
+const route = useRoute();
 const mediaStore = useMediaStore();
 const dialogStore = useDialogStore();
 const mediaOverviewStore = useMediaOverviewStore();
 const downloadStore = useDownloadStore();
 const settingsStore = useSettingsStore();
-
 const router = useRouter();
-
 const { t } = useI18n();
-const loading = ref(true);
-const mediaItemDetail = ref<PlexMediaDTO | null>(null);
-const defaultImage = ref(false);
 
 const mediaCountFormatted = computed(() => {
 	const item = get(mediaItemDetail);
@@ -92,15 +90,8 @@ const mediaCountFormatted = computed(() => {
 
 	return 'unknown media count';
 });
-
 const libraryId = computed(() => +(route.params.libraryId as string));
 const mediaId = computed(() => +(route.params.tvShowId as string));
-
-function onAction(event: IMediaOverviewBarActions) {
-	if (event === 'back') {
-		router.go(-1);
-	}
-}
 
 listenMediaOverviewDownloadCommand((command) => {
 	const [first] = command;
@@ -118,6 +109,12 @@ listenMediaOverviewDownloadCommand((command) => {
 		});
 	}
 });
+
+function onAction(event: IMediaOverviewBarActions) {
+	if (event === 'back') {
+		router.go(-1);
+	}
+}
 
 onMounted(() => {
 	const type = PlexMediaType.TvShow;
@@ -147,7 +144,6 @@ onMounted(() => {
 			}),
 	);
 });
-
 onBeforeUnmount(() => {
 	set(mediaItemDetail, null);
 	set(loading, true);

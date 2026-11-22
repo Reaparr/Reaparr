@@ -17,8 +17,10 @@
 
 <script setup lang="ts">
 definePageMeta({ scrollToTop: false });
+
 const route = useRoute();
 const { t } = useI18n();
+
 const libraryId = computed(() => Number(route.params.id));
 const albumId = computed(() => Number(route.params.albumId));
 const validRoute = computed(() => [route.params.id, route.params.albumId].every((id) =>

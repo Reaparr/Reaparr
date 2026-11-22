@@ -113,17 +113,9 @@ import type { TreeNode } from 'primevue/treenode';
 import type { QTreeTableColumn } from '@props';
 import { QTreeTableColumnType } from '@props';
 
-export interface TreeTableSelectionKeyState {
-	checked: boolean;
-	partialChecked: boolean;
-}
-
-export interface QTreeNode<TNodeData extends object> extends TreeNode {
-	data: TNodeData;
-	children?: QTreeNode<TNodeData>[];
-}
-
-export type TreeTableSelectionKeys = Record<string, TreeTableSelectionKeyState>;
+defineOptions({
+	inheritAttrs: false,
+});
 
 const props = withDefaults(defineProps<{
 	nodes: QTreeNode<TData>[];
@@ -150,22 +142,13 @@ const props = withDefaults(defineProps<{
 	scrollable: true,
 	size: 'small',
 });
-
-const emit = defineEmits<{
-	(e: 'update:selectionKeys' | 'selected', payload: TreeTableSelectionKeys): void;
-}>();
-
-defineOptions({
-	inheritAttrs: false,
-});
-
 const defaultColumnWidth = 140;
+
 const internalSelectionKeys = ref<TreeTableSelectionKeys>({});
 
 const activeSelectionKeys = computed((): TreeTableSelectionKeys => {
 	return props.selectionKeys ?? get(internalSelectionKeys);
 });
-
 const headerSelectionValue = computed((): boolean | null => {
 	const nodeKeys = flattenNodeKeys(props.nodes);
 
@@ -184,26 +167,31 @@ const headerSelectionValue = computed((): boolean | null => {
 	return checkedCount === nodeKeys.length ? true : null;
 });
 
+export interface TreeTableSelectionKeyState {
+	checked: boolean;
+	partialChecked: boolean;
+}
+export interface QTreeNode<TNodeData extends object> extends TreeNode {
+	data: TNodeData;
+	children?: QTreeNode<TNodeData>[];
+}
+export type TreeTableSelectionKeys = Record<string, TreeTableSelectionKeyState>;
+
 function getColumnType(column: QTreeTableColumn, columnIndex: number): QTreeTableColumnType {
 	return column.type ?? (columnIndex === 0 ? QTreeTableColumnType.Title : QTreeTableColumnType.Text);
 }
-
 function isTitleColumn(column: QTreeTableColumn, columnIndex: number): boolean {
 	return getColumnType(column, columnIndex) === QTreeTableColumnType.Title;
 }
-
 function isSelectionColumn(column: QTreeTableColumn, columnIndex: number): boolean {
 	return column.selection ?? isTitleColumn(column, columnIndex);
 }
-
 function getColumnHeaderStyle(column: QTreeTableColumn, columnIndex: number): string {
 	return getColumnStyle(column, columnIndex, true);
 }
-
 function getColumnBodyStyle(column: QTreeTableColumn, columnIndex: number): string {
 	return getColumnStyle(column, columnIndex, false);
 }
-
 function getColumnStyle(column: QTreeTableColumn, columnIndex: number, isHeader: boolean): string {
 	const columnType = getColumnType(column, columnIndex);
 	const align = column.align ?? (columnType === QTreeTableColumnType.Title ? 'left' : 'right');
@@ -222,11 +210,9 @@ function getColumnStyle(column: QTreeTableColumn, columnIndex: number, isHeader:
 
 	return `${style}${widthStyles} text-align: ${align}; overflow: hidden; text-overflow: ellipsis;`;
 }
-
 function getColumnValue(data: TData, column: QTreeTableColumn): unknown {
 	return (data as Record<string, unknown>)[column.field];
 }
-
 function getColumnTextValue(data: TData, column: QTreeTableColumn): string | number | null {
 	const value = getColumnValue(data, column);
 
@@ -236,13 +222,11 @@ function getColumnTextValue(data: TData, column: QTreeTableColumn): string | num
 
 	return value == null ? null : String(value);
 }
-
 function getColumnDateTextValue(data: TData, column: QTreeTableColumn): string | undefined {
 	const value = getColumnTextValue(data, column);
 
 	return value == null ? undefined : String(value);
 }
-
 function getColumnNumberValue(data: TData, column: QTreeTableColumn): number {
 	const value = getColumnValue(data, column);
 
@@ -256,7 +240,6 @@ function getColumnNumberValue(data: TData, column: QTreeTableColumn): number {
 
 	return 0;
 }
-
 function getNodeSelectionValue(node: QTreeNode<TData>): boolean | null {
 	const selection = get(activeSelectionKeys)[getNodeKey(node)];
 
@@ -266,11 +249,9 @@ function getNodeSelectionValue(node: QTreeNode<TData>): boolean | null {
 
 	return selection?.partialChecked ? null : false;
 }
-
 function toggleAllSelection(checked: boolean): void {
 	emitSelectionChange(buildSelectionKeysForAll(props.nodes, checked));
 }
-
 function toggleNodeSelection(node: QTreeNode<TData>, checked: boolean): void {
 	const checkedKeys = getCheckedKeys(get(activeSelectionKeys), props.nodes);
 	const targetKeys = getNodeAndDescendantKeys(node);
@@ -285,7 +266,6 @@ function toggleNodeSelection(node: QTreeNode<TData>, checked: boolean): void {
 
 	emitSelectionChange(normalizeSelectionKeys(props.nodes, checkedKeys));
 }
-
 function emitSelectionChange(selectionKeys: TreeTableSelectionKeys): void {
 	if (!props.selectionKeys) {
 		set(internalSelectionKeys, selectionKeys);
@@ -294,19 +274,15 @@ function emitSelectionChange(selectionKeys: TreeTableSelectionKeys): void {
 	emit('update:selectionKeys', selectionKeys);
 	emit('selected', selectionKeys);
 }
-
 function getNodeKey(node: QTreeNode<TData>): string {
 	return String(node.key);
 }
-
 function flattenNodeKeys(nodes: QTreeNode<TData>[]): string[] {
 	return nodes.flatMap((node) => [getNodeKey(node), ...flattenNodeKeys(node.children ?? [])]);
 }
-
 function getNodeAndDescendantKeys(node: QTreeNode<TData>): string[] {
 	return [getNodeKey(node), ...(node.children ?? []).flatMap(getNodeAndDescendantKeys)];
 }
-
 function buildSelectionKeysForAll(nodes: QTreeNode<TData>[], checked: boolean): TreeTableSelectionKeys {
 	if (!checked) {
 		return {};
@@ -314,7 +290,6 @@ function buildSelectionKeysForAll(nodes: QTreeNode<TData>[], checked: boolean): 
 
 	return normalizeSelectionKeys(nodes, new Set(flattenNodeKeys(nodes)));
 }
-
 function getCheckedKeys(selectionKeys: TreeTableSelectionKeys, nodes: QTreeNode<TData>[]): Set<string> {
 	const checkedKeys = new Set<string>();
 
@@ -322,7 +297,6 @@ function getCheckedKeys(selectionKeys: TreeTableSelectionKeys, nodes: QTreeNode<
 
 	return checkedKeys;
 }
-
 function addCheckedKeysFromSelection(
 	selectionKeys: TreeTableSelectionKeys,
 	nodes: QTreeNode<TData>[],
@@ -341,7 +315,6 @@ function addCheckedKeysFromSelection(
 		addCheckedKeysFromSelection(selectionKeys, node.children ?? [], checkedKeys);
 	}
 }
-
 function normalizeSelectionKeys(nodes: QTreeNode<TData>[], checkedKeys: Set<string>): TreeTableSelectionKeys {
 	const selectionKeys: TreeTableSelectionKeys = {};
 
@@ -351,7 +324,6 @@ function normalizeSelectionKeys(nodes: QTreeNode<TData>[], checkedKeys: Set<stri
 
 	return selectionKeys;
 }
-
 function normalizeNodeSelection(
 	node: QTreeNode<TData>,
 	checkedKeys: Set<string>,
@@ -373,6 +345,10 @@ function normalizeNodeSelection(
 
 	return state;
 }
+
+const emit = defineEmits<{
+	(e: 'update:selectionKeys' | 'selected', payload: TreeTableSelectionKeys): void;
+}>();
 </script>
 
 <style lang="scss">

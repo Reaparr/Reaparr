@@ -17,6 +17,7 @@
 
 <script setup lang="ts">
 const model = defineModel<string>();
+
 const props = withDefaults(
 	defineProps<{
 		outlined?: boolean;

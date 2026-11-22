@@ -80,8 +80,6 @@
 </template>
 
 <script setup lang="ts">
-const { n } = useI18n();
-
 const props = defineProps<{
 	text?: string;
 	percentage: number;
@@ -89,6 +87,8 @@ const props = defineProps<{
 	completed?: boolean;
 	indeterminate?: boolean;
 }>();
+
+const { n } = useI18n();
 
 const getPercentage = computed((): number => {
 	return Math.round(props.percentage * 100) / 100;

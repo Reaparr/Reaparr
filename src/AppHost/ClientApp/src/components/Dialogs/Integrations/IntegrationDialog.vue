@@ -222,17 +222,10 @@ import { DialogType } from '@enums';
 import { useDialogStore, useFolderPathStore, useIntegrationStore } from '@store';
 import { formatErrorResponse } from '@composables/common';
 
-const telemetry = useTelemetry();
-const store = useIntegrationStore();
-const dialogStore = useDialogStore();
-const folderPathStore = useFolderPathStore();
 const integrationTypes = [
 	{ type: IntegrationType.Sonarr, icon: '/img/logo/sonarr.svg' },
 	{ type: IntegrationType.Radarr, icon: '/img/logo/radarr.svg' },
 ] as const;
-const stage = ref(1);
-const isEditMode = ref(false);
-const isSavingForSetup = ref(false);
 const requiredRules = [(value: string | number) => (typeof value === 'number' ? value > 0 : Boolean(value?.trim())) || 'Required'];
 const baseUrlRules = [
 	...requiredRules,
@@ -245,10 +238,19 @@ const categoryRules = [
 	(value: string) => store.isCategoryUnique(value)
 		|| $t('help.settings.integrations.validation.category-unique', { type: store.draft.type }),
 ];
+
+const stage = ref(1);
+const isEditMode = ref(false);
+const isSavingForSetup = ref(false);
+
+const telemetry = useTelemetry();
+const store = useIntegrationStore();
+const dialogStore = useDialogStore();
+const folderPathStore = useFolderPathStore();
+
 const downloadFolders = computed(() => folderPathStore.folderPaths.filter((folderPath) => folderPath.folderType === FolderType.DownloadFolder));
 const integrationLogo = computed(() => integrationTypes.find(({ type }) => type === store.draft.type)?.icon ?? '');
 const setupLabel = computed(() => store.shouldSaveBeforeSetup ? $t('help.settings.integrations.save-and-setup') : 'Setup');
-
 const integrationTitle = computed(() => {
 	if (store.draft.type === IntegrationType.Radarr) {
 		return get(isEditMode) ? $t('help.settings.integrations.radarr.edit-title') : $t('help.settings.integrations.radarr.add-title');
@@ -337,7 +339,6 @@ function open(event: unknown): void {
 	else
 		store.openAdd();
 }
-
 function deleteIntegration() {
 	const integration = store.detail;
 	if (!integration) return;
@@ -349,12 +350,10 @@ function deleteIntegration() {
 		useSubscription(store.refresh().subscribe());
 	}));
 }
-
 function selectType(type: IntegrationType): void {
 	store.openAdd(type);
 	set(stage, 2);
 }
-
 function formatTestDetails(): string {
 	if (!store.testResult) return '';
 
@@ -365,13 +364,11 @@ function formatTestDetails(): string {
 		new Date(store.testResult.testedAt).toLocaleString(),
 	].filter(Boolean).join(' · ');
 }
-
 function test(): void {
 	if (!store.isDraftValid) return;
 	telemetry.integrationTestRequested(store.draft.type, store.detail);
 	useSubscription(store.test().subscribe());
 }
-
 function save(): void {
 	if (!store.isDraftValid) return;
 	telemetry.integrationSaveRequested(store.draft.type, store.detail);
@@ -380,7 +377,6 @@ function save(): void {
 		if (result?.isSuccess && result.value) dialogStore.closeDialog(DialogType.IntegrationDialog);
 	}));
 }
-
 function setup(): void {
 	if (store.isSetupDisabled) return;
 	telemetry.integrationSetupRequested(store.draft.type, store.detail, store.shouldSaveBeforeSetup);
@@ -398,7 +394,6 @@ function setup(): void {
 	dialogStore.openIntegrationSetupDialog();
 	useSubscription(store.setupIntegration().subscribe());
 }
-
 function close(): void {
 	set(isEditMode, false);
 	set(isSavingForSetup, false);

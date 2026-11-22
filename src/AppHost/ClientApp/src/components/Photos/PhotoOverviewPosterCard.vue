@@ -75,16 +75,13 @@ import { usePhotoImagePreloadCandidate } from '@composables/usePhotoImagePreload
 import type { PhotoOverviewItem } from '@/store/photoBrowsingStore';
 
 const props = defineProps<{ item: PhotoOverviewItem }>();
-const emit = defineEmits<{
-	(e: 'open', event: MouseEvent): void;
-	(e: 'download'): void;
-}>();
+
 const { t } = useI18n();
 const settingsStore = useSettingsStore();
 const visibilityTarget = useTemplateRef<{ $el: HTMLElement }>('visibilityTarget');
-const visibilityElement = computed(() => get(visibilityTarget)?.$el ?? null);
 usePhotoImagePreloadCandidate(visibilityElement, () => props.item);
 
+const visibilityElement = computed(() => get(visibilityTarget)?.$el ?? null);
 const title = computed(() => {
 	const item = props.item;
 	switch (item.kind) {
@@ -122,4 +119,9 @@ const locationLabel = computed(() => props.item.kind === PhotoItemKind.Asset
 const kindLabel = computed(() => props.item.kind === PhotoItemKind.Asset && props.item.asset.assetKind === PhotoAssetKind.VideoClip
 	? t('components.photo-browser.kind-clip')
 	: t('components.photo-browser.kind-image'));
+
+const emit = defineEmits<{
+	(e: 'open', event: MouseEvent): void;
+	(e: 'download'): void;
+}>();
 </script>

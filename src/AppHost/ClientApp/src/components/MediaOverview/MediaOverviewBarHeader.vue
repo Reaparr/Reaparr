@@ -103,12 +103,20 @@ import prettyBytes from 'pretty-bytes';
 import { useAccountStore, useLibraryStore, useServerStore, useLocalizationStore, useMediaOverviewStore, usePhotoBrowsingStore } from '@store';
 import { useI18n } from '#imports';
 
-const accountStore = useAccountStore();
-const libraryStore = useLibraryStore();
-const serverStore = useServerStore();
-const localizationStore = useLocalizationStore();
-const mediaOverviewStore = useMediaOverviewStore();
-const photoStore = usePhotoBrowsingStore();
+interface IMediaOverviewMetadata {
+	movieCount: number;
+	tvShowCount: number;
+	seasonCount: number;
+	episodeCount: number;
+	artistCount: number;
+	albumCount: number;
+	trackCount: number;
+	photoCount: number;
+	photoAlbumCount: number;
+	clipCount: number;
+	videoCount: number;
+	fileSize: number;
+}
 
 const props = withDefaults(defineProps<{
 	libraryId?: number;
@@ -121,9 +129,13 @@ const props = withDefaults(defineProps<{
 	photoMode: false,
 });
 
-const emit = defineEmits<{
-	(e: 'family-change', type: PlexMediaType): void;
-}>();
+const accountStore = useAccountStore();
+const libraryStore = useLibraryStore();
+const serverStore = useServerStore();
+const localizationStore = useLocalizationStore();
+const mediaOverviewStore = useMediaOverviewStore();
+const photoStore = usePhotoBrowsingStore();
+const { t } = useI18n();
 
 const mediaType = computed(() => props.photoMode
 	? PlexMediaType.PhotoAlbum
@@ -140,23 +152,23 @@ const hasLibraryAccess = computed(() => {
 		&& accountStore.getHasAccountServerAccess(currentServer.id)
 		&& accountStore.getHasAccountLibraryAccess(currentLibrary.id);
 });
-
-const { t } = useI18n();
-
-interface IMediaOverviewMetadata {
-	movieCount: number;
-	tvShowCount: number;
-	seasonCount: number;
-	episodeCount: number;
-	artistCount: number;
-	albumCount: number;
-	trackCount: number;
-	photoCount: number;
-	photoAlbumCount: number;
-	clipCount: number;
-	videoCount: number;
-	fileSize: number;
-}
+const mediaMetaData = computed<IMediaOverviewMetadata>(() => {
+	const currentLibrary = get(library);
+	if (props.photoMode) return getPhotoMetadata(currentLibrary);
+	if (props.mediaDetailItem) return getDetailMetadata(props.mediaDetailItem);
+	return getLibraryMetadata(currentLibrary);
+});
+const hasMedia = computed(() => {
+	if (props.photoMode) {
+		const currentLibrary = get(library);
+		return (currentLibrary?.count ?? 0) > 0
+			|| photoStore.albums.totalCount > 0
+			|| photoStore.assets.totalCount > 0
+			|| photoStore.folders.totalCount > 0;
+	}
+	return !!props.mediaDetailItem || mediaOverviewStore.totalCount > 0;
+});
+const showMetadata = computed(() => (props.photoMode && get(library) !== null) || (!get(isLoading) && get(hasMedia)));
 
 function getPhotoMetadata(currentLibrary: PlexLibraryDTO | null): IMediaOverviewMetadata {
 	return {
@@ -174,7 +186,6 @@ function getPhotoMetadata(currentLibrary: PlexLibraryDTO | null): IMediaOverview
 		fileSize: currentLibrary?.mediaSize ?? photoStore.assets.totalBytes,
 	};
 }
-
 function getDetailMetadata(mediaDetailItem: PlexMediaDTO): IMediaOverviewMetadata {
 	const movieFileCount = mediaDetailItem.mediaData.length || mediaDetailItem.qualities.length || 1;
 	return {
@@ -192,7 +203,6 @@ function getDetailMetadata(mediaDetailItem: PlexMediaDTO): IMediaOverviewMetadat
 		fileSize: mediaDetailItem.mediaSize,
 	};
 }
-
 function getLibraryMetadata(currentLibrary: PlexLibraryDTO | null): IMediaOverviewMetadata {
 	return {
 		movieCount: mediaOverviewStore.allMovieCount,
@@ -209,26 +219,6 @@ function getLibraryMetadata(currentLibrary: PlexLibraryDTO | null): IMediaOvervi
 		fileSize: mediaOverviewStore.allFileSize,
 	};
 }
-
-const mediaMetaData = computed<IMediaOverviewMetadata>(() => {
-	const currentLibrary = get(library);
-	if (props.photoMode) return getPhotoMetadata(currentLibrary);
-	if (props.mediaDetailItem) return getDetailMetadata(props.mediaDetailItem);
-	return getLibraryMetadata(currentLibrary);
-});
-
-const hasMedia = computed(() => {
-	if (props.photoMode) {
-		const currentLibrary = get(library);
-		return (currentLibrary?.count ?? 0) > 0
-			|| photoStore.albums.totalCount > 0
-			|| photoStore.assets.totalCount > 0
-			|| photoStore.folders.totalCount > 0;
-	}
-	return !!props.mediaDetailItem || mediaOverviewStore.totalCount > 0;
-});
-const showMetadata = computed(() => (props.photoMode && get(library) !== null) || (!get(isLoading) && get(hasMedia)));
-
 function formatPhotoMetadata(metadata: IMediaOverviewMetadata, currentLibrary: PlexLibraryDTO | null, aggregateAlbumCount = metadata.photoAlbumCount): string {
 	if (currentLibrary) {
 		return t('components.media-overview-bar-header.photos-library-metadata', {
@@ -243,7 +233,6 @@ function formatPhotoMetadata(metadata: IMediaOverviewMetadata, currentLibrary: P
 		fileSize: toFileSize(metadata.fileSize),
 	});
 }
-
 function formatted(metadata: IMediaOverviewMetadata): string {
 	const currentLibrary = get(library);
 	if (props.photoMode) return formatPhotoMetadata(metadata, currentLibrary);
@@ -297,14 +286,12 @@ function formatted(metadata: IMediaOverviewMetadata): string {
 			return t('general.error.unknown');
 	}
 }
-
 function toFileSize(size: number): string {
 	if (size === 0) {
 		return '-';
 	}
 	return prettyBytes(size, { locale: localizationStore.getLanguageLocale?.bcp47Code || 'en-US' });
 }
-
 function mediaTypeToAllText(type: PlexMediaType): string {
 	switch (type) {
 		case PlexMediaType.Movie:
@@ -321,7 +308,6 @@ function mediaTypeToAllText(type: PlexMediaType): string {
 			return t('general.error.unknown');
 	}
 }
-
 function selectFamily(type: PlexMediaType): void {
 	if (props.photoMode) {
 		emit('family-change', type);
@@ -329,6 +315,10 @@ function selectFamily(type: PlexMediaType): void {
 	}
 	mediaOverviewStore.changeAllMediaOverviewType(type);
 }
+
+const emit = defineEmits<{
+	(e: 'family-change', type: PlexMediaType): void;
+}>();
 </script>
 
 <style lang="scss">

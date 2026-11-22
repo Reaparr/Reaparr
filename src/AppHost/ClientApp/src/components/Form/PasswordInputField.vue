@@ -32,16 +32,12 @@
 <script setup lang="ts">
 import { set } from '@vueuse/core';
 
-const { t } = useI18n();
+type ValidationRule = (value: string) => boolean | string;
+
 const model = defineModel<string>({
 	default: '',
 });
-
 const hasFocus = defineModel<boolean>('hasFocus');
-
-const showPassword = ref(false);
-
-type ValidationRule = (value: string) => boolean | string;
 
 const props = withDefaults(defineProps<{
 	hideMaskButton?: boolean;
@@ -58,9 +54,9 @@ const props = withDefaults(defineProps<{
 	disableValidation: false,
 });
 
-const emits = defineEmits<{
-	(e: 'blur'): void;
-}>();
+const showPassword = ref(false);
+
+const { t } = useI18n();
 
 const getPasswordRules = computed(() => [
 	// Rule: Password is required
@@ -97,4 +93,8 @@ function onBlur() {
 	set(hasFocus, false);
 	emits('blur');
 }
+
+const emits = defineEmits<{
+	(e: 'blur'): void;
+}>();
 </script>

@@ -95,22 +95,17 @@ import { downloadApi } from '@api';
 import { DialogType } from '@enums';
 import { useDownloadStore } from '@store';
 
-const telemetry = useTelemetry();
-const downloadStore = useDownloadStore();
-
-const tabIndex = ref<string>('overview');
-
-const loading = ref(true);
-
-const downloadTaskId = ref<string>('');
-const downloadTask = ref<DownloadTaskDTO>();
-
-const errors = ref<ErrorDTO[]>([]);
-
-const logs = ref<DownloadTaskLogDTO[]>([]);
-
 const openingRequests = new Subject<string | null>();
 
+const tabIndex = ref<string>('overview');
+const loading = ref(true);
+const downloadTaskId = ref<string>('');
+const downloadTask = ref<DownloadTaskDTO>();
+const errors = ref<ErrorDTO[]>([]);
+const logs = ref<DownloadTaskLogDTO[]>([]);
+
+const telemetry = useTelemetry();
+const downloadStore = useDownloadStore();
 useSubscription(
 	openingRequests.pipe(
 		switchMap((taskId) => {
@@ -151,7 +146,6 @@ function onOpen(event: string) {
 
 	openingRequests.next(event);
 }
-
 function onClose() {
 	const task = get(downloadTask);
 	const taskId = get(downloadTaskId);
@@ -166,11 +160,9 @@ function onClose() {
 	set(tabIndex, 'overview');
 	set(logs, []);
 }
-
 function handleLogsDeleted() {
 	set(logs, []);
 }
-
 function handleLogsRefreshed(updated: DownloadTaskLogDTO[]) {
 	set(logs, updated);
 }

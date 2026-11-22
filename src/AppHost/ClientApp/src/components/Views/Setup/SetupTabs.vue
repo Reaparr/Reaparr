@@ -30,18 +30,18 @@ import { get } from '@vueuse/core';
 import { SetupPanelType } from '@enums';
 import { useFolderPathStore } from '@store';
 
+const props = defineProps<{ headers: { name: string }[] }>();
+
+const model = defineModel<number>({
+	default: 1,
+});
+
 const $q = useQuasar();
 const settingsStore = useSettingsStore();
 const authStore = useAuthenticationStore();
 const folderPathStore = useFolderPathStore();
 const accountStore = useAccountStore();
 const telemetry = useTelemetry();
-
-const model = defineModel<number>({
-	default: 1,
-});
-
-const props = defineProps<{ headers: { name: string }[] }>();
 
 const color = computed(() => {
 	return get(model) === props.headers.length ? 'green' : get(model) > props.headers.length ? 'green' : 'red';
@@ -69,7 +69,6 @@ function isTabEnabled(tab: SetupPanelType): boolean {
 
 	return enabled.includes(tab);
 }
-
 function onStepSelected(step: number): void {
 	telemetry.setupStepSelected(step);
 }

@@ -21,6 +21,7 @@ definePageMeta({
 
 const route = useRoute();
 const { t } = useI18n();
+
 const libraryId = computed(() => +(route.params.id as string));
 const validLibraryId = computed(() => Number.isSafeInteger(libraryId.value) && libraryId.value > 0);
 </script>

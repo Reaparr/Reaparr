@@ -70,24 +70,24 @@ import { useNotificationsStore } from '@store';
 import { get, set } from '@vueuse/core';
 import { useSubscription } from '@vueuse/rxjs';
 
+const showDrawer = defineModel<boolean>('showDrawer', { default: false });
+
 const telemetry = useTelemetry();
 const notificationsStore = useNotificationsStore();
 const { t } = useI18n();
-
-const showDrawer = defineModel<boolean>('showDrawer', { default: false });
 const $q = useQuasar();
-const drawerWidth = computed(() => {
-	if (!$q.screen.lt.md || !$q.screen.width)
-		return 450;
-
-	return Math.min(450, $q.screen.width * 0.92);
-});
-
 useEventListener(document, 'keydown', (event) => {
 	if (event.key === 'Escape' && get(showDrawer)) {
 		telemetry.notificationsClosed();
 		set(showDrawer, false);
 	}
+});
+
+const drawerWidth = computed(() => {
+	if (!$q.screen.lt.md || !$q.screen.width)
+		return 450;
+
+	return Math.min(450, $q.screen.width * 0.92);
 });
 
 watch(showDrawer, (visible) => {
@@ -99,7 +99,6 @@ watch(showDrawer, (visible) => {
 function hideNotification(id: number) {
 	useSubscription(notificationsStore.hideNotification(id).subscribe());
 }
-
 function clearAllNotifications() {
 	useSubscription(notificationsStore.clearAllNotifications().subscribe(({ isSuccess }) => {
 		if (isSuccess) set(showDrawer, false);

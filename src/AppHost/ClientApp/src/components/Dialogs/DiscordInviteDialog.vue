@@ -47,7 +47,6 @@ function onInviteClick(close: () => void): void {
 	settingsStore.generalSettings.hasBeenInvitedToDiscord = true;
 	close();
 }
-
 function onClosed(): void {
 	settingsStore.generalSettings.hasBeenInvitedToDiscord = true;
 }

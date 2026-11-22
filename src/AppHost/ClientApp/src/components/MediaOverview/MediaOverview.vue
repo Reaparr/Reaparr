@@ -272,44 +272,6 @@ watch(
 	{ immediate: true },
 );
 
-onMounted(() => {
-	resetProgress();
-
-	// The loading overlay does not prevent mounting before settings are loaded.
-	useSubscription(
-		globalStore.getPageSetupReady.pipe(
-			filter(Boolean),
-			take(1),
-			switchMap(() => mediaOverviewStore.initializeLibrary(props.libraryId)),
-		).subscribe({
-			next: () => {
-				void restorePosterScrollPosition().catch((error: unknown) => Log.error('Failed to restore media scroll position', error));
-			},
-		}),
-	);
-
-	async function restorePosterScrollPosition(): Promise<void> {
-		const requestedScrollIndex = mediaOverviewStore.currentScrollIndex;
-		if (requestedScrollIndex <= 0) return;
-
-		// URL/store uses one-based index (same convention as media sortIndex).
-		// PosterTable scroll API expects zero-based row/item index.
-		const targetIndex = requestedScrollIndex - 1;
-		// Initial render can race with virtualized content mounting and page prefetch.
-		// Retry a few times so refresh/back-forward restores land at the intended poster.
-		const maxAttempts = 10;
-		for (let attempt = 0; attempt < maxAttempts; attempt++) {
-			await nextTick();
-			useSubscription(mediaOverviewStore.scrollToIndex(targetIndex, false).subscribe());
-			await new Promise((resolve) => setTimeout(resolve, 100));
-
-			const container = document.querySelector<HTMLElement>('#poster-table');
-			const targetNode = container?.querySelector(`[data-scroll-index="${targetIndex}"]`);
-			if ((container && container.scrollTop > 0) || targetNode) break;
-		}
-	}
-});
-
 // region Eventbus
 
 /**
@@ -430,6 +392,44 @@ function refreshCompletedLibrary(): void {
 		).subscribe(),
 	);
 }
+
+onMounted(() => {
+	resetProgress();
+
+	// The loading overlay does not prevent mounting before settings are loaded.
+	useSubscription(
+		globalStore.getPageSetupReady.pipe(
+			filter(Boolean),
+			take(1),
+			switchMap(() => mediaOverviewStore.initializeLibrary(props.libraryId)),
+		).subscribe({
+			next: () => {
+				void restorePosterScrollPosition().catch((error: unknown) => Log.error('Failed to restore media scroll position', error));
+			},
+		}),
+	);
+
+	async function restorePosterScrollPosition(): Promise<void> {
+		const requestedScrollIndex = mediaOverviewStore.currentScrollIndex;
+		if (requestedScrollIndex <= 0) return;
+
+		// URL/store uses one-based index (same convention as media sortIndex).
+		// PosterTable scroll API expects zero-based row/item index.
+		const targetIndex = requestedScrollIndex - 1;
+		// Initial render can race with virtualized content mounting and page prefetch.
+		// Retry a few times so refresh/back-forward restores land at the intended poster.
+		const maxAttempts = 10;
+		for (let attempt = 0; attempt < maxAttempts; attempt++) {
+			await nextTick();
+			useSubscription(mediaOverviewStore.scrollToIndex(targetIndex, false).subscribe());
+			await new Promise((resolve) => setTimeout(resolve, 100));
+
+			const container = document.querySelector<HTMLElement>('#poster-table');
+			const targetNode = container?.querySelector(`[data-scroll-index="${targetIndex}"]`);
+			if ((container && container.scrollTop > 0) || targetNode) break;
+		}
+	}
+});
 </script>
 
 <style lang="scss">

@@ -18,12 +18,12 @@
 <script setup lang="ts">
 import { useSettingsStore } from '@store';
 
-const settingsStore = useSettingsStore();
-const telemetry = useTelemetry();
-
 const props = defineProps<{
 	machineIdentifier: string;
 }>();
+
+const settingsStore = useSettingsStore();
+const telemetry = useTelemetry();
 
 const value = computed({
 	get: () => {

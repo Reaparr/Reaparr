@@ -43,14 +43,14 @@
 import type { ILocaleConfig } from '@interfaces';
 import { useLocalizationStore } from '@store';
 
-withDefaults(defineProps<{ dense?: boolean }>(), {
-	dense: false,
-});
-
 const localizationStore = useLocalizationStore();
 
 const language = computed({
 	get: (): ILocaleConfig =>	localizationStore.getLanguageLocale,
 	set: (value: ILocaleConfig) => localizationStore.changeLanguageLocale(value.code),
+});
+
+withDefaults(defineProps<{ dense?: boolean }>(), {
+	dense: false,
 });
 </script>

@@ -55,7 +55,6 @@ import type { NamedColor } from 'quasar';
 
 type OverviewCardMode = 'add' | 'edit';
 type OverviewCardIcon = 'plex' | 'radarr' | 'sonarr';
-
 interface OverviewCardChip {
 	value: string | number;
 	color: NamedColor;
@@ -78,12 +77,13 @@ const props = withDefaults(defineProps<{
 	ariaLabel: undefined,
 });
 
-const emit = defineEmits<{ (event: 'click'): void }>();
 const iconSource = computed(() => `/img/logo/${props.icon}.svg`);
 
 function activate(): void {
 	emit('click');
 }
+
+const emit = defineEmits<{ (event: 'click'): void }>();
 </script>
 
 <style lang="scss">

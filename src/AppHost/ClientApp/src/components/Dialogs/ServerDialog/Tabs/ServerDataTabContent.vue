@@ -78,7 +78,6 @@ import type { PlexServerDTO } from '@dto';
 import { useI18n } from 'vue-i18n';
 
 const { t } = useI18n();
-
 const serverStore = useServerStore();
 
 withDefaults(

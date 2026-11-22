@@ -98,6 +98,13 @@ import { useDialogStore, useDownloadStore, useMediaOverviewStore, useMediaStore,
 import { listenMediaOverviewDownloadCommand } from '@composables/event-bus';
 
 definePageMeta({ scrollToTop: false });
+
+const requests = new Subject<void>();
+
+const mediaItem = ref<PlexMediaDTO | null>(null);
+const loading = ref(false);
+const error = ref(false);
+
 const route = useRoute();
 const router = useRouter();
 const { t } = useI18n();
@@ -106,18 +113,40 @@ const mediaOverviewStore = useMediaOverviewStore();
 const settingsStore = useSettingsStore();
 const dialogStore = useDialogStore();
 const downloadStore = useDownloadStore();
+useSubscription(requests.pipe(
+	switchMap(() => get(validRoute)
+		? mediaStore.getMediaDataDetailById(get(videoId), PlexMediaType.OtherVideos).pipe(take(1), catchError(() => of(null)))
+		: of(null)),
+).subscribe((item) => {
+	const validItem = item?.type === PlexMediaType.OtherVideos && item.id === get(videoId) && item.plexLibraryId === get(libraryId);
+	set(mediaItem, validItem ? item : null);
+	set(error, !validItem);
+	set(loading, false);
+	if (validItem)
+		mediaOverviewStore.lastMediaItemViewed = item;
+}));
+
 const libraryId = computed(() => Number(route.params.libraryId));
 const videoId = computed(() => Number(route.params.videoId));
 const validRoute = computed(() => [get(libraryId), get(videoId)].every((id) => Number.isSafeInteger(id) && id > 0));
-const mediaItem = ref<PlexMediaDTO | null>(null);
-const loading = ref(false);
-const error = ref(false);
-const requests = new Subject<void>();
 const dates = computed(() => [
 	{ key: 'originallyAvailableAt', label: t('components.other-video-details.originally-available'), value: get(mediaItem)?.originallyAvailableAt },
 	{ key: 'addedAt', label: t('components.other-video-details.added-at'), value: get(mediaItem)?.addedAt },
 	{ key: 'updatedAt', label: t('components.other-video-details.updated-at'), value: get(mediaItem)?.updatedAt },
 ].filter((date): date is { key: string; label: string; value: string } => !!date.value && Number.isFinite(Date.parse(date.value)) && !date.value.startsWith('0001-')));
+
+watch([libraryId, videoId], requestDetail, { immediate: true, flush: 'sync' });
+
+listenMediaOverviewDownloadCommand((command) => {
+	const current = get(mediaItem);
+	if (!current || get(loading) || !command.length || command.some((item) => item.type !== PlexMediaType.OtherVideos
+		|| item.plexLibraryId !== current.plexLibraryId || item.plexServerId !== current.plexServerId))
+		return;
+	if (settingsStore.isConfirmationEnabled(PlexMediaType.OtherVideos))
+		dialogStore.openMediaConfirmationDownloadDialog(command);
+	else
+		downloadStore.downloadMedia({ downloadMedias: command, customDestinationFolderPath: '', destinationFolderPathId: null });
+});
 
 function backToVideos(): void {
 	router.push(get(libraryId) > 0 ? `/other-videos/${get(libraryId)}` : '/other-videos').catch((error) => Log.error('Failed to return to other videos', error));
@@ -136,29 +165,7 @@ function requestDetail(): void {
 	});
 	requests.next();
 }
-useSubscription(requests.pipe(
-	switchMap(() => get(validRoute)
-		? mediaStore.getMediaDataDetailById(get(videoId), PlexMediaType.OtherVideos).pipe(take(1), catchError(() => of(null)))
-		: of(null)),
-).subscribe((item) => {
-	const validItem = item?.type === PlexMediaType.OtherVideos && item.id === get(videoId) && item.plexLibraryId === get(libraryId);
-	set(mediaItem, validItem ? item : null);
-	set(error, !validItem);
-	set(loading, false);
-	if (validItem)
-		mediaOverviewStore.lastMediaItemViewed = item;
-}));
-watch([libraryId, videoId], requestDetail, { immediate: true, flush: 'sync' });
-listenMediaOverviewDownloadCommand((command) => {
-	const current = get(mediaItem);
-	if (!current || get(loading) || !command.length || command.some((item) => item.type !== PlexMediaType.OtherVideos
-		|| item.plexLibraryId !== current.plexLibraryId || item.plexServerId !== current.plexServerId))
-		return;
-	if (settingsStore.isConfirmationEnabled(PlexMediaType.OtherVideos))
-		dialogStore.openMediaConfirmationDownloadDialog(command);
-	else
-		downloadStore.downloadMedia({ downloadMedias: command, customDestinationFolderPath: '', destinationFolderPathId: null });
-});
+
 onBeforeUnmount(() => {
 	requests.complete();
 	mediaOverviewStore.$patch({ isDetailView: false, downloadButtonVisible: false });

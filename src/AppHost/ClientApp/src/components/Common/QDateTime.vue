@@ -9,8 +9,6 @@ import { format } from 'date-fns';
 import { useSettingsStore } from '@store';
 import type { IQTextProps } from '@interfaces';
 
-const settingsStore = useSettingsStore();
-
 const props = withDefaults(defineProps<Pick<IQTextProps, 'align'> & {
 	text?: string;
 	shortDate?: boolean;
@@ -23,10 +21,11 @@ const props = withDefaults(defineProps<Pick<IQTextProps, 'align'> & {
 	time: false,
 });
 
+const settingsStore = useSettingsStore();
+
 const date = computed(() => {
 	return new Date(props.text);
 });
-
 const dateTimeString = computed(() => {
 	if (!props.text) {
 		return '';

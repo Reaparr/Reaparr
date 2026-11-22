@@ -361,18 +361,10 @@ import type { PhotoBrowseView } from '@/store/photoBrowsingStore';
 import { useSubscription } from '@vueuse/rxjs';
 import { get } from '@vueuse/core';
 
-const telemetry = useTelemetry();
 type ViewOption = {
 	label: string;
 	viewMode: ViewMode | PhotoBrowseView;
 };
-
-const mediaOverviewStore = useMediaOverviewStore();
-const libraryStore = useLibraryStore();
-const photoStore = usePhotoBrowsingStore();
-const downloadCommandBus = useMediaOverviewBarDownloadCommandBus();
-const settingsStore = useSettingsStore();
-const { t } = useI18n();
 
 const props = withDefaults(defineProps<{
 	libraryId?: number;
@@ -387,19 +379,17 @@ const props = withDefaults(defineProps<{
 	photoMode: false,
 });
 
-const emit = defineEmits<{
-	(e: 'action', payload: IMediaOverviewBarActions): void;
-	(e: 'photo-view', value: PhotoBrowseView): void;
-	(e: 'photo-search', value: string): void;
-	(e: 'photo-sort', value: IMediaOverviewSort): void;
-	(e: 'photo-download' | 'photo-clear-selection'): void;
-	(e: 'photo-family-change', value: PlexMediaType): void;
-}>();
-
+const telemetry = useTelemetry();
+const mediaOverviewStore = useMediaOverviewStore();
+const libraryStore = useLibraryStore();
+const photoStore = usePhotoBrowsingStore();
+const downloadCommandBus = useMediaOverviewBarDownloadCommandBus();
+const settingsStore = useSettingsStore();
+const { t } = useI18n();
 const $q = useQuasar();
+
 const barHeight = computed(() => $q.screen.lt.md ? 72 : 85);
 const verticalButtonWidth = computed(() => $q.screen.lt.md ? 96 : 120);
-
 const supportsViewMode = computed(() => props.photoMode || [
 	PlexMediaType.Movie, PlexMediaType.TvShow, PlexMediaType.MusicArtist, PlexMediaType.PhotoAlbum, PlexMediaType.OtherVideos,
 ].includes(mediaOverviewStore.getMediaType));
@@ -416,16 +406,6 @@ const isSorted = computed(() => {
 	}
 	return mediaOverviewStore.getIsSorted;
 });
-
-function isSelected(viewMode: ViewMode | PhotoBrowseView): boolean {
-	if (viewMode === ViewMode.Poster || viewMode === ViewMode.Table) {
-		return (props.photoMode
-			? settingsStore.displaySettings.photoAlbumViewMode
-			: mediaOverviewStore.getMediaViewMode) === viewMode;
-	}
-	return props.photoMode && photoStore.view === viewMode;
-}
-
 const activeSortIcon = computed((): string => {
 	if (!get(isSorted)) {
 		return 'mdi-sort';
@@ -433,12 +413,10 @@ const activeSortIcon = computed((): string => {
 	const sort = props.photoMode ? photoStore.sort.sort : mediaOverviewStore.getActiveSort.sort;
 	return sort === SortDirection.Asc ? 'mdi-sort-descending' : 'mdi-sort-ascending';
 });
-
 const sortOptions = computed((): ISortOption[] => mediaOverviewStore.getSortOptions(
 	props.photoMode ? photoStore.supportedSorts : undefined,
 	props.photoMode ? photoStore.sort : undefined,
 ));
-
 const viewOptions = computed((): ViewOption[] => {
 	const options: ViewOption[] = [
 		{
@@ -465,6 +443,14 @@ const viewOptions = computed((): ViewOption[] => {
 	return options;
 });
 
+function isSelected(viewMode: ViewMode | PhotoBrowseView): boolean {
+	if (viewMode === ViewMode.Poster || viewMode === ViewMode.Table) {
+		return (props.photoMode
+			? settingsStore.displaySettings.photoAlbumViewMode
+			: mediaOverviewStore.getMediaViewMode) === viewMode;
+	}
+	return props.photoMode && photoStore.view === viewMode;
+}
 function download(): void {
 	if (props.photoMode) {
 		emit('photo-download');
@@ -472,7 +458,6 @@ function download(): void {
 	}
 	downloadCommandBus.emit('download');
 }
-
 function clearSort(): void {
 	if (props.photoMode) {
 		emit('photo-sort', createDefaultMediaOverviewSort());
@@ -480,7 +465,6 @@ function clearSort(): void {
 	}
 	useSubscription(mediaOverviewStore.clearSort().subscribe());
 }
-
 function changeSort(field: SortType): void {
 	if (props.photoMode) {
 		emit('photo-sort', toggleMediaOverviewSort(photoStore.sort, field));
@@ -488,7 +472,6 @@ function changeSort(field: SortType): void {
 	}
 	mediaOverviewStore.toggleSortMedia(field);
 }
-
 function changeView(viewMode: ViewMode | PhotoBrowseView): void {
 	const viewChanged = !isSelected(viewMode);
 	const mediaType = props.photoMode ? PlexMediaType.PhotoAlbum : mediaOverviewStore.getMediaType;
@@ -503,6 +486,15 @@ function changeView(viewMode: ViewMode | PhotoBrowseView): void {
 		emit('photo-view', viewMode);
 	}
 }
+
+const emit = defineEmits<{
+	(e: 'action', payload: IMediaOverviewBarActions): void;
+	(e: 'photo-view', value: PhotoBrowseView): void;
+	(e: 'photo-search', value: string): void;
+	(e: 'photo-sort', value: IMediaOverviewSort): void;
+	(e: 'photo-download' | 'photo-clear-selection'): void;
+	(e: 'photo-family-change', value: PlexMediaType): void;
+}>();
 </script>
 
 <style lang="scss">

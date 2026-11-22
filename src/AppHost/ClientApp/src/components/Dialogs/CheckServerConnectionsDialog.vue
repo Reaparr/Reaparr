@@ -152,25 +152,39 @@ import {
 } from '#imports';
 import Log from 'consola';
 
+interface IPlexServerNode {
+	id: number;
+	title: string;
+	index: number;
+	type: 'server' | 'connection';
+	completed: boolean;
+	connectionSuccessful: boolean;
+	progress?: ServerConnectionCheckStatusProgressDTO;
+	noConnections?: boolean;
+	hasInProgressConnections?: boolean;
+	local?: boolean;
+	connectionType?: PlexConnectionTypes;
+	children: IPlexServerNode[];
+}
+
+const connectionProgress = ref<ServerConnectionCheckStatusProgressDTO[]>([]);
+const expanded = ref<number[]>([]);
+/**
+ * The plex server ids that are being checked
+ */
+const plexServerIds = ref<number[]>([]);
+
 const { t } = useI18n();
 const serverStore = useServerStore();
 const connectionStore = useServerConnectionStore();
 const dialogStore = useDialogStore();
 const backgroundJobStore = useBackgroundJobsStore();
 const signalrStore = useSignalrStore();
-const connectionProgress = ref<ServerConnectionCheckStatusProgressDTO[]>([]);
 
-const expanded = ref<number[]>([]);
-/**
- * The plex server ids that are being checked
- */
-const plexServerIds = ref<number[]>([]);
 const completedCount = computed(() => {
 	return get(plexServerNodes).filter((progress) => progress.completed).length;
 });
-
 const hasAnyProgress = computed(() => get(connectionProgress).length > 0);
-
 const totalPercentage = computed(() => {
 	if (get(plexServerNodes).length === 0) {
 		return 0;
@@ -181,7 +195,6 @@ const plexServers = computed(() => serverStore.getServers(get(activeServerIds)))
 const activeServerIds = computed(() => (get(plexServerIds).length > 0
 	? get(plexServerIds)
 	: [...new Set(get(connectionProgress).map((x) => x.plexServerId))]));
-
 const getProgressText = computed(() => {
 	if (get(plexServers).length === 0) {
 		return t('components.check-server-connections-dialog.fetching-servers', {
@@ -200,7 +213,6 @@ const getProgressText = computed(() => {
 		total: get(plexServerNodes).length,
 	});
 });
-
 const plexServerNodes = computed((): IPlexServerNode[] => {
 	let uniqueIndex = 0;
 
@@ -263,11 +275,9 @@ function getConnectionProgress(connectionId: number, serverId: number): ServerCo
 		}
 	);
 }
-
 function isServer(node: IPlexServerNode): boolean {
 	return node.type === 'server';
 }
-
 function onClosed(): void {
 	Log.debug('Resetting CheckServerConnectionsDialog');
 	set(plexServerIds, []);
@@ -304,21 +314,6 @@ onMounted(() => {
 			}),
 	);
 });
-
-interface IPlexServerNode {
-	id: number;
-	title: string;
-	index: number;
-	type: 'server' | 'connection';
-	completed: boolean;
-	connectionSuccessful: boolean;
-	progress?: ServerConnectionCheckStatusProgressDTO;
-	noConnections?: boolean;
-	hasInProgressConnections?: boolean;
-	local?: boolean;
-	connectionType?: PlexConnectionTypes;
-	children: IPlexServerNode[];
-}
 </script>
 
 <style lang="scss">

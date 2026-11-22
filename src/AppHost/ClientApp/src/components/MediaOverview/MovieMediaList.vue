@@ -53,19 +53,18 @@ import type { ISelection } from '@interfaces';
 import { toDownloadMedia } from '@composables/conversion';
 import { sendMediaOverviewDownloadCommand, useMediaOverviewBarDownloadCommandBus } from '@composables/event-bus';
 
-const mediaOverviewStore = useMediaOverviewStore();
-const { t } = useI18n();
-
 const props = defineProps<{
 	mediaItem: PlexMediaDTO;
 }>();
+
+const mediaOverviewStore = useMediaOverviewStore();
+const { t } = useI18n();
 
 const selection = computed<ISelection>(() => ({
 	indexKey: props.mediaItem.id,
 	keys: [],
 	allSelected: false,
 }));
-
 const mediaRows = computed((): PlexMediaSlimDTO[] => {
 	return props.mediaItem.mediaData.map((mediaData) => ({
 		id: mediaData.id,
@@ -96,33 +95,8 @@ const mediaRows = computed((): PlexMediaSlimDTO[] => {
 		],
 	}));
 });
-
 const selectedCount = computed((): number => get(selection).keys.length);
-
 const rootSelected = computed((): boolean | null => get(selection).allSelected);
-
-function rootSetSelected(value: boolean) {
-	set(selection, {
-		indexKey: props.mediaItem.id,
-		keys: value ? get(mediaRows).map((x) => x.id) : [],
-		allSelected: value,
-	});
-}
-
-function onSelection(payload: ISelection) {
-	set(selection, {
-		indexKey: props.mediaItem.id,
-		keys: payload.keys,
-		allSelected: payload.allSelected,
-	});
-}
-
-function toMoviePartDownloadMedia(row: PlexMediaSlimDTO): DownloadMediaDTO[] {
-	return toDownloadMedia(props.mediaItem).map((command) => ({
-		...command,
-		qualities: row.qualities,
-	}));
-}
 
 watch(selectedCount, () => {
 	mediaOverviewStore.$patch({
@@ -139,6 +113,27 @@ useMediaOverviewBarDownloadCommandBus().on(() => {
 
 	sendMediaOverviewDownloadCommand(downloadMedia);
 });
+
+function rootSetSelected(value: boolean) {
+	set(selection, {
+		indexKey: props.mediaItem.id,
+		keys: value ? get(mediaRows).map((x) => x.id) : [],
+		allSelected: value,
+	});
+}
+function onSelection(payload: ISelection) {
+	set(selection, {
+		indexKey: props.mediaItem.id,
+		keys: payload.keys,
+		allSelected: payload.allSelected,
+	});
+}
+function toMoviePartDownloadMedia(row: PlexMediaSlimDTO): DownloadMediaDTO[] {
+	return toDownloadMedia(props.mediaItem).map((command) => ({
+		...command,
+		qualities: row.qualities,
+	}));
+}
 </script>
 
 <style lang="scss">

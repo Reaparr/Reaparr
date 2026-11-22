@@ -90,6 +90,13 @@ import type { LibraryAccessTimelineZoomPreset } from '@store';
 import { SortDirection } from '@dto';
 import { getSortOrder } from '@composables';
 
+const zoomOptions: { label: string; value: LibraryAccessTimelineZoomPreset }[] = [
+	{ label: '7d', value: '7d' },
+	{ label: '30d', value: '30d' },
+	{ label: '90d', value: '90d' },
+	{ label: 'All', value: 'All' },
+];
+
 const { t } = useI18n();
 const serverStore = useServerStore();
 const libraryStore = useLibraryStore();
@@ -104,7 +111,6 @@ const selectedServerId = computed({
 		timelineStore.setLibrary(null);
 	},
 });
-
 const selectedLibraryId = computed({
 	get: () => timelineStore.filters.plexLibraryId ?? null,
 	set: (value: number | null) => {
@@ -112,7 +118,6 @@ const selectedLibraryId = computed({
 		telemetry.timelineLibraryChanged(value);
 	},
 });
-
 const selectedZoomPreset = computed({
 	get: () => timelineStore.zoomPreset,
 	set: (value: LibraryAccessTimelineZoomPreset) => {
@@ -121,9 +126,7 @@ const selectedZoomPreset = computed({
 		applyZoomPreset(value);
 	},
 });
-
 const hasSelectedServer = computed(() => timelineStore.filters.plexServerId !== null);
-
 const serverOptions = computed(() => orderBy(
 	get(serverStore.getVisibleServers).map((server) => ({
 		label: serverStore.getServerName(server.id),
@@ -132,7 +135,6 @@ const serverOptions = computed(() => orderBy(
 	[(option) => option.label.toLocaleLowerCase(), (option) => option.value],
 	[getSortOrder(SortDirection.Asc), getSortOrder(SortDirection.Asc)],
 ));
-
 const libraryOptions = computed(() => {
 	if (!timelineStore.filters.plexServerId) {
 		return [];
@@ -154,23 +156,10 @@ const libraryOptions = computed(() => {
 	);
 });
 
-const zoomOptions: { label: string; value: LibraryAccessTimelineZoomPreset }[] = [
-	{ label: '7d', value: '7d' },
-	{ label: '30d', value: '30d' },
-	{ label: '90d', value: '90d' },
-	{ label: 'All', value: 'All' },
-];
-
-onMounted(() => {
-	applyZoomPreset(timelineStore.zoomPreset);
-	useSubscription(timelineStore.refreshTimeline().subscribe());
-});
-
 function selectRow(rowId: string): void {
 	telemetry.timelineRowSelected(rowId);
 	timelineStore.selectRow(rowId);
 }
-
 function applyZoomPreset(zoomPreset: LibraryAccessTimelineZoomPreset) {
 	if (zoomPreset === 'All') {
 		timelineStore.setDateRange(null, null);
@@ -185,6 +174,11 @@ function applyZoomPreset(zoomPreset: LibraryAccessTimelineZoomPreset) {
 	fromUtc.setHours(0, 0, 0, 0);
 	timelineStore.setDateRange(fromUtc.toISOString(), toUtc.toISOString());
 }
+
+onMounted(() => {
+	applyZoomPreset(timelineStore.zoomPreset);
+	useSubscription(timelineStore.refreshTimeline().subscribe());
+});
 </script>
 
 <style lang="scss">

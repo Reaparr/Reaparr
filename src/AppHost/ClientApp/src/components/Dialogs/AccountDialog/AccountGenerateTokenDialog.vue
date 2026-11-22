@@ -79,20 +79,20 @@ import { useAccountDialogStore } from '@store';
 import VOtpInput from 'vue3-otp-input';
 import { useSubscription } from '@vueuse/rxjs';
 
-const telemetry = useTelemetry();
-const accountDialogStore = useAccountDialogStore();
-const { copy } = useClipboard({ legacy: true });
+let latestRequestId = 0;
 
 const generatedToken = ref<string>('');
 const verificationCodeValue = ref<string>('');
 const needVerificationToken = ref<boolean>(false);
 const errorMessage = ref('');
-let latestRequestId = 0;
+
+const telemetry = useTelemetry();
+const accountDialogStore = useAccountDialogStore();
+const { copy } = useClipboard({ legacy: true });
 
 function onOpen() {
 	requestToken();
 }
-
 function onComplete(verificationCode: string) {
 	requestToken(verificationCode);
 	set(needVerificationToken, false);
@@ -103,7 +103,6 @@ function copyGeneratedToken() {
 		telemetry.accountTokenCopied(accountDialogStore.id);
 	}).catch((error) => Log.error('Failed to copy generated account token', error));
 }
-
 function requestToken(verificationCode: string = '') {
 	const requestId = ++latestRequestId;
 	set(errorMessage, '');

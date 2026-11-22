@@ -10,14 +10,14 @@ import prettyBytes from 'pretty-bytes';
 import { useLocalizationStore } from '@store';
 import type { IQTextProps } from '@interfaces';
 
-const localizationStore = useLocalizationStore();
-const { t } = useI18n();
-
 const props = defineProps<Pick<IQTextProps, 'align'> & {
 	size: number;
 	speed?: boolean;
 	cy?: string;
 }>();
+
+const localizationStore = useLocalizationStore();
+const { t } = useI18n();
 
 const formattedString = computed(() => {
 	if (props.size == null || props.size === 0) {

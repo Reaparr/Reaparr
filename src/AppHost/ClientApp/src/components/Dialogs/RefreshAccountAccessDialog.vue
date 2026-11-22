@@ -126,27 +126,26 @@ import type { QIconTooltipData } from '@interfaces';
 import { sortBy } from 'lodash-es';
 import { useLibraryStore } from '@store';
 
-const { t } = useI18n();
-const libraryStore = useLibraryStore();
-const refreshRapports = ref<RefreshPlexAccountAccessRapportDTO[]>([]);
+interface IAccessNode extends Omit<PlexLibraryAccessRapportDTO, 'plexLibraryName' | 'plexLibraryId'>, Omit<PlexServerAccessRapportDTO, 'libraryAccess' | 'plexServerName'> {
+	id: string;
+	name: string;
+	isServer: boolean;
+	isLibrary: boolean;
+	children?: IAccessNode[];
+	libraryType?: PlexMediaType;
+}
+interface IPlexAccountAccessRapportNode {
+	plexAccountId: number;
+	plexAccountName: string;
+	servers: IAccessNode[];
+}
 
+const refreshRapports = ref<RefreshPlexAccountAccessRapportDTO[]>([]);
 const expanded = ref<number[]>([]);
 const tab = ref(0);
 
-function sortState(x: IAccessNode): number {
-	switch (x.state) {
-		case PlexAccessState.Granted:
-			return 0;
-		case PlexAccessState.Revoked:
-			return 1;
-		case PlexAccessState.Updated:
-			return 2;
-		case PlexAccessState.Unknown:
-			return 3;
-		default:
-			return 10;
-	}
-}
+const { t } = useI18n();
+const libraryStore = useLibraryStore();
 
 const plexAccessNodes = computed((): IPlexAccountAccessRapportNode[] => {
 	return get(refreshRapports).map((rapport) => {
@@ -185,7 +184,6 @@ const plexAccessNodes = computed((): IPlexAccountAccessRapportNode[] => {
 		};
 	});
 });
-
 const options = computed((): QIconTooltipData[] =>
 	[{
 		value: PlexAccessState.Granted,
@@ -213,30 +211,28 @@ const options = computed((): QIconTooltipData[] =>
 	},
 	]);
 
+function sortState(x: IAccessNode): number {
+	switch (x.state) {
+		case PlexAccessState.Granted:
+			return 0;
+		case PlexAccessState.Revoked:
+			return 1;
+		case PlexAccessState.Updated:
+			return 2;
+		case PlexAccessState.Unknown:
+			return 3;
+		default:
+			return 10;
+	}
+}
 function onOpened(data: RefreshPlexAccountAccessRapportDTO[]) {
 	if (data && data.length > 0) {
 		set(refreshRapports, data);
 		set(tab, data[0]!.plexAccountId);
 	}
 }
-
 function onClosed() {
 	set(refreshRapports, []);
-}
-
-interface IAccessNode extends Omit<PlexLibraryAccessRapportDTO, 'plexLibraryName' | 'plexLibraryId'>, Omit<PlexServerAccessRapportDTO, 'libraryAccess' | 'plexServerName'> {
-	id: string;
-	name: string;
-	isServer: boolean;
-	isLibrary: boolean;
-	children?: IAccessNode[];
-	libraryType?: PlexMediaType;
-}
-
-interface IPlexAccountAccessRapportNode {
-	plexAccountId: number;
-	plexAccountName: string;
-	servers: IAccessNode[];
 }
 </script>
 

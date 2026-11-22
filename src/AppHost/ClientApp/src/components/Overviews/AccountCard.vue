@@ -28,14 +28,12 @@
 import type { PlexAccountDTO } from '@dto';
 import { useAccountStore } from '@store';
 
-const { t } = useI18n();
-const accountStore = useAccountStore();
-
 const props = defineProps<{
 	account?: PlexAccountDTO;
 }>();
 
-defineEmits<{ (e: 'open-dialog', account: PlexAccountDTO | null): void }>();
+const { t } = useI18n();
+const accountStore = useAccountStore();
 
 const isNew = computed(() => !props.account);
 const accountChips = computed<Array<{ value: string; color: 'positive' | 'negative' }>>(() => {
@@ -52,4 +50,6 @@ const accountChips = computed<Array<{ value: string; color: 'positive' | 'negati
 		},
 	];
 });
+
+defineEmits<{ (e: 'open-dialog', account: PlexAccountDTO | null): void }>();
 </script>

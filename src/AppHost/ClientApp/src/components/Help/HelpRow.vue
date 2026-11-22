@@ -63,18 +63,9 @@ import { useHelpStore } from '@store';
 import type { IHelp } from '@interfaces';
 import type { ColLevels } from '@props';
 
-const { t } = useI18n();
-const helpStore = useHelpStore();
-const breakpoints = useBreakpoints({
-	sm: 600,
-	md: 1024,
-	lg: 1440,
-	xl: 1920,
-});
-const isDesktopLayout = breakpoints.greaterOrEqual('md');
-
 const editModel = defineModel<string>('editModel');
 
+const isDesktopLayout = breakpoints.greaterOrEqual('md');
 const props = withDefaults(defineProps<Partial<IHelp> & {
 	value?: IHelp;
 	hideLabel?: boolean;
@@ -95,12 +86,20 @@ const props = withDefaults(defineProps<Partial<IHelp> & {
 	align: 'center',
 });
 
+const { t } = useI18n();
+const helpStore = useHelpStore();
+const breakpoints = useBreakpoints({
+	sm: 600,
+	md: 1024,
+	lg: 1440,
+	xl: 1920,
+});
+
 const help = computed(() => props.value ?? {
 	label: !props.hideLabel ? props.label !== '' ? props.label : t('help.default.label') : '',
 	title: props.title,
 	text: props.text,
 });
-
 const hasHelpPage = computed(() => {
 	return get(help).title !== '' && get(help).text !== '';
 });

@@ -45,7 +45,6 @@ const divClasses = computed(() => ({
 	[`text-${props.align}`]: true,
 	[`full-width`]: props.fullWidth,
 }));
-
 const spanClasses = computed(() => {
 	let bold = props.bold;
 	if (props.bold === '') {
@@ -58,7 +57,6 @@ const spanClasses = computed(() => {
 		[`full-width`]: props.fullWidth,
 	});
 });
-
 const styles = computed((): Record<string, string> => ({
 	color: getCssVar(props.textColor) ?? '',
 }));

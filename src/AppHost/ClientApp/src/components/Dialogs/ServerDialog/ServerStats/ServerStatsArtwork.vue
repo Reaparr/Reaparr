@@ -70,7 +70,9 @@ const props = withDefaults(defineProps<{
 	mode: 'summary' | 'detailed';
 	exportMode?: boolean;
 }>(), { exportMode: false });
+
 const { t, locale } = useI18n();
+
 const statusLabel = computed(() => !props.serverEnabled
 	? t('components.server-dialog.tabs.server-stats.disabled')
 	: props.stats.status === 'complete'

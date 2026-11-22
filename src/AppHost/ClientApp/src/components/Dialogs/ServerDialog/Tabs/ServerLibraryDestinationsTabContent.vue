@@ -40,12 +40,13 @@
 import type { PlexLibraryDTO, PlexServerDTO } from '@dto';
 import { useFolderPathStore } from '@store';
 
-const folderPathStore = useFolderPathStore();
-const libraryStore = useLibraryStore();
 const props = defineProps<{
 	plexServer: PlexServerDTO | null;
 	plexLibraries: PlexLibraryDTO[];
 }>();
+
+const folderPathStore = useFolderPathStore();
+const libraryStore = useLibraryStore();
 
 function getDefaultDestination(libraryId: number): { id: number; displayName: string } {
 	const library = props.plexLibraries.find((x) => x.id === libraryId);

@@ -83,7 +83,6 @@ defineProps<{
 	selectable?: boolean;
 	columns: QTreeViewTableHeader[];
 }>();
-
 defineEmits<{
 	(e: 'selected', payload: boolean): void;
 	(e: 'action', payload: { action: string; data: QTreeViewTableItem }): void;

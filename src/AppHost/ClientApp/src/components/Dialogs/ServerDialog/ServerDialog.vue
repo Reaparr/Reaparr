@@ -171,19 +171,6 @@ import type { PlexServerDTO } from '@dto';
 import { DialogType } from '@enums';
 import { useServerStore, useLibraryStore, useDialogStore } from '@store';
 
-const serverStore = useServerStore();
-const $q = useQuasar();
-const libraryStore = useLibraryStore();
-const dialogStore = useDialogStore();
-const telemetry = useTelemetry();
-
-const loading = ref(false);
-const tabIndex = ref<string>('server-data');
-const statsActions = useTemplateRef<HTMLElement>('statsActions');
-const plexServer = ref<PlexServerDTO | null>(null);
-const plexServerId = ref<number>(0);
-
-const isVisible = computed((): boolean => plexServerId.value > 0);
 const tabPositions: Record<string, number> = {
 	'server-data': 0,
 	'server-connection': 1,
@@ -192,6 +179,20 @@ const tabPositions: Record<string, number> = {
 	'server-commands': 4,
 	'server-stats': 5,
 };
+
+const loading = ref(false);
+const tabIndex = ref<string>('server-data');
+const plexServer = ref<PlexServerDTO | null>(null);
+const plexServerId = ref<number>(0);
+
+const serverStore = useServerStore();
+const $q = useQuasar();
+const libraryStore = useLibraryStore();
+const dialogStore = useDialogStore();
+const telemetry = useTelemetry();
+const statsActions = useTemplateRef<HTMLElement>('statsActions');
+
+const isVisible = computed((): boolean => plexServerId.value > 0);
 const selectedTab = computed({
 	get: () => get(tabIndex),
 	set: (value: string) => {
@@ -212,13 +213,11 @@ function open(event: unknown): void {
 	set(plexServer, serverStore.getServer(newPlexServerId));
 	set(loading, false);
 }
-
 function close(): void {
 	dialogStore.closeDialog(DialogType.ServerSettingsDialog);
 	set(plexServerId, 0);
 	set(tabIndex, 'server-data');
 }
-
 function onServerAliasSave(serverAlias: string): void {
 	useSubscription(serverStore.setServerAlias(get(plexServerId), serverAlias).subscribe());
 }

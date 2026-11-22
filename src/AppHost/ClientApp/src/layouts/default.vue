@@ -52,55 +52,36 @@ import {
 	useAuthenticationStore,
 } from '@store';
 
+const { alerts } = storeToRefs(alertStore);
+const pendingPageCallbacks = new Set<ReturnType<typeof setTimeout>>();
+
+const showNavigationDrawerState = ref($q.screen.gt.sm);
+const showNotificationsDrawerState = ref(false);
+const pageLoading = ref(true);
+const pageApiLoading = ref(true);
+
 const nuxtApp = useNuxtApp();
 const route = useRoute();
 const router = useRouter();
-
 const helpStore = useHelpStore();
 const alertStore = useAlertStore();
 const dialogStore = useDialogStore();
 const settingsStore = useSettingsStore();
 const globalStore = useGlobalStore();
 const authStore = useAuthenticationStore();
-
-const { alerts } = storeToRefs(alertStore);
 const $q = useQuasar();
-const showNavigationDrawerState = ref($q.screen.gt.sm);
-const showNotificationsDrawerState = ref(false);
-
-const pageLoading = ref(true);
-const pageApiLoading = ref(true);
-const pendingPageCallbacks = new Set<ReturnType<typeof setTimeout>>();
 
 const isLoading = computed((): boolean => get(pageLoading) || get(pageApiLoading));
 const isEmptyLayout = computed((): boolean => route.fullPath.includes('setup') || route.fullPath.includes('login'),
 );
 
-function toggleNavigationsDrawer() {
-	set(showNavigationDrawerState, !get(showNavigationDrawerState));
-}
-
-function toggleNotificationsDrawer() {
-	set(showNotificationsDrawerState, !get(showNotificationsDrawerState));
-}
-
-function clearPendingPageCallbacks(): void {
-	for (const timer of pendingPageCallbacks) {
-		clearTimeout(timer);
-	}
-	pendingPageCallbacks.clear();
-}
-
 watch(() => authStore.isLoggedIn, (isLoggedIn) => {
 	if (!isLoggedIn) clearPendingPageCallbacks();
 }, { flush: 'sync' });
-onScopeDispose(clearPendingPageCallbacks);
-
 watch(() => $q.screen.gt.sm, (isDesktop) => {
 	set(showNavigationDrawerState, isDesktop);
 	set(showNotificationsDrawerState, false);
 });
-
 watch(() => route.fullPath, () => {
 	if (!$q.screen.gt.sm) {
 		set(showNotificationsDrawerState, false);
@@ -108,11 +89,11 @@ watch(() => route.fullPath, () => {
 	}
 });
 
+onScopeDispose(clearPendingPageCallbacks);
 onScopeDispose(nuxtApp.hook('page:start', () => {
 	Log.debug('page:start');
 	set(pageLoading, true);
 }));
-
 onScopeDispose(nuxtApp.hook('page:finish', () => {
 	Log.debug('page:finish');
 	set(pageLoading, false);
@@ -129,6 +110,19 @@ onScopeDispose(nuxtApp.hook('page:finish', () => {
 		pendingPageCallbacks.add(timer);
 	}
 }));
+
+function toggleNavigationsDrawer() {
+	set(showNavigationDrawerState, !get(showNavigationDrawerState));
+}
+function toggleNotificationsDrawer() {
+	set(showNotificationsDrawerState, !get(showNotificationsDrawerState));
+}
+function clearPendingPageCallbacks(): void {
+	for (const timer of pendingPageCallbacks) {
+		clearTimeout(timer);
+	}
+	pendingPageCallbacks.clear();
+}
 
 onMounted(() => {
 	useSubscription(

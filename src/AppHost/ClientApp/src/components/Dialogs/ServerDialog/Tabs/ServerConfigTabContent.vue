@@ -74,9 +74,10 @@ const props = defineProps<{
 	plexServer: PlexServerDTO | null;
 }>();
 
+const confirmHideDialog = ref(false);
+
 const settingsStore = useSettingsStore();
 const serverStore = useServerStore();
-const confirmHideDialog = ref(false);
 const dialogStore = useDialogStore();
 const telemetry = useTelemetry();
 
@@ -93,7 +94,6 @@ function onAllowStreamDownloaderChanged(value: boolean) {
 	settingsStore.updateAllowStreamDownloader(props.plexServer.machineIdentifier, value);
 	telemetry.serverStreamDownloaderChanged(props.plexServer.id);
 }
-
 function onDisableServer() {
 	if (!props.plexServer) {
 		Log.error('props.plexServer is null');
@@ -110,7 +110,6 @@ function onDisableServer() {
 		dialogStore.closeDialog(DialogType.ServerSettingsDialog);
 	}));
 }
-
 function onServerOwnedChanged(value: boolean) {
 	if (!props.plexServer) {
 		Log.error('props.plexServer is null');

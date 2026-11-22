@@ -16,7 +16,6 @@ interface IBreakPoints {
 	lg?: ColLevels;
 	xl?: ColLevels;
 }
-
 interface IOffset {
 	offsetXs?: ColLevels;
 	offsetSm?: ColLevels;
@@ -24,7 +23,6 @@ interface IOffset {
 	offsetLg?: ColLevels;
 	offsetXl?: ColLevels;
 }
-
 interface QColProps extends IBreakPoints, IOffset {
 	cols?: ColLevels | 'auto' | 'grow' | 'shrink';
 	offset?: ColLevels;
@@ -92,7 +90,6 @@ const classes = computed(() => {
 
 	return classList;
 });
-
 const styles = computed(() => {
 	const styleList: Record<string, string> = {};
 

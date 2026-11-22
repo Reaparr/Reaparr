@@ -53,10 +53,6 @@ const props = withDefaults(defineProps<{
 	cy: undefined,
 });
 
-const emit = defineEmits<{
-	(e: 'click'): void;
-}>();
-
 const comparisonBadge = computed((): {
 	icon: string;
 	tone: 'not-compared'
@@ -114,13 +110,16 @@ const comparisonBadge = computed((): {
 			};
 	}
 });
-
 const resolvedLabel = computed(() => props.showLabel ? translateMediaComparisonState(props.comparisonState) : undefined);
 
 function onClick() {
 	if (props.clickable)
 		emit('click');
 }
+
+const emit = defineEmits<{
+	(e: 'click'): void;
+}>();
 </script>
 
 <style lang="scss">

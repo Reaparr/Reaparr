@@ -73,13 +73,11 @@ import { DialogType } from '@enums';
 import { useAccountDialogStore } from '@store';
 import type { ErrorDTO } from '@dto';
 
-const { t } = useI18n();
-
-const accountDialogStore = useAccountDialogStore();
-
 const otpInput = ref<InstanceType<typeof VOtpInput>>();
-
 const errors = ref<ErrorDTO[]>([]);
+
+const { t } = useI18n();
+const accountDialogStore = useAccountDialogStore();
 
 function onComplete() {
 	set(errors, []);

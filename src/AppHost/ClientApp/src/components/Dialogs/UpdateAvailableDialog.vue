@@ -129,13 +129,13 @@ import { useI18n } from 'vue-i18n';
 import VueMarkdown from 'vue-markdown-render';
 import QScroll from '@components/Common/QScroll.vue';
 
+const releaseIndex = ref(0);
+
 const telemetry = useTelemetry();
 const { t } = useI18n();
-
 const globalStore = useGlobalStore();
 const updateStore = useUpdateStore();
 
-const releaseIndex = ref(0);
 const desktopUpdateButtonLabel = computed(() => {
 	if (updateStore.isApplyingUpdate) {
 		return t('components.update-available-dialog.restarting');
@@ -151,7 +151,6 @@ const desktopUpdateButtonLabel = computed(() => {
 function onReleaseSelected(index: number): void {
 	telemetry.updateReleaseSelected(index);
 }
-
 function runDesktopUpdate() {
 	telemetry.updateApplyRequested();
 	useSubscription(updateStore.downloadAndApplyUpdate().subscribe());

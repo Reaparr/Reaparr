@@ -21,8 +21,8 @@
 import { useRoute } from 'vue-router';
 import { useLibraryStore } from '@store';
 
+const libraryId = +(route.params.libraryId as string);
+
 const route = useRoute();
 const libraryStore = useLibraryStore();
-
-const libraryId = +(route.params.libraryId as string);
 </script>

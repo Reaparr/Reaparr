@@ -69,23 +69,9 @@ import {
 import { useMediaOverviewStore } from '@store';
 import { getMediaTableColumns } from '~/composables/mediaTableColumns';
 
-const mediaOverviewStore = useMediaOverviewStore();
-const mediaTableColumns = computed(() => getMediaTableColumns().filter((column) => {
-	if (column.field === 'quality')
-		return mediaOverviewStore.getSupportsVideoQuality || mediaOverviewStore.getMediaType === PlexMediaType.MusicArtist;
-	if (column.field === 'comparisonState')
-		return mediaOverviewStore.getSupportsComparison;
-	return true;
-}));
 type QScrollInstance = {
 	getScrollTarget: () => HTMLElement | null;
 };
-
-const scrollAreaRef = ref<QScrollInstance | null>(null);
-const qTableRef = ref<HTMLElement | null>(null);
-const scrollTargetElement = ref<HTMLElement | null>(null);
-const autoScrollEnabled = ref(false);
-const pendingHighlightIndex = ref<number | null>(null);
 
 const props = withDefaults(
 	defineProps<{
@@ -106,20 +92,18 @@ const props = withDefaults(
 		isScrollable: true,
 	},
 );
-
-defineEmits<{
-	(e: 'row-click', payload: PlexMediaSlimDTO): void;
-}>();
-
-const $q = useQuasar();
-// Row height matches $media-table-row-height in _variables.scss
-const ROW_HEIGHT = computed(() => $q.screen.xs ? 96 : 42);
-const tableHeight = computed(() => $q.screen.lt.md ? '100%' : 'calc(100vh - 137px)');
-
 // Firefox and Chrome silently clamp CSS element heights at ~33.5M px, causing a blank render.
 // This guard ensures the spacer div never exceeds that limit regardless of item count.
 const BROWSER_MAX_CSS_HEIGHT = 33_000_000;
 
+const scrollAreaRef = ref<QScrollInstance | null>(null);
+const qTableRef = ref<HTMLElement | null>(null);
+const scrollTargetElement = ref<HTMLElement | null>(null);
+const autoScrollEnabled = ref(false);
+const pendingHighlightIndex = ref<number | null>(null);
+
+const mediaOverviewStore = useMediaOverviewStore();
+const $q = useQuasar();
 const rowVirtualizer = useVirtualizer(
 	computed(() => ({
 		count: props.rows?.length ?? mediaOverviewStore.totalCount,
@@ -149,11 +133,22 @@ const rowVirtualizer = useVirtualizer(
 		},
 	})),
 );
+
+const mediaTableColumns = computed(() => getMediaTableColumns().filter((column) => {
+	if (column.field === 'quality')
+		return mediaOverviewStore.getSupportsVideoQuality || mediaOverviewStore.getMediaType === PlexMediaType.MusicArtist;
+	if (column.field === 'comparisonState')
+		return mediaOverviewStore.getSupportsComparison;
+	return true;
+}));
+// Row height matches $media-table-row-height in _variables.scss
+const ROW_HEIGHT = computed(() => $q.screen.xs ? 96 : 42);
+const tableHeight = computed(() => $q.screen.lt.md ? '100%' : 'calc(100vh - 137px)');
+const safeTotalSize = computed(() => Math.min(rowVirtualizer.value.getTotalSize(), BROWSER_MAX_CSS_HEIGHT));
+
 watch(ROW_HEIGHT, () => {
 	nextTick(() => rowVirtualizer.value.measure()).catch((error) => Log.error('Failed to measure media table rows', error));
 });
-
-const safeTotalSize = computed(() => Math.min(rowVirtualizer.value.getTotalSize(), BROWSER_MAX_CSS_HEIGHT));
 
 function getScrollElement(): HTMLElement | null {
 	const target = get(scrollAreaRef)?.getScrollTarget() ?? null;
@@ -162,11 +157,9 @@ function getScrollElement(): HTMLElement | null {
 	}
 	return target;
 }
-
 function getRowItem(index: number): PlexMediaSlimDTO | undefined {
 	return props.rows?.[index] ?? mediaOverviewStore.getMediaItemsForRange(index, index + 1).at(0);
 }
-
 function requestVisibleRange() {
 	if (props.rows) {
 		return;
@@ -179,11 +172,9 @@ function requestVisibleRange() {
 		useSubscription(mediaOverviewStore.requestRange(first, last).subscribe());
 	}
 }
-
 function isSelected(mediaId: number) {
 	return (mediaOverviewStore.selection?.keys ?? []).includes(mediaId);
 }
-
 function updateSelectedRow(mediaId: number, state: boolean) {
 	mediaOverviewStore.setSelection({
 		...mediaOverviewStore.selection,
@@ -193,7 +184,6 @@ function updateSelectedRow(mediaId: number, state: boolean) {
 		allSelected: false,
 	} as ISelection);
 }
-
 function scrollToIndex(index: number, highlight = true) {
 	const container = getScrollElement();
 	if (!container) {
@@ -206,7 +196,6 @@ function scrollToIndex(index: number, highlight = true) {
 		set(pendingHighlightIndex, index);
 	get(rowVirtualizer).scrollToIndex(index, { align: 'start' });
 }
-
 function highlightPendingMedia() {
 	const pendingMediaHighlightId = get(mediaOverviewStore.pendingMediaHighlightId);
 	if (pendingMediaHighlightId === null)
@@ -244,6 +233,10 @@ onMounted(() => {
 		scrollToIndex(lastMediaItemViewed.sortIndex - 1);
 	}
 });
+
+defineEmits<{
+	(e: 'row-click', payload: PlexMediaSlimDTO): void;
+}>();
 </script>
 
 <style lang="scss">

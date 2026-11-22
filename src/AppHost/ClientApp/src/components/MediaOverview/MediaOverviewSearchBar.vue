@@ -63,10 +63,6 @@
 import { useMediaOverviewStore, usePhotoBrowsingStore } from '@store';
 import { useSubscription } from '@vueuse/rxjs';
 
-const { t } = useI18n();
-const mediaOverviewStore = useMediaOverviewStore();
-const photoStore = usePhotoBrowsingStore();
-
 const props = withDefaults(defineProps<{
 	libraryId?: number;
 	photoMode?: boolean;
@@ -75,9 +71,9 @@ const props = withDefaults(defineProps<{
 	photoMode: false,
 });
 
-const emit = defineEmits<{
-	(e: 'photo-search', value: string): void;
-}>();
+const { t } = useI18n();
+const mediaOverviewStore = useMediaOverviewStore();
+const photoStore = usePhotoBrowsingStore();
 
 const searchQuery = computed(() => props.photoMode ? photoStore.searchQuery : mediaOverviewStore.filterQuery);
 const filterChips = computed(() => props.photoMode ? [] : mediaOverviewStore.getFilterChips);
@@ -93,7 +89,6 @@ function updateSearch(value: unknown): void {
 	}
 	useSubscription(mediaOverviewStore.setFilterQuery(query).subscribe());
 }
-
 function clearSearch(): void {
 	if (props.photoMode) {
 		emit('photo-search', '');
@@ -101,6 +96,10 @@ function clearSearch(): void {
 	}
 	useSubscription(mediaOverviewStore.clearFilter().subscribe());
 }
+
+const emit = defineEmits<{
+	(e: 'photo-search', value: string): void;
+}>();
 </script>
 
 <style lang="scss">

@@ -139,21 +139,16 @@ const props = defineProps<{
 	mediaItem: PlexMediaDTO;
 }>();
 
-const { t } = useI18n();
-const mediaOverviewStore = useMediaOverviewStore();
-const dialogStore = useDialogStore();
-const artistComparisonClickable = computed(() =>
-	[PlexMediaComparisonState.Missing, PlexMediaComparisonState.Partial, PlexMediaComparisonState.HigherQuality, PlexMediaComparisonState.PartialAndHigherQuality].includes(getPlexMediaComparisonState(props.mediaItem)));
-
-function openArtistComparison(): void {
-	if (get(artistComparisonClickable))
-		dialogStore.openMediaComparisonDetailsDialog(props.mediaItem);
-}
-
 const artistSelected = ref(false);
 const selectedAlbumIds = ref(new Set<number>());
 const selectedTrackIds = ref(new Map<number, Set<number>>());
 
+const { t } = useI18n();
+const mediaOverviewStore = useMediaOverviewStore();
+const dialogStore = useDialogStore();
+
+const artistComparisonClickable = computed(() =>
+	[PlexMediaComparisonState.Missing, PlexMediaComparisonState.Partial, PlexMediaComparisonState.HigherQuality, PlexMediaComparisonState.PartialAndHigherQuality].includes(getPlexMediaComparisonState(props.mediaItem)));
 const albums = computed(() => props.mediaItem.children.filter((album) =>
 	album.type === PlexMediaType.MusicAlbum
 	&& album.parentId === props.mediaItem.id
@@ -176,7 +171,6 @@ const albums = computed(() => props.mediaItem.children.filter((album) =>
 		);
 		return { ...album, children: tracks };
 	}));
-
 const selectedCount = computed(() => {
 	if (get(artistSelected)) {
 		const trackCount = get(albums).reduce((count, album) => count + album.children.length, 0);
@@ -190,7 +184,6 @@ const selectedCount = computed(() => {
 		return count + (get(selectedTrackIds).get(album.id)?.size ?? 0);
 	}, 0);
 });
-
 const rootSelectionState = computed((): boolean | null => {
 	if (get(artistSelected)) {
 		return true;
@@ -198,18 +191,30 @@ const rootSelectionState = computed((): boolean | null => {
 	return get(selectedCount) > 0 ? null : false;
 });
 
+watch(() => props.mediaItem, resetSelection);
+watch(selectedCount, (count) => {
+	mediaOverviewStore.$patch({ downloadButtonVisible: count > 0 });
+}, { immediate: true });
+
+useMediaOverviewBarDownloadCommandBus().on(() => {
+	const downloadMedia = selectedDownloadMedia();
+	if (downloadMedia.length > 0) {
+		sendMediaOverviewDownloadCommand(downloadMedia);
+	}
+});
+
+function openArtistComparison(): void {
+	if (get(artistComparisonClickable))
+		dialogStore.openMediaComparisonDetailsDialog(props.mediaItem);
+}
 function resetSelection(): void {
 	set(artistSelected, false);
 	set(selectedAlbumIds, new Set());
 	set(selectedTrackIds, new Map());
 }
-
-watch(() => props.mediaItem, resetSelection);
-
 function downloadMedia(item: PlexMediaDTO | PlexMediaSlimDTO, qualities: PlexMediaQualityDTO[]): DownloadMediaDTO {
 	return { ...toDownloadMedia(item)[0]!, qualities };
 }
-
 function trackSelection(album: PlexMediaDTO, tracks: PlexMediaDTO[]): ISelection {
 	const keys = tracks.filter((track) => isTrackSelected(album.id, track.id)).map((track) => track.id);
 	return {
@@ -218,7 +223,6 @@ function trackSelection(album: PlexMediaDTO, tracks: PlexMediaDTO[]): ISelection
 		allSelected: keys.length === tracks.length && tracks.length > 0 ? true : keys.length === 0 ? false : null,
 	};
 }
-
 function setAlbumTrackSelection(album: PlexMediaDTO, tracks: PlexMediaDTO[], selection: ISelection): void {
 	const albumsSelection = selectedAlbumsAfterArtistDemotion();
 	const inheritedWholeAlbum = get(artistSelected) || get(selectedAlbumIds).has(album.id);
@@ -248,29 +252,24 @@ function setAlbumTrackSelection(album: PlexMediaDTO, tracks: PlexMediaDTO[], sel
 	set(selectedAlbumIds, albumsSelection);
 	set(selectedTrackIds, tracksSelection);
 }
-
 function downloadTrackMedia(row: PlexMediaSlimDTO): DownloadMediaDTO[] {
 	return [downloadMedia(row, [])];
 }
-
 function setArtistSelected(value: boolean): void {
 	resetSelection();
 	set(artistSelected, value);
 }
-
 function albumSelectionState(album: PlexMediaDTO): boolean | null {
 	if (get(artistSelected) || get(selectedAlbumIds).has(album.id)) {
 		return true;
 	}
 	return (get(selectedTrackIds).get(album.id)?.size ?? 0) > 0 ? null : false;
 }
-
 function selectedAlbumsAfterArtistDemotion(): Set<number> {
 	return get(artistSelected)
 		? new Set(get(albums).map((album) => album.id))
 		: new Set(get(selectedAlbumIds));
 }
-
 function setAlbumSelected(album: PlexMediaDTO, value: boolean): void {
 	const albumsSelection = selectedAlbumsAfterArtistDemotion();
 	set(artistSelected, false);
@@ -284,13 +283,11 @@ function setAlbumSelected(album: PlexMediaDTO, value: boolean): void {
 	set(selectedAlbumIds, albumsSelection);
 	set(selectedTrackIds, tracksSelection);
 }
-
 function isTrackSelected(albumId: number, trackId: number): boolean {
 	return get(artistSelected)
 		|| get(selectedAlbumIds).has(albumId)
 		|| (get(selectedTrackIds).get(albumId)?.has(trackId) ?? false);
 }
-
 function selectedDownloadMedia(): DownloadMediaDTO[] {
 	if (get(artistSelected) && get(albums).some((album) => album.children.length > 0)) {
 		return [downloadMedia(props.mediaItem, [])];
@@ -313,17 +310,6 @@ function selectedDownloadMedia(): DownloadMediaDTO[] {
 	}
 	return result;
 }
-
-watch(selectedCount, (count) => {
-	mediaOverviewStore.$patch({ downloadButtonVisible: count > 0 });
-}, { immediate: true });
-
-useMediaOverviewBarDownloadCommandBus().on(() => {
-	const downloadMedia = selectedDownloadMedia();
-	if (downloadMedia.length > 0) {
-		sendMediaOverviewDownloadCommand(downloadMedia);
-	}
-});
 
 onBeforeUnmount(() => {
 	mediaOverviewStore.$patch({ downloadButtonVisible: false });

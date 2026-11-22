@@ -75,14 +75,8 @@ import type { IAlert } from '@interfaces';
 import { DialogType } from '@enums';
 import { useAlertStore, useDialogStore, useGlobalStore } from '@store';
 
-const alertStore = useAlertStore();
-
 const props = defineProps<{ alert: IAlert }>();
-const dialogStore = useDialogStore();
-const { t } = useI18n();
-const globalStore = useGlobalStore();
-const route = useRoute();
-const $q = useQuasar();
+
 const browserOptions: [boolean | undefined, string][] = [
 	[$q.platform.is.edge, 'Microsoft Edge (LOL)'],
 	[$q.platform.is.opera, 'Opera'],
@@ -93,11 +87,12 @@ const browserOptions: [boolean | undefined, string][] = [
 ];
 const browser = browserOptions.find(([detected]) => detected)?.[1];
 
-onMounted(() => dialogStore.openAlertInfoDialog(props.alert));
-
-watch(() => props.alert, () => {
-	dialogStore.openAlertInfoDialog(props.alert);
-}, { flush: 'post' });
+const alertStore = useAlertStore();
+const dialogStore = useDialogStore();
+const { t } = useI18n();
+const globalStore = useGlobalStore();
+const route = useRoute();
+const $q = useQuasar();
 
 const issueUrl = computed(() => {
 	const apiErrors = props.alert.apiErrors;
@@ -143,11 +138,16 @@ const issueUrl = computed(() => {
 	}
 	return `https://github.com/Reaparr/Reaparr/issues/new?${params}`;
 });
-
 const errors = computed(() => {
 	if (props.alert?.result?.errors) {
 		return props.alert.result.errors;
 	}
 	return null;
 });
+
+watch(() => props.alert, () => {
+	dialogStore.openAlertInfoDialog(props.alert);
+}, { flush: 'post' });
+
+onMounted(() => dialogStore.openAlertInfoDialog(props.alert));
 </script>

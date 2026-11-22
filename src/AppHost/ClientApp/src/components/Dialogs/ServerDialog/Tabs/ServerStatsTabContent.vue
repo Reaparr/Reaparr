@@ -66,19 +66,22 @@ const props = defineProps<{
 	plexServerId: number;
 	actionsTarget: HTMLElement | null;
 }>();
-const { t } = useI18n();
-const $q = useQuasar();
-const libraryStore = useLibraryStore();
-const serverStore = useServerStore();
+
 const mode = ref<'summary' | 'detailed'>('summary');
 const exporting = ref(false);
-const exportContainer = useTemplateRef<HTMLElement>('exportContainer');
 const exportSnapshot = shallowRef<{
 	serverName: string;
 	serverEnabled: boolean;
 	stats: IServerStats;
 	mode: 'summary' | 'detailed';
 } | null>(null);
+
+const { t } = useI18n();
+const $q = useQuasar();
+const libraryStore = useLibraryStore();
+const serverStore = useServerStore();
+const exportContainer = useTemplateRef<HTMLElement>('exportContainer');
+
 const serverName = computed(() => serverStore.getServerName(props.plexServerId) || t('general.error.unknown'));
 const serverEnabled = computed(() => serverStore.getServer(props.plexServerId)?.isEnabled ?? false);
 const stats = computed(() => {

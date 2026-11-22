@@ -33,7 +33,6 @@ import { DialogType } from '@enums';
 import { useDialogStore, useRouter } from '#imports';
 
 const router = useRouter();
-
 const dialogStore = useDialogStore();
 
 const resetDatabaseCommand = (): void => {

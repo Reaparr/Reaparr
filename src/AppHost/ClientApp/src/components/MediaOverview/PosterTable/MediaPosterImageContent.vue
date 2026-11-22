@@ -88,8 +88,6 @@ import { type PlexMediaSlimDTO, PlexMediaType } from '@dto';
 import { useServerStore } from '@store';
 import type { IMediaActionEmits } from '@interfaces';
 
-const serverStore = useServerStore();
-
 const props = withDefaults(defineProps<{
 	mediaItem: PlexMediaSlimDTO;
 	fallback?: boolean;
@@ -105,9 +103,11 @@ const props = withDefaults(defineProps<{
 	thumbHeight: 300,
 });
 
-defineEmits<IMediaActionEmits>();
+const serverStore = useServerStore();
 
 const mediaType = computed(() => props.mediaItem?.type ?? PlexMediaType.Unknown);
+
+defineEmits<IMediaActionEmits>();
 </script>
 
 <style lang="scss">

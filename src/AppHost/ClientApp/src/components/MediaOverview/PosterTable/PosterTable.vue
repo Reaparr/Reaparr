@@ -79,6 +79,10 @@ type QScrollInstance = {
 	getScrollTarget: () => HTMLElement | null;
 };
 
+const slots = defineSlots<{
+	item?: (props: { index: number }) => unknown;
+}>();
+
 const props = withDefaults(defineProps<{
 	mediaType?: PlexMediaType;
 	libraryId?: number;
@@ -95,17 +99,17 @@ const props = withDefaults(defineProps<{
 	initialScrollIndex: 0,
 	onScrollIndex: undefined,
 });
+// Firefox and Chrome silently clamp CSS element heights at ~33.5M px, causing a blank render.
+// This guard ensures the spacer div never exceeds that limit regardless of item count or column count.
+const BROWSER_MAX_CSS_HEIGHT = 33_000_000;
+// Throttled scroll-index persistence — avoids DOM queries + BCR calls on every scroll tick.
+let persistTimer: ReturnType<typeof setTimeout> | null = null;
+let navigatingToDetails = false;
+// Throttled page-prefetch during scrolling — avoids firing HTTP requests on every scroll tick.
+let prefetchTimer: ReturnType<typeof setTimeout> | null = null;
 
-const slots = defineSlots<{
-	item?: (props: { index: number }) => unknown;
-}>();
-const controlled = computed(() => props.itemCount !== undefined || Boolean(slots.item));
-const mediaOverviewStore = useMediaOverviewStore();
 const scrollAreaRef = ref<QScrollInstance | null>(null);
 const scrollContainerRef = ref<HTMLElement | null>(null);
-const posterCardWidthCss = useCssVar('--poster-card-width', scrollContainerRef);
-const posterImageWidthCss = useCssVar('--poster-image-width', scrollContainerRef);
-const posterCardPaddingCss = useCssVar('--poster-card-padding', scrollContainerRef);
 const posterCardWidth = ref(232);
 const posterCardHeight = ref(372);
 const gridItems = ref(10);
@@ -113,12 +117,12 @@ const gridRowGap = ref(20);
 const gridPaddingLeft = ref(0);
 const hasRunInitialPageReady = ref(false);
 const requestedRange = ref('');
+
+const mediaOverviewStore = useMediaOverviewStore();
+const posterCardWidthCss = useCssVar('--poster-card-width', scrollContainerRef);
+const posterImageWidthCss = useCssVar('--poster-image-width', scrollContainerRef);
+const posterCardPaddingCss = useCssVar('--poster-card-padding', scrollContainerRef);
 const router = useRouter();
-
-// Number of rows = ceil(total items / columns). Controlled photo grids own their item count.
-const totalItemCount = computed(() => controlled.value ? Math.max(0, props.itemCount ?? 0) : mediaOverviewStore.totalCount);
-const rowCount = computed(() => Math.ceil(totalItemCount.value / get(gridItems)));
-
 // Row virtualizer — re-configures reactively when rowCount or posterCardHeight changes
 const rowVirtualizer = useVirtualizer(
 	computed(() => ({
@@ -147,24 +151,73 @@ const rowVirtualizer = useVirtualizer(
 		},
 	})),
 );
+// useElementBounding must be called at setup level so its ResizeObserver is wired correctly.
+// Calling it inside watchEffect/watch creates a new instance each time with width=0, which
+// causes rowCount = ceil(N/1) = N rows and getTotalSize() to exceed browser CSS height limits.
+const { width: containerWidth } = useElementBounding(scrollContainerRef);
+
+const controlled = computed(() => props.itemCount !== undefined || Boolean(slots.item));
+// Number of rows = ceil(total items / columns). Controlled photo grids own their item count.
+const totalItemCount = computed(() => controlled.value ? Math.max(0, props.itemCount ?? 0) : mediaOverviewStore.totalCount);
+const rowCount = computed(() => Math.ceil(totalItemCount.value / get(gridItems)));
+const safeTotalSize = computed(() => Math.min(rowVirtualizer.value.getTotalSize(), BROWSER_MAX_CSS_HEIGHT));
+
+watch(containerWidth, (width) => {
+	if (width <= 0)
+		return;
+
+	const isMobile = width < 600;
+	const columns = isMobile
+		? Math.min(3, Math.max(1, Math.floor(width / 144)))
+		: Math.max(1, Math.floor(width / 232));
+	const cardPadding = isMobile ? 8 : 16;
+	const rowGap = isMobile ? 4 : 20;
+	const cardWidth = isMobile ? width / columns : 232;
+	const imageWidth = cardWidth - (cardPadding * 2);
+	const cardHeight = isMobile
+		? imageWidth * 1.5 + cardPadding + 36
+		: 372;
+
+	set(posterCardWidth, cardWidth);
+	set(posterCardHeight, cardHeight);
+	set(gridRowGap, rowGap);
+	set(gridItems, columns);
+	set(gridPaddingLeft, Math.max(0, (width - columns * cardWidth) / 2));
+
+	set(posterCardWidthCss, `${cardWidth}px`);
+	set(posterImageWidthCss, `${imageWidth}px`);
+	set(posterCardPaddingCss, `${cardPadding}px`);
+	rowVirtualizer.value.measure();
+	if (!get(hasRunInitialPageReady)) {
+		set(hasRunInitialPageReady, true);
+		if (!get(controlled))
+			nextTick(() => onPageReady()).catch((error) => Log.error('Failed to initialize poster table after layout', error));
+	}
+});
+watch(() => props.rangeContextKey, () => {
+	set(requestedRange, '');
+	if (get(controlled))
+		nextTick(() => requestControlledRange(false)).catch((error) => Log.error('Failed to request updated controlled poster range', error));
+});
+watch(() => props.itemCount, () => {
+	if (get(controlled))
+		nextTick(() => requestControlledRange(false)).catch((error) => Log.error('Failed to request updated controlled poster range', error));
+});
+watch(() => props.initialScrollIndex, (index) => {
+	if (get(controlled) && index > 0)
+		nextTick(() => scrollToIndex(index, false)).catch((error) => Log.error('Failed to scroll to initial controlled poster index', error));
+});
 
 function measureVirtualRow(element: unknown) {
 	if (element instanceof Element)
 		get(rowVirtualizer).measureElement(element);
 }
-
-// Firefox and Chrome silently clamp CSS element heights at ~33.5M px, causing a blank render.
-// This guard ensures the spacer div never exceeds that limit regardless of item count or column count.
-const BROWSER_MAX_CSS_HEIGHT = 33_000_000;
-const safeTotalSize = computed(() => Math.min(rowVirtualizer.value.getTotalSize(), BROWSER_MAX_CSS_HEIGHT));
-
 function getScrollElement(): HTMLElement | null {
 	const target = get(scrollAreaRef)?.getScrollTarget() ?? null;
 	if (target !== get(scrollContainerRef))
 		set(scrollContainerRef, target);
 	return target;
 }
-
 function getControlledItemIndexes(rowIndex: number): number[] {
 	const cols = get(gridItems);
 	const startIndex = rowIndex * cols;
@@ -174,7 +227,6 @@ function getControlledItemIndexes(rowIndex: number): number[] {
 		indexes.push(index);
 	return indexes;
 }
-
 // Returns the loaded items belonging to a given row index, preserving each item's global index.
 function getRowItems(rowIndex: number): { item: PlexMediaSlimDTO | null; index: number }[] {
 	const cols = get(gridItems);
@@ -198,11 +250,6 @@ function getRowItems(rowIndex: number): { item: PlexMediaSlimDTO | null; index: 
 
 	return rowItems;
 }
-
-// Throttled scroll-index persistence — avoids DOM queries + BCR calls on every scroll tick.
-let persistTimer: ReturnType<typeof setTimeout> | null = null;
-let navigatingToDetails = false;
-
 function persistScrollIndex() {
 	if (persistTimer || navigatingToDetails)
 		return;
@@ -246,45 +293,6 @@ function persistScrollIndex() {
 			mediaOverviewStore.setCurrentScrollIndex(nearestIndex + 1);
 	}, 500);
 }
-
-// useElementBounding must be called at setup level so its ResizeObserver is wired correctly.
-// Calling it inside watchEffect/watch creates a new instance each time with width=0, which
-// causes rowCount = ceil(N/1) = N rows and getTotalSize() to exceed browser CSS height limits.
-const { width: containerWidth } = useElementBounding(scrollContainerRef);
-
-watch(containerWidth, (width) => {
-	if (width <= 0)
-		return;
-
-	const isMobile = width < 600;
-	const columns = isMobile
-		? Math.min(3, Math.max(1, Math.floor(width / 144)))
-		: Math.max(1, Math.floor(width / 232));
-	const cardPadding = isMobile ? 8 : 16;
-	const rowGap = isMobile ? 4 : 20;
-	const cardWidth = isMobile ? width / columns : 232;
-	const imageWidth = cardWidth - (cardPadding * 2);
-	const cardHeight = isMobile
-		? imageWidth * 1.5 + cardPadding + 36
-		: 372;
-
-	set(posterCardWidth, cardWidth);
-	set(posterCardHeight, cardHeight);
-	set(gridRowGap, rowGap);
-	set(gridItems, columns);
-	set(gridPaddingLeft, Math.max(0, (width - columns * cardWidth) / 2));
-
-	set(posterCardWidthCss, `${cardWidth}px`);
-	set(posterImageWidthCss, `${imageWidth}px`);
-	set(posterCardPaddingCss, `${cardPadding}px`);
-	rowVirtualizer.value.measure();
-	if (!get(hasRunInitialPageReady)) {
-		set(hasRunInitialPageReady, true);
-		if (!get(controlled))
-			nextTick(() => onPageReady()).catch((error) => Log.error('Failed to initialize poster table after layout', error));
-	}
-});
-
 function onPageReady() {
 	if (get(controlled))
 		return;
@@ -301,7 +309,6 @@ function onPageReady() {
 	if (requestedScrollIndex <= 0 && lastMediaItemViewed && lastMediaItemViewed.sortIndex > 0)
 		scrollToIndex(lastMediaItemViewed.sortIndex - 1);
 }
-
 async function highlightPendingMedia() {
 	if (get(controlled))
 		return;
@@ -321,7 +328,6 @@ async function highlightPendingMedia() {
 		mediaOverviewStore.consumePendingMediaHighlight(pendingMediaHighlightId);
 	}
 }
-
 async function onOpenMediaDetails(mediaItem: PlexMediaSlimDTO) {
 	if (get(controlled))
 		return;
@@ -343,7 +349,6 @@ async function onOpenMediaDetails(mediaItem: PlexMediaSlimDTO) {
 		navigatingToDetails = false;
 	}
 }
-
 function requestControlledRange(sync: boolean): void {
 	const virtualRows = get(rowVirtualizer).getVirtualItems();
 	const firstRow = virtualRows.at(0)?.index ?? 0;
@@ -361,10 +366,6 @@ function requestControlledRange(sync: boolean): void {
 	set(requestedRange, rangeKey);
 	useSubscription(props.requestRange(start, end).subscribe());
 }
-
-// Throttled page-prefetch during scrolling — avoids firing HTTP requests on every scroll tick.
-let prefetchTimer: ReturnType<typeof setTimeout> | null = null;
-
 function requestPagesAroundViewport() {
 	if (get(controlled) || prefetchTimer)
 		return;
@@ -390,7 +391,6 @@ function requestPagesAroundViewport() {
 		useSubscription(mediaOverviewStore.requestRange(prefetchStart, prefetchEnd).subscribe());
 	}, 200);
 }
-
 function scrollToIndex(index: number, highlight = true) {
 	const container = getScrollElement();
 	if (!container) {
@@ -422,20 +422,6 @@ async function focusItem(index: number): Promise<boolean> {
 	return true;
 }
 
-watch(() => props.rangeContextKey, () => {
-	set(requestedRange, '');
-	if (get(controlled))
-		nextTick(() => requestControlledRange(false)).catch((error) => Log.error('Failed to request updated controlled poster range', error));
-});
-watch(() => props.itemCount, () => {
-	if (get(controlled))
-		nextTick(() => requestControlledRange(false)).catch((error) => Log.error('Failed to request updated controlled poster range', error));
-});
-watch(() => props.initialScrollIndex, (index) => {
-	if (get(controlled) && index > 0)
-		nextTick(() => scrollToIndex(index, false)).catch((error) => Log.error('Failed to scroll to initial controlled poster index', error));
-});
-
 onMounted(() => {
 	if (get(controlled)) {
 		if (props.initialScrollIndex > 0)
@@ -455,15 +441,14 @@ onMounted(() => {
 		scrollToIndex(index, highlight);
 	}));
 });
-
-defineExpose({ scrollToIndex, focusItem });
-
 onBeforeUnmount(() => {
 	if (persistTimer)
 		clearTimeout(persistTimer);
 	if (prefetchTimer)
 		clearTimeout(prefetchTimer);
 });
+
+defineExpose({ scrollToIndex, focusItem });
 </script>
 
 <style lang="scss">

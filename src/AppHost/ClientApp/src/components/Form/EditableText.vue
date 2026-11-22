@@ -40,7 +40,6 @@
 <script setup lang="ts">
 import type { IQTextProps } from '@interfaces';
 
-const editMode = ref(false);
 const model = defineModel<string>();
 
 const props = withDefaults(
@@ -56,6 +55,8 @@ const props = withDefaults(
 		cy: '',
 	},
 );
+
+const editMode = ref(false);
 
 const inputClasses = computed(() => ({
 	[`text-${props.size}`]: true,
