@@ -1,7 +1,7 @@
 {
   "version": 1,
   "dependencies": {
-    "net10.0": {
+    "net11.0": {
       "CSharpier.MsBuild": {
         "type": "Direct",
         "requested": "[1.4.0, )",
@@ -202,11 +202,6 @@
           "System.Reactive": "6.0.1"
         }
       },
-      "System.ComponentModel.Annotations": {
-        "type": "Transitive",
-        "resolved": "5.0.0",
-        "contentHash": "dMkqfy2el8A8/I76n2Hi1oBFEbG1SfxD2l5nhwXV3XjlnOmwxJlQbYpJH4W51odnU9sARCSAgv7S3CyAFMkpYg=="
-      },
       "System.Reactive": {
         "type": "Transitive",
         "resolved": "7.0.0",
@@ -227,7 +222,6 @@
           "NaturalSort.Extension": "[4.4.1, )",
           "PasswordGenerator": "[2.1.0, )",
           "Reaparr.FluentResultExtensions": "[1.0.0, )",
-          "System.ComponentModel.Annotations": "[5.0.0, )",
           "System.Reactive": "[7.0.0, )"
         }
       },

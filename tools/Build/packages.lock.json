@@ -97,11 +97,6 @@
           "TestableIO.System.IO.Abstractions.Wrappers": "23.0.1"
         }
       },
-      "ByteSize": {
-        "type": "Transitive",
-        "resolved": "2.1.2",
-        "contentHash": "dSiH9B0apNU5abV3OVUs3eTfHiidEAa8IMOLGW0eEl5tB8Ba1ngkGC7RT/RGy61ifGcPzCe7DMP78KB8pA5kNg=="
-      },
       "FastEndpoints.Attributes": {
         "type": "Transitive",
         "resolved": "9.0.0",
@@ -139,59 +134,6 @@
         "type": "Transitive",
         "resolved": "9.0.0",
         "contentHash": "wpCiIZqHe7i7RUYrquqL5KuTNMMt7FueypItNp1Q1vC9v3RNMCnOLbNqIXGUhV8B8AW+N7WhvO2fl7z1LOn3gQ=="
-      },
-      "Flurl": {
-        "type": "Transitive",
-        "resolved": "4.0.0",
-        "contentHash": "rpts69yYgvJqg6PPgqShBQEZ4aNzWQqWpWppcT0oDWxDCIsBqiod4pj6LQZdhk+1OozLFagemldMRACdHF3CsA=="
-      },
-      "Google.Protobuf": {
-        "type": "Transitive",
-        "resolved": "3.30.1",
-        "contentHash": "HeWXDQBabQn/sCGicbeLJ0HMunknfC4FdLrOQOsaMJHcpqx3HVIpyyJqTrqJlWnza870twhOb+rBcaTiC/TlNA=="
-      },
-      "Grpc.Core.Api": {
-        "type": "Transitive",
-        "resolved": "2.70.0",
-        "contentHash": "66UotvWcSIq41oiQhLWcQACyKPM4umxXNiht5DQTLZJfNwEswWOcS7Z0xIEHyNIBE7ZpjotH22bEjTkvhPxmVw=="
-      },
-      "Grpc.Net.Client": {
-        "type": "Transitive",
-        "resolved": "2.70.0",
-        "contentHash": "xNv0FFCVJa5S1beUtye82WFCxKThuE1jbN8DO1x1Rj8VSIWXLBUmfSID5a1fGzsU2R/EMfwPoWclJ2RMfQuGXw==",
-        "dependencies": {
-          "Grpc.Net.Common": "2.70.0",
-          "Microsoft.Extensions.Logging.Abstractions": "6.0.0"
-        }
-      },
-      "Grpc.Net.Common": {
-        "type": "Transitive",
-        "resolved": "2.70.0",
-        "contentHash": "rBdEUMyCwa+iB8mqC6JKyPbj3SBHHkReJj/yy/XKJI63GcG6w9DJMMGTVcYHqq4Ci2W4m0HT4jt2pFfFscar8g==",
-        "dependencies": {
-          "Grpc.Core.Api": "2.70.0"
-        }
-      },
-      "JetBrains.Annotations": {
-        "type": "Transitive",
-        "resolved": "2025.2.4",
-        "contentHash": "TwbgxAkXxY+vNEhNVx/QXjJ4vqxmepOjsgRvvImQPbHkHMMb4W+ahL3laMsxXKtNT7iMy+E1B3xkqao2hf1n3A=="
-      },
-      "Microsoft.AspNetCore.Http.Abstractions": {
-        "type": "Transitive",
-        "resolved": "2.3.13",
-        "contentHash": "V40/i3RzwjOpC7aUXkWYac45lD5o/HH/BF6KDgWpto/YWGHW9oHd4OSYg+WkaZxZYXxF4t2fRUWA4KyyABxw8g==",
-        "dependencies": {
-          "Microsoft.AspNetCore.Http.Features": "2.3.12"
-        }
-      },
-      "Microsoft.AspNetCore.Http.Features": {
-        "type": "Transitive",
-        "resolved": "2.3.12",
-        "contentHash": "Lq3xByu3oBaIPJrKhL8NIRTwQO177NhztvBG6FBoajnxeDIZn2N5vzfDjcp7eQcyPbWPm9G1yMEi9ah+yMR7kw==",
-        "dependencies": {
-          "Microsoft.Extensions.Primitives": "8.0.0"
-        }
       },
       "Microsoft.Extensions.Configuration": {
         "type": "Transitive",
@@ -290,33 +232,10 @@
         "resolved": "10.0.15",
         "contentHash": "NjzLiZ1/bYx8VwLqHxNnCfDTQQbCY7P1dwT7JM5FiANiaSfI6UKHi0/sla+jyRbOIbPAMJkhWQ/9pH3tMf+IrQ=="
       },
-      "NaturalSort.Extension": {
-        "type": "Transitive",
-        "resolved": "4.4.1",
-        "contentHash": "uDl8qdX7SGEGAvczy0qZw00ekEmCFz1KAyDf9H6AykZhplfWT9xfZDryGGp0HkGkeUZ6HL4iLUjZp/NgciktGw=="
-      },
-      "PasswordGenerator": {
-        "type": "Transitive",
-        "resolved": "2.1.0",
-        "contentHash": "G70cCeAOYCk/uTuFw5PBGpYY9kmBZyzld7tphachvyU514PowMRDYyKwTefxIHNGWrhXY2d1DV5B1tDEnTtY3A=="
-      },
       "Serilog": {
         "type": "Transitive",
-        "resolved": "4.3.1",
-        "contentHash": "savYe7h5yRlkqBVOwP8cIRDOdqKiPmYCU4W87JH38sBmcKD5EBoXvQIw6bNEvZ/pTe1gsiye3VFCzBsoppGkXQ=="
-      },
-      "Serilog.Enrichers.Sensitive": {
-        "type": "Transitive",
-        "resolved": "2.1.0",
-        "contentHash": "nlaEYMoHjJqncjQgc0Nv4LOIkAwUt4Nvmx3EMNjY4MKC7QqZs9zB0v/NwFnaWzLF7qztc7mna1bjn20Auohu0g=="
-      },
-      "Serilog.Expressions": {
-        "type": "Transitive",
-        "resolved": "5.0.0",
-        "contentHash": "QhZjXtUcA2QfQRA60m+DfyIfidKsQV7HBstbYEDqzJKMbJH/KnKthkkjciRuYrmFE+scWv1JibC5LlXrdtOUmw==",
-        "dependencies": {
-          "Serilog": "4.0.0"
-        }
+        "resolved": "4.3.0",
+        "contentHash": "+cDryFR0GRhsGOnZSKwaDzRRl4MupvJ42FhCE4zhQRVanX0Jpg6WuCBk59OVhVDPmab1bB+nRykAnykYELA9qQ=="
       },
       "Serilog.Extensions.Hosting": {
         "type": "Transitive",
@@ -365,14 +284,6 @@
           "Serilog": "4.0.0"
         }
       },
-      "Serilog.Sinks.Console.LogThemes": {
-        "type": "Transitive",
-        "resolved": "0.4.0",
-        "contentHash": "w7OLGCJXM7QPvacr52IyKI9lQIEo7VE9az7lyDH7sfeygpQGQbxMzU7uWFVDMYoQv+XRZ0KFvy8jGZQtjjH8Ew==",
-        "dependencies": {
-          "Serilog.Sinks.Console": "4.1.0"
-        }
-      },
       "Serilog.Sinks.Debug": {
         "type": "Transitive",
         "resolved": "3.0.0",
@@ -389,34 +300,6 @@
           "Serilog": "4.2.0"
         }
       },
-      "Serilog.Sinks.OpenTelemetry": {
-        "type": "Transitive",
-        "resolved": "4.2.0",
-        "contentHash": "PzMCyE5G19tjr5IZEi5qg+4UU5QrxBEoBEMu/hhYybTrGKXqUDiSGWKZNUDBgelaVKqLADlsmlJVyKce5SyPrg==",
-        "dependencies": {
-          "Google.Protobuf": "3.30.1",
-          "Grpc.Net.Client": "2.70.0",
-          "Serilog": "4.2.0"
-        }
-      },
-      "Serilog.Sinks.Seq": {
-        "type": "Transitive",
-        "resolved": "9.0.0",
-        "contentHash": "aNU8A0K322q7+voPNmp1/qNPH+9QK8xvM1p72sMmCG0wGlshFzmtDW9QnVSoSYCj0MgQKcMOlgooovtBhRlNHw==",
-        "dependencies": {
-          "Serilog": "4.2.0",
-          "Serilog.Sinks.File": "6.0.0"
-        }
-      },
-      "Serilog.Sinks.TestCorrelator": {
-        "type": "Transitive",
-        "resolved": "4.0.0",
-        "contentHash": "jGedEvMtohtUTmRix+P4aR7bsz9h+LqCIrF9oBPz90Q68r2pCeXkipWD3dvLopTFsNWSJDHlZpkosPy/xFUshg==",
-        "dependencies": {
-          "Serilog": "3.1.1",
-          "System.Reactive": "6.0.1"
-        }
-      },
       "Spectre.Console": {
         "type": "Transitive",
         "resolved": "0.55.0",
@@ -429,16 +312,6 @@
         "type": "Transitive",
         "resolved": "0.55.0",
         "contentHash": "GIfgOvuF8MpU52bprhwtDEtx0gmVIGOepM8bw0lH/TSMD0rg1Xp+5Y53kPG8rFVdcpbNANlhDQ5mEVVPO3/2Tg=="
-      },
-      "System.ComponentModel.Annotations": {
-        "type": "Transitive",
-        "resolved": "5.0.0",
-        "contentHash": "dMkqfy2el8A8/I76n2Hi1oBFEbG1SfxD2l5nhwXV3XjlnOmwxJlQbYpJH4W51odnU9sARCSAgv7S3CyAFMkpYg=="
-      },
-      "System.Reactive": {
-        "type": "Transitive",
-        "resolved": "7.0.0",
-        "contentHash": "VYaSP2Kt+45GFnr3q7c/b4awT48VvueOJV4jPjdUXi5MxC9mSUy+HkJYtm8rGZ6fC3tNHG9gBu/YwNAR/FYqhg=="
       },
       "TestableIO.System.IO.Abstractions": {
         "type": "Transitive",
@@ -461,68 +334,11 @@
         "resolved": "11.0.0",
         "contentHash": "bHE3UgieMizRsrzHYsWOLGMVjDmy0yx1PTv4QMgoAi3GU+vw2tJZ/jR5woIZ6Et6H0Hvhwriv6XSgwoZV9bU0A=="
       },
-      "Xdg.Directories": {
-        "type": "Transitive",
-        "resolved": "0.1.2",
-        "contentHash": "Zhw6wmXwdLkhCvgBfVd9D8UL62IF2xnmbWDckQVoZMT9lBKCuVLwaVrkXhhJtP6pxcRaf7caauNCWOUngoPNsQ=="
-      },
       "Reaparr.Domain": {
-        "type": "Project",
-        "dependencies": {
-          "ByteSize": "[2.1.2, )",
-          "FastEndpoints": "[9.0.0, )",
-          "Flurl": "[4.0.0, )",
-          "JetBrains.Annotations": "[2025.2.4, )",
-          "NaturalSort.Extension": "[4.4.1, )",
-          "PasswordGenerator": "[2.1.0, )",
-          "Reaparr.FluentResultExtensions": "[1.0.0, )",
-          "System.ComponentModel.Annotations": "[5.0.0, )",
-          "System.Reactive": "[7.0.0, )"
-        }
+        "type": "Project"
       },
       "Reaparr.Environment": {
-        "type": "Project",
-        "dependencies": {
-          "Autofac": "[9.1.0, )",
-          "Serilog": "[4.3.1, )",
-          "Xdg.Directories": "[0.1.2, )"
-        }
-      },
-      "Reaparr.FluentResultExtensions": {
-        "type": "Project",
-        "dependencies": {
-          "FluentValidation": "[12.1.1, )",
-          "Microsoft.Extensions.Logging.Abstractions": "[10.0.13, )",
-          "Reaparr.FluentResults": "[1.0.0, )",
-          "Reaparr.Logging": "[1.0.0, )"
-        }
-      },
-      "Reaparr.FluentResults": {
-        "type": "Project",
-        "dependencies": {
-          "Microsoft.Extensions.Logging.Abstractions": "[10.0.13, )",
-          "Serilog": "[4.3.1, )"
-        }
-      },
-      "Reaparr.Logging": {
-        "type": "Project",
-        "dependencies": {
-          "Autofac": "[9.1.0, )",
-          "Microsoft.AspNetCore.Http.Abstractions": "[2.3.13, )",
-          "Microsoft.Extensions.Logging.Abstractions": "[10.0.13, )",
-          "Reaparr.Environment": "[1.0.0, )",
-          "Reaparr.FluentResults": "[1.0.0, )",
-          "Serilog": "[4.3.1, )",
-          "Serilog.Enrichers.Sensitive": "[2.1.0, )",
-          "Serilog.Expressions": "[5.0.0, )",
-          "Serilog.Sinks.Console": "[6.1.1, )",
-          "Serilog.Sinks.Console.LogThemes": "[0.4.0, )",
-          "Serilog.Sinks.Debug": "[3.0.0, )",
-          "Serilog.Sinks.File": "[7.0.0, )",
-          "Serilog.Sinks.OpenTelemetry": "[4.2.0, )",
-          "Serilog.Sinks.Seq": "[9.0.0, )",
-          "Serilog.Sinks.TestCorrelator": "[4.0.0, )"
-        }
+        "type": "Project"
       }
     }
   }

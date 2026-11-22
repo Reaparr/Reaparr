@@ -1,7 +1,7 @@
 {
   "version": 1,
   "dependencies": {
-    "net10.0": {
+    "net11.0": {
       "CSharpier.MsBuild": {
         "type": "Direct",
         "requested": "[1.4.0, )",
@@ -33,7 +33,7 @@
         "contentHash": "L0MwiL1iPZ/JzQHVZbU/nppOWmWzusq3I0b3jv1YDNsLBERxQct8PHLRH1rcX3OhykZn9B8S9UtKBpuBKUlYLQ==",
         "dependencies": {
           "FastEndpoints": "9.0.0",
-          "Microsoft.AspNetCore.Authentication.JwtBearer": "10.0.15"
+          "Microsoft.AspNetCore.Authentication.JwtBearer": "11.0.0"
         }
       },
       "Meziantou.Analyzer": {
@@ -220,8 +220,8 @@
       },
       "Microsoft.AspNetCore.Authentication.JwtBearer": {
         "type": "Transitive",
-        "resolved": "10.0.15",
-        "contentHash": "Y8VbPrQuABpTkMrqO/K2URdfqBBheri/YDcB+sO530arpqsy7vsd/go/YfEP8XaRkACWPQV2gPxedl7dnxp0zg==",
+        "resolved": "11.0.0",
+        "contentHash": "iWIWAOw3TGa8OxAForwBWlkp/VCelVTYbSc633I6E8zfpjG456xOtSMGIiSEU2E6rdSfJS1vf+EySP19efab8g==",
         "dependencies": {
           "Microsoft.IdentityModel.Protocols.OpenIdConnect": "8.19.2"
         }
@@ -494,11 +494,6 @@
           "SQLitePCLRaw.core": "2.1.13"
         }
       },
-      "System.ComponentModel.Annotations": {
-        "type": "Transitive",
-        "resolved": "5.0.0",
-        "contentHash": "dMkqfy2el8A8/I76n2Hi1oBFEbG1SfxD2l5nhwXV3XjlnOmwxJlQbYpJH4W51odnU9sARCSAgv7S3CyAFMkpYg=="
-      },
       "System.IdentityModel.Tokens.Jwt": {
         "type": "Transitive",
         "resolved": "8.19.2",
@@ -576,7 +571,6 @@
           "NaturalSort.Extension": "[4.4.1, )",
           "PasswordGenerator": "[2.1.0, )",
           "Reaparr.FluentResultExtensions": "[1.0.0, )",
-          "System.ComponentModel.Annotations": "[5.0.0, )",
           "System.Reactive": "[7.0.0, )"
         }
       },

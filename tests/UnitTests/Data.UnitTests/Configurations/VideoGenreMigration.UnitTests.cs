@@ -25,11 +25,11 @@ public class VideoGenreMigrationUnitTests : BaseUnitTest
         const int genreId = 1000000042;
         const string genreName = "Migration sentinel genre";
         const string genreKey = "3eb501d482b8480a9b0e672c079d126f";
-        await context.Database.ExecuteSqlInterpolatedAsync(
+        await context.Database.ExecuteSqlAsync(
             $"INSERT INTO PlexGenres (Id, Name, Key) VALUES ({genreId}, {genreName}, {genreKey})",
             CancellationToken
         );
-        await context.Database.ExecuteSqlInterpolatedAsync(
+        await context.Database.ExecuteSqlAsync(
             $"INSERT INTO PlexLibraryGenres (PlexGenreId, PlexLibraryId) VALUES ({genreId}, {libraryId})",
             CancellationToken
         );

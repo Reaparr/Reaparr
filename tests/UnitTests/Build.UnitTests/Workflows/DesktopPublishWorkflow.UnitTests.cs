@@ -504,7 +504,7 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
         result.Value.ShouldBe(0);
         await using var assetsStream = fileSystem.File.OpenRead(assetsPath);
         using var assets = await JsonDocument.ParseAsync(assetsStream, cancellationToken: CancellationToken);
-        assets.RootElement.GetProperty("targets").TryGetProperty("net10.0/linux-x64", out _).ShouldBeTrue();
+        assets.RootElement.GetProperty("targets").TryGetProperty("net11.0/linux-x64", out _).ShouldBeTrue();
         fileSystem
             .File.Exists(fileSystem.Path.Combine(paths.PublishDirectory("linux-x64"), "AppHost.dll"))
             .ShouldBeTrue();
@@ -807,7 +807,7 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
             <Project Sdk="Microsoft.NET.Sdk">
               <PropertyGroup>
                 <OutputType>Exe</OutputType>
-                <TargetFramework>net10.0</TargetFramework>
+                <TargetFramework>net11.0</TargetFramework>
                 <RuntimeIdentifier>linux-x64</RuntimeIdentifier>
                 <UseAppHost>false</UseAppHost>
                 <SelfContained>false</SelfContained>

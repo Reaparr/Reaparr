@@ -33,14 +33,16 @@ public sealed class DownloadTaskPhotoFolderConfiguration : IEntityTypeConfigurat
             .HasFilter("\"ParentId\" IS NULL");
         builder.HasIndex(x => new { x.ParentId, x.RelativePath }).IsUnique().HasFilter("\"ParentId\" IS NOT NULL");
         builder.HasIndex(x => x.ParentId);
-        builder.ToTable("DownloadTaskPhotoFolders", tableBuilder => tableBuilder.HasCheckConstraint(
+        builder.ToTable("DownloadTaskPhotoFolders", tableBuilder =>
+            tableBuilder.HasCheckConstraint(
                 "CK_DownloadTaskPhotoFolders_RootShape",
                 """
                 ("ParentId" IS NULL AND "RelativePath" = '')
                 OR
                 ("ParentId" IS NOT NULL AND "RelativePath" <> '')
                 """
-            ));
+            )
+        );
 
         builder
             .HasMany(x => x.Children)

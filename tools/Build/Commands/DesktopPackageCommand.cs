@@ -5,7 +5,7 @@ namespace Reaparr.Build;
 
 internal sealed class DesktopPackageCommand(ICommandExecutor commandExecutor) : AsyncCommand<DesktopCommandSettings>
 {
-    protected override async Task<int> ExecuteAsync(
+    public override async Task<int> ExecuteAsync(
         CommandContext context,
         DesktopCommandSettings settings,
         CancellationToken cancellationToken

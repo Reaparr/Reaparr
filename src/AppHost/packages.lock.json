@@ -1,7 +1,7 @@
 {
   "version": 1,
   "dependencies": {
-    "net10.0": {
+    "net11.0": {
       "Autofac.Extensions.DependencyInjection": {
         "type": "Direct",
         "requested": "[11.0.0, )",
@@ -25,7 +25,7 @@
         "dependencies": {
           "FastEndpoints": "9.0.0",
           "FluentValidation": "12.2.0",
-          "Microsoft.AspNetCore.OpenApi": "10.0.15"
+          "Microsoft.AspNetCore.OpenApi": "11.0.0"
         }
       },
       "FastEndpoints.Security": {
@@ -35,7 +35,7 @@
         "contentHash": "L0MwiL1iPZ/JzQHVZbU/nppOWmWzusq3I0b3jv1YDNsLBERxQct8PHLRH1rcX3OhykZn9B8S9UtKBpuBKUlYLQ==",
         "dependencies": {
           "FastEndpoints": "9.0.0",
-          "Microsoft.AspNetCore.Authentication.JwtBearer": "10.0.15"
+          "Microsoft.AspNetCore.Authentication.JwtBearer": "11.0.0"
         }
       },
       "Meziantou.Analyzer": {
@@ -366,8 +366,8 @@
       },
       "Microsoft.AspNetCore.Authentication.JwtBearer": {
         "type": "Transitive",
-        "resolved": "10.0.15",
-        "contentHash": "Y8VbPrQuABpTkMrqO/K2URdfqBBheri/YDcB+sO530arpqsy7vsd/go/YfEP8XaRkACWPQV2gPxedl7dnxp0zg==",
+        "resolved": "11.0.0",
+        "contentHash": "iWIWAOw3TGa8OxAForwBWlkp/VCelVTYbSc633I6E8zfpjG456xOtSMGIiSEU2E6rdSfJS1vf+EySP19efab8g==",
         "dependencies": {
           "Microsoft.IdentityModel.Protocols.OpenIdConnect": "8.19.2"
         }
@@ -390,10 +390,10 @@
       },
       "Microsoft.AspNetCore.OpenApi": {
         "type": "Transitive",
-        "resolved": "10.0.15",
-        "contentHash": "pptFDPMWyPDDtt68s/HsvLYeHJ0WQtntjyve6ztp/5MrLOEzdZvafYIyWSeErtexIGaB8XGYCnnUK8T/Vn4MwQ==",
+        "resolved": "11.0.0",
+        "contentHash": "B5nHzRjpd5BhKN1ijqc2X4QVuQCCbQAWL/q3wpJgUBZou60IT0wgi1eiU3fF/DAj21RgBHXYAVNCV/AJ9y1GKw==",
         "dependencies": {
-          "Microsoft.OpenApi": "[2.13.0, 3.0.0)"
+          "Microsoft.OpenApi": "[3.11.0, 4.0.0)"
         }
       },
       "Microsoft.Bcl.Cryptography": {
@@ -535,8 +535,8 @@
       },
       "Microsoft.OpenApi": {
         "type": "Transitive",
-        "resolved": "2.13.0",
-        "contentHash": "wavlgBYnn7uU/ZGhFHNl0UlDOlwz+6KRduKkqdCCbfxxANaQ1rmBpETVGdwXanAM6twQOxsvI3CBEGF4OScbeQ=="
+        "resolved": "3.11.0",
+        "contentHash": "kvQz+mL/fnDw2VaE8zMyQhbMv7FmOYUydIhCVNKxQdrLu9XiMT/07DHwJ5YkRO2uzcxTFvMAKFKKywxoyLKHcA=="
       },
       "NaturalSort.Extension": {
         "type": "Transitive",
@@ -772,11 +772,6 @@
           "SQLitePCLRaw.core": "3.0.3"
         }
       },
-      "System.ComponentModel.Annotations": {
-        "type": "Transitive",
-        "resolved": "5.0.0",
-        "contentHash": "dMkqfy2el8A8/I76n2Hi1oBFEbG1SfxD2l5nhwXV3XjlnOmwxJlQbYpJH4W51odnU9sARCSAgv7S3CyAFMkpYg=="
-      },
       "System.IdentityModel.Tokens.Jwt": {
         "type": "Transitive",
         "resolved": "8.19.2",
@@ -901,7 +896,6 @@
           "NaturalSort.Extension": "[4.4.1, )",
           "PasswordGenerator": "[2.1.0, )",
           "Reaparr.FluentResultExtensions": "[1.0.0, )",
-          "System.ComponentModel.Annotations": "[5.0.0, )",
           "System.Reactive": "[7.0.0, )"
         }
       },

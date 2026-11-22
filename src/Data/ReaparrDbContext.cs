@@ -232,7 +232,7 @@ public sealed class ReaparrDbContext : DbContext, IReaparrDbContext, IReaparrDbC
     public Task<int> ExecuteSqlInterpolatedAsync(
         FormattableString sql,
         CancellationToken cancellationToken = default
-    ) => Database.ExecuteSqlInterpolatedAsync(sql, cancellationToken);
+    ) => Database.ExecuteSqlAsync(sql, cancellationToken);
 
     /// <inheritdoc/>
     public IQueryable<T> SqlQuery<T>(FormattableString sql) => Database.SqlQuery<T>(sql);

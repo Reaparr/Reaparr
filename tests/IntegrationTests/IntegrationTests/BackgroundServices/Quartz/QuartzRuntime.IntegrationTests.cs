@@ -109,26 +109,26 @@ public class QuartzRuntimeIntegrationTests : BaseIntegrationTests
         var payload = new Dictionary<string, object> { ["payload"] = "original", ["fail"] = false };
         var serializedPayload = serializer.Serialize(payload);
         var jobClass = typeof(ProbeJob).AssemblyQualifiedName!;
-        await database.Database.ExecuteSqlInterpolatedAsync(
+        await database.Database.ExecuteSqlAsync(
             $"INSERT INTO QRTZ_JOB_DETAILS (SCHED_NAME, JOB_NAME, JOB_GROUP, JOB_CLASS_NAME, IS_DURABLE, IS_NONCONCURRENT, IS_UPDATE_DATA, REQUESTS_RECOVERY, JOB_DATA) VALUES ('Reaparr Scheduler', {jobKey.Name}, {jobKey.Group}, {jobClass}, 1, 0, 0, 0, {serializedPayload})",
             CancellationToken
         );
-        await database.Database.ExecuteSqlInterpolatedAsync(
+        await database.Database.ExecuteSqlAsync(
             $"INSERT INTO QRTZ_JOB_DETAILS (SCHED_NAME, JOB_NAME, JOB_GROUP, JOB_CLASS_NAME, IS_DURABLE, IS_NONCONCURRENT, IS_UPDATE_DATA, REQUESTS_RECOVERY) VALUES ('Reaparr Scheduler', {controlKey.Name}, {controlKey.Group}, {jobClass}, 1, 0, 0, 0)",
             CancellationToken
         );
         var futureTime = DateTimeOffset.UtcNow.AddDays(1).ToUnixTimeMilliseconds();
-        await database.Database.ExecuteSqlInterpolatedAsync(
+        await database.Database.ExecuteSqlAsync(
             $"INSERT INTO QRTZ_TRIGGERS (SCHED_NAME, TRIGGER_NAME, TRIGGER_GROUP, JOB_NAME, JOB_GROUP, NEXT_FIRE_TIME, PRIORITY, TRIGGER_STATE, TRIGGER_TYPE, START_TIME, MISFIRE_INSTR) VALUES ('Reaparr Scheduler', {triggerKey.Name}, {triggerKey.Group}, {jobKey.Name}, {jobKey.Group}, {futureTime}, 5, 'PAUSED', 'SIMPLE', {futureTime}, 0)",
             CancellationToken
         );
-        await database.Database.ExecuteSqlInterpolatedAsync(
+        await database.Database.ExecuteSqlAsync(
             $"INSERT INTO QRTZ_SIMPLE_TRIGGERS (SCHED_NAME, TRIGGER_NAME, TRIGGER_GROUP, REPEAT_COUNT, REPEAT_INTERVAL, TIMES_TRIGGERED) VALUES ('Reaparr Scheduler', {triggerKey.Name}, {triggerKey.Group}, 0, 0, 0)",
             CancellationToken
         );
         await database.Database.MigrateAsync(CancellationToken);
         var now = DateTimeOffset.UtcNow;
-        await database.Database.ExecuteSqlInterpolatedAsync(
+        await database.Database.ExecuteSqlAsync(
             $"""
             INSERT INTO QRTZ_EXECUTION_HISTORY
                 (SCHED_NAME, ENTRY_ID, INSTANCE_NAME, JOB_NAME, JOB_GROUP, TRIGGER_NAME, TRIGGER_GROUP, FIRED_TIME, RUN_TIME, SUCCEEDED)

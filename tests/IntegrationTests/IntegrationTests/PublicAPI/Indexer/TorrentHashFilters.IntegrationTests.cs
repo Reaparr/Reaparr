@@ -15,7 +15,8 @@ public class TorrentHashFiltersIntegrationTests : BaseIntegrationTests
     public async Task ShouldFilterAuthenticatedTorrentHashesWithoutChangingWireFieldsOrTasks()
     {
         // Arrange
-        using var container = await CreateContainer(new Seed(8641), config => config.DatabaseOptions = database =>
+        using var container = await CreateContainer(new Seed(8641), config =>
+            config.DatabaseOptions = database =>
             {
                 database.PlexServerCount = 1;
                 database.MovieDownloadTasksCount = 2;
@@ -23,7 +24,8 @@ public class TorrentHashFiltersIntegrationTests : BaseIntegrationTests
                 database.TvShowSeasonDownloadTasksCount = 1;
                 database.TvShowEpisodeDownloadTasksCount = 1;
                 database.RadarrIntegrationCount = 2;
-            });
+            }
+        );
         using var db = container.DbContext;
         var integrations = await db.RadarrIntegrations.AsTracking().OrderBy(x => x.Id).ToListAsync(CancellationToken);
         integrations.Select(x => x.Id).Distinct().Count().ShouldBe(2);

@@ -183,7 +183,7 @@ public class GetAllMediaByTypeEndpointUnitTests
         telemetryRequest.PageSize.ShouldBe(30);
         telemetryRequest.Search.ShouldBe("Alpha Beta");
         telemetryRequest.Sort.ShouldBe("title:desc");
-        telemetryFilter.ShouldBe("SearchTitle:contains:alpha&SearchTitle:contains:beta");
+        telemetryFilter.ShouldBe("SearchTitle:contains:\"alpha\"&SearchTitle:contains:\"beta\"");
         telemetryResult.ShouldNotBeNull().IsSuccess.ShouldBeTrue();
         telemetryResult.Errors.Count.ShouldBe(0);
         telemetryResult.Value.TotalCount.ShouldBe(2);

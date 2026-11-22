@@ -19,6 +19,8 @@ public class Boot : IHostedService
     private readonly IDownloadQueue _downloadQueue;
     private readonly IMoveDownloadFileQueue _moveDownloadFileQueue;
     private readonly ITelemetry _telemetry;
+    private readonly Lock _stopGate = new();
+    private Task? _stopTask;
 
     #endregion
 
@@ -127,7 +129,13 @@ public class Boot : IHostedService
     }
 
     /// <inheritdoc/>
-    public async Task StopAsync(CancellationToken cancellationToken)
+    public Task StopAsync(CancellationToken cancellationToken)
+    {
+        lock (_stopGate)
+            return _stopTask ??= StopCoreAsync(cancellationToken);
+    }
+
+    private async Task StopCoreAsync(CancellationToken cancellationToken)
     {
         _log.Here().Information("Shutting down the container");
 
