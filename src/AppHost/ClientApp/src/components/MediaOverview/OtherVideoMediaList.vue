@@ -60,11 +60,11 @@ const props = defineProps<{ mediaItem: PlexMediaDTO }>();
 const { t } = useI18n();
 const mediaOverviewStore = useMediaOverviewStore();
 
-const selection = computed<ISelection>(() => ({
-	indexKey: props.mediaItem.id,
+const selection = ref<ISelection>({
+	indexKey: 0,
 	keys: [],
 	allSelected: false,
-}));
+});
 const mediaRows = computed((): PlexMediaSlimDTO[] => props.mediaItem.mediaData.map((mediaData) => ({
 	id: mediaData.id,
 	title: mediaData.fileName,
@@ -101,7 +101,7 @@ watch(() => props.mediaItem, () => {
 		keys: [],
 		allSelected: false,
 	});
-}, { flush: 'sync', deep: true });
+}, { immediate: true, flush: 'sync', deep: true });
 watch(selectedCount, (count) => {
 	mediaOverviewStore.$patch({ downloadButtonVisible: count > 0 });
 }, { immediate: true });
