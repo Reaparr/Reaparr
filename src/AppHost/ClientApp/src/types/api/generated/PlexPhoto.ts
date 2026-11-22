@@ -90,10 +90,11 @@ export class PlexPhoto {
    * @secure
    */
   searchPhotoAssetsEndpoint = (
-    query?: {
+    query: {
       /** @format int32 */
       page?: null | number;
-      q?: null | string;
+      /** @minLength 1 */
+      q: string;
       /** @format int32 */
       size?: null | number;
       sort?: null | string;
@@ -276,10 +277,11 @@ export class PlexPhotoPaths {
     unmappedOnly?: null | boolean;
   }) => queryString.stringifyUrl({ url: `/api/PlexPhoto/assets`, query });
 
-  static searchPhotoAssetsEndpoint = (query?: {
+  static searchPhotoAssetsEndpoint = (query: {
     /** @format int32 */
     page?: null | number;
-    q?: null | string;
+    /** @minLength 1 */
+    q: string;
     /** @format int32 */
     size?: null | number;
     sort?: null | string;

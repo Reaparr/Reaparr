@@ -99,6 +99,10 @@ function cleanReturnType(value) {
         // Turn into an array
         result = result.replace(/^ListOf/, '') + '[]';
     }
+    if (value.startsWith('ResultDTOOf') && result.endsWith('Array')) {
+        const elementType = result.slice(0, -'Array'.length);
+        return `import('./${config.fileNames.dataContracts}').${elementType}[]`;
+    }
 
     if (result === 'Int32') {
         return 'number';

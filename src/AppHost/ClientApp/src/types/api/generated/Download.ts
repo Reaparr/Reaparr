@@ -159,9 +159,15 @@ export class Download {
   deleteAllDownloadTaskLogsByDownloadTaskIdEndpoint = (
     downloadTaskGuid: string,
     query: {
-      /** @format int32 */
+      /**
+       * @format int32
+       * @exclusiveMin 0
+       */
       plexLibraryId: number;
-      /** @format int32 */
+      /**
+       * @format int32
+       * @exclusiveMin 0
+       */
       plexServerId: number;
       type: DownloadTaskType;
     },
@@ -186,9 +192,15 @@ export class Download {
   getDownloadTaskLogsByDownloadTaskIdEndpoint = (
     downloadTaskGuid: string,
     query: {
-      /** @format int32 */
+      /**
+       * @format int32
+       * @exclusiveMin 0
+       */
       plexLibraryId: number;
-      /** @format int32 */
+      /**
+       * @format int32
+       * @exclusiveMin 0
+       */
       plexServerId: number;
       /** @format int32 */
       sinceId?: null | number;
@@ -336,9 +348,15 @@ export class DownloadPaths {
   static deleteAllDownloadTaskLogsByDownloadTaskIdEndpoint = (
     downloadTaskGuid: string,
     query: {
-      /** @format int32 */
+      /**
+       * @format int32
+       * @exclusiveMin 0
+       */
       plexLibraryId: number;
-      /** @format int32 */
+      /**
+       * @format int32
+       * @exclusiveMin 0
+       */
       plexServerId: number;
       type: DownloadTaskType;
     },
@@ -351,9 +369,15 @@ export class DownloadPaths {
   static getDownloadTaskLogsByDownloadTaskIdEndpoint = (
     downloadTaskGuid: string,
     query: {
-      /** @format int32 */
+      /**
+       * @format int32
+       * @exclusiveMin 0
+       */
       plexLibraryId: number;
-      /** @format int32 */
+      /**
+       * @format int32
+       * @exclusiveMin 0
+       */
       plexServerId: number;
       /** @format int32 */
       sinceId?: null | number;
