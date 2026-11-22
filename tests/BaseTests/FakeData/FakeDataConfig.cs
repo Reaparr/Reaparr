@@ -6,98 +6,98 @@ public class FakeDataConfig : BaseConfig<FakeDataConfig>
 
     public int PlexServerConnectionPerServerCount { get; set; } = 4;
 
-    public int PlexMovieLibraryCount { get; set; } = 0;
-    public int PlexTvShowLibraryCount { get; set; } = 0;
-    public int PlexMusicLibraryCount { get; set; } = 0;
-    public int PlexPhotoLibraryCount { get; set; } = 0;
-    public int PlexOtherVideoLibraryCount { get; set; } = 0;
+    public int PlexMovieLibraryCount { get; set; }
+    public int PlexTvShowLibraryCount { get; set; }
+    public int PlexMusicLibraryCount { get; set; }
+    public int PlexPhotoLibraryCount { get; set; }
+    public int PlexOtherVideoLibraryCount { get; set; }
 
     /// <summary>
     /// The number of PlexAccounts to create which will have access to every PlexServer and PlexLibrary by default.
     /// </summary>
-    public int PlexAccountCount { get; set; } = 0;
+    public int PlexAccountCount { get; set; }
 
-    public int RadarrIntegrationCount { get; set; } = 0;
+    public int RadarrIntegrationCount { get; set; }
 
-    public int SonarrIntegrationCount { get; set; } = 0;
+    public int SonarrIntegrationCount { get; set; }
 
     public bool AssignUnownedDownloadTasksToRadarrIntegration { get; set; }
 
     #region Movie
 
-    public int MovieCount { get; set; } = 0;
+    public int MovieCount { get; set; }
 
     #endregion
 
     #region TvShow
 
-    public int TvShowCount { get; set; } = 0;
+    public int TvShowCount { get; set; }
 
-    public int TvShowSeasonCount { get; set; } = 0;
+    public int TvShowSeasonCount { get; set; }
 
-    public int TvShowEpisodeCount { get; set; } = 0;
+    public int TvShowEpisodeCount { get; set; }
 
     #endregion
 
     #region Music
 
     /// <summary>Artists per music library.</summary>
-    public int MusicArtistCount { get; set; } = 0;
+    public int MusicArtistCount { get; set; }
 
     /// <summary>Albums per artist.</summary>
-    public int MusicAlbumCount { get; set; } = 0;
+    public int MusicAlbumCount { get; set; }
 
     /// <summary>Tracks per album.</summary>
-    public int MusicTrackCount { get; set; } = 0;
+    public int MusicTrackCount { get; set; }
 
     #endregion
 
     #region Photos
 
     /// <summary>Albums per photo library.</summary>
-    public int PhotoAlbumCount { get; set; } = 0;
+    public int PhotoAlbumCount { get; set; }
 
     /// <summary>Still photos per album, excluding video clips.</summary>
-    public int PhotoCount { get; set; } = 0;
+    public int PhotoCount { get; set; }
 
     /// <summary>Additional video clips per photo album.</summary>
-    public int PhotoClipCount { get; set; } = 0;
+    public int PhotoClipCount { get; set; }
 
     #endregion
 
     #region OtherVideos
 
     /// <summary>Videos per Other Videos library.</summary>
-    public int OtherVideoCount { get; set; } = 0;
+    public int OtherVideoCount { get; set; }
 
     #endregion
 
     #region DownloadTasks
 
-    public int MovieDownloadTasksCount { get; set; } = 0;
+    public int MovieDownloadTasksCount { get; set; }
 
-    public int TvShowDownloadTasksCount { get; set; } = 0;
+    public int TvShowDownloadTasksCount { get; set; }
 
-    public int TvShowSeasonDownloadTasksCount { get; set; } = 0;
+    public int TvShowSeasonDownloadTasksCount { get; set; }
 
-    public int TvShowEpisodeDownloadTasksCount { get; set; } = 0;
+    public int TvShowEpisodeDownloadTasksCount { get; set; }
 
-    public int MusicArtistDownloadTasksCount { get; set; } = 0;
+    public int MusicArtistDownloadTasksCount { get; set; }
 
-    public int MusicAlbumDownloadTasksCount { get; set; } = 0;
+    public int MusicAlbumDownloadTasksCount { get; set; }
 
-    public int MusicTrackDownloadTasksCount { get; set; } = 0;
+    public int MusicTrackDownloadTasksCount { get; set; }
 
-    public int MusicTrackFileDownloadTasksCount { get; set; } = 0;
+    public int MusicTrackFileDownloadTasksCount { get; set; }
 
-    public int PhotoFolderDownloadTasksCount { get; set; } = 0;
+    public int PhotoFolderDownloadTasksCount { get; set; }
 
     /// <summary>Files per photo-folder task.</summary>
-    public int PhotoImageDownloadTasksCount { get; set; } = 0;
+    public int PhotoImageDownloadTasksCount { get; set; }
 
-    public int OtherVideoDownloadTasksCount { get; set; } = 0;
+    public int OtherVideoDownloadTasksCount { get; set; }
 
-    public int OtherVideoFileDownloadTasksCount { get; set; } = 0;
+    public int OtherVideoFileDownloadTasksCount { get; set; }
 
     #endregion
 
