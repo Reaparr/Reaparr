@@ -62,6 +62,24 @@ public class SetServerEnabledEndpoint : Endpoint<SetServerEnabledRequest, Result
             .Where(x => x.Id == req.PlexServerId)
             .Select(x => (bool?)x.IsEnabled)
             .FirstOrDefaultAsync(ct);
+        if (previousIsEnabled == true && !req.IsEnabled)
+        {
+            var libraryIds = await _dbContext
+                .PlexLibraries.IgnoreIsEnabledFilter()
+                .Where(x => x.PlexServerId == req.PlexServerId)
+                .Select(x => x.Id)
+                .ToListAsync(ct);
+
+            foreach (var libraryId in libraryIds)
+            {
+                var cancelResult = await _commandExecutor.Send(new CancelLibrarySyncJobCommand(libraryId), ct);
+                if (cancelResult.IsCancelledOrFailed)
+                {
+                    await Send.FluentResult(cancelResult.LogIfFailed(), ct);
+                    return;
+                }
+            }
+        }
 
         var updateCount = await _dbContext
             .PlexServers.IgnoreIsEnabledFilter()

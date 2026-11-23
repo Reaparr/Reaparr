@@ -63,6 +63,95 @@ public class SetServerEnabledEndpointUnitTests
     }
 
     [Test]
+    public async Task ShouldCancelEveryTargetServerLibraryBeforeDisabling_WhenServerHasLibraries()
+    {
+        // Arrange
+        await SetupDatabase(91212, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 2;
+            config.PlexTvShowLibraryCount = 1;
+        });
+
+        var dbContext = IDbContext;
+        var servers = await dbContext
+            .PlexServers.IgnoreIsEnabledFilter()
+            .OrderBy(x => x.Id)
+            .ToListAsync(CancellationToken);
+        var targetServerId = servers[0].Id;
+        var targetLibraryIds = await dbContext
+            .PlexLibraries.IgnoreIsEnabledFilter()
+            .Where(x => x.PlexServerId == targetServerId)
+            .Select(x => x.Id)
+            .OrderBy(x => x)
+            .ToListAsync(CancellationToken);
+        var otherLibraryIds = await dbContext
+            .PlexLibraries.IgnoreIsEnabledFilter()
+            .Where(x => x.PlexServerId != targetServerId)
+            .Select(x => x.Id)
+            .OrderBy(x => x)
+            .ToListAsync(CancellationToken);
+        targetLibraryIds.ShouldNotBeEmpty();
+        otherLibraryIds.ShouldNotBeEmpty();
+
+        var commandExecutor = Mock.Mock<ICommandExecutor>();
+        foreach (var libraryId in targetLibraryIds)
+        {
+            commandExecutor
+                .Setup(x =>
+                    x.Send(
+                        It.Is<CancelLibrarySyncJobCommand>(c => c.PlexLibraryId == libraryId),
+                        It.IsAny<CancellationToken>()
+                    )
+                )
+                .ReturnsAsync(Result.Ok())
+                .Verifiable(Times.Once());
+        }
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
+
+        // Act
+        var endpointResult = await TestEndpointHandleAsync(
+            new SetServerEnabledRequest { PlexServerId = targetServerId, IsEnabled = false }
+        );
+
+        // Assert
+        endpointResult.Response.ShouldNotBeNull();
+        endpointResult.Response.IsSuccess.ShouldBeTrue();
+        endpointResult.Response.Errors.Count.ShouldBe(0);
+        var updatedServers = await dbContext
+            .PlexServers.IgnoreIsEnabledFilter()
+            .OrderBy(x => x.Id)
+            .Select(x => new { x.Id, x.IsEnabled })
+            .ToListAsync(CancellationToken);
+        updatedServers.ShouldBe([
+            new { Id = targetServerId, IsEnabled = false },
+            new { Id = servers[1].Id, IsEnabled = true },
+        ]);
+
+        foreach (var libraryId in targetLibraryIds)
+            commandExecutor.Verify(
+                x =>
+                    x.Send(
+                        It.Is<CancelLibrarySyncJobCommand>(c => c.PlexLibraryId == libraryId),
+                        It.IsAny<CancellationToken>()
+                    ),
+                Times.Once()
+            );
+        foreach (var libraryId in otherLibraryIds)
+            commandExecutor.Verify(
+                x =>
+                    x.Send(
+                        It.Is<CancelLibrarySyncJobCommand>(c => c.PlexLibraryId == libraryId),
+                        It.IsAny<CancellationToken>()
+                    ),
+                Times.Never()
+            );
+        commandExecutor.Verify();
+    }
+
+    [Test]
     public async Task ShouldNotChangeUnrelatedServer_WhenUpdatingTargetServer()
     {
         // Arrange

@@ -206,6 +206,23 @@ public class AddOrUpdatePlexLibrariesCommandHandler
                     )
                     .ExecuteDeleteAsync(cancellationToken);
 
+                var remainingEnabledLibraryIds = await _dbContext
+                    .PlexAccountLibraries.Where(x =>
+                        lostLibraryIds.Contains(x.PlexLibraryId) && x.PlexAccount!.IsEnabled
+                    )
+                    .Select(x => x.PlexLibraryId)
+                    .Distinct()
+                    .ToListAsync(cancellationToken);
+
+                foreach (var lostLibraryId in lostLibraryIds.Except(remainingEnabledLibraryIds))
+                {
+                    var cancelResult = await _commandExecutor.Send(
+                        new CancelLibrarySyncJobCommand(lostLibraryId),
+                        cancellationToken
+                    );
+                    if (cancelResult.IsCancelledOrFailed)
+                        return cancelResult.LogIfFailed().ToResult<List<PlexLibraryAccessRapport>>();
+                }
                 foreach (var lostLibraryId in lostLibraryIds)
                 {
                     var libraryName = await _dbContext.GetPlexLibraryNameById(lostLibraryId);
