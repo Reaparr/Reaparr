@@ -129,9 +129,15 @@ public sealed class TelemetryProxy : HttpTransformer
         if (httpContext.Connection.RemoteIpAddress is { } remoteAddress)
             proxyRequest.Headers.TryAddWithoutValidation("X-Forwarded-For", remoteAddress.ToString());
 
+        var upstreamPath = httpContext.Request.Path.Value switch
+        {
+            "/submit/" => new PathString("/i/v0/e/"),
+            "/submit-batch/" => new PathString("/e/"),
+            _ => httpContext.Request.Path,
+        };
         proxyRequest.RequestUri = RequestUtilities.MakeDestinationAddress(
             destinationPrefix,
-            httpContext.Request.Path,
+            upstreamPath,
             httpContext.Request.QueryString
         );
 
