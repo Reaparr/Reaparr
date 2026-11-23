@@ -360,6 +360,10 @@ public class DownloadQueue : IDownloadQueue
         if (errorTask is not null)
             return Result.Ok(errorTask);
 
+        var storageErrorTask = FindFirstLeafByStatus(downloadTasks, DownloadStatus.StorageError, ref nextRetryAt, true);
+        if (storageErrorTask is not null)
+            return Result.Ok(storageErrorTask);
+
         var queuedTask = FindFirstLeafByStatus(downloadTasks, DownloadStatus.Queued, ref nextRetryAt, true);
         if (queuedTask is not null)
             return Result.Ok(queuedTask);
