@@ -42,10 +42,8 @@ public static partial class DbContextExtensions
         CancellationToken cancellationToken
     )
     {
-        var libraryExists = await dbContext.PlexLibraries.AnyAsync(
-            x => x.Id == libraryId && !x.Outdated,
-            cancellationToken
-        );
+        // A refresh can be pending or fail without invalidating the last stored comparison.
+        var libraryExists = await dbContext.PlexLibraries.AnyAsync(x => x.Id == libraryId, cancellationToken);
         if (!libraryExists)
             return [];
 
@@ -54,7 +52,7 @@ public static partial class DbContextExtensions
                 ? await dbContext
                     .PlexComparisonScopes.Where(x => x.RemotePlexLibraryId == libraryId && x.MediaType == mediaType)
                     .Join(
-                        dbContext.PlexLibraries.WhereIsOwned().Where(x => x.Type == mediaType && !x.Outdated),
+                        dbContext.PlexLibraries.WhereIsOwned().Where(x => x.Type == mediaType),
                         scope => scope.OwnedPlexLibraryId,
                         library => library.Id,
                         (_, library) => library.Id
@@ -63,7 +61,7 @@ public static partial class DbContextExtensions
                 : await dbContext
                     .PlexComparisonScopes.Where(x => x.OwnedPlexLibraryId == libraryId && x.MediaType == mediaType)
                     .Join(
-                        dbContext.PlexLibraries.WhereIsNotOwned().Where(x => x.Type == mediaType && !x.Outdated),
+                        dbContext.PlexLibraries.WhereIsNotOwned().Where(x => x.Type == mediaType),
                         scope => scope.RemotePlexLibraryId,
                         library => library.Id,
                         (_, library) => library.Id

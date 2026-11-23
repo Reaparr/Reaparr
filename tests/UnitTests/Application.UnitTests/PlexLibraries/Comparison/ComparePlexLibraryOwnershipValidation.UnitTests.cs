@@ -703,7 +703,7 @@ public class CompareTvShowPlexLibraryCommandOwnershipUnitTests : BaseCommandUnit
     }
 
     [Test]
-    public async Task ShouldCreateSeasonAndEpisodeRows_WhenShowSeasonAndEpisodeNumbersMatch()
+    public async Task ShouldCompareMatchingSeasonsAndEpisodesUsingTheirBestStoredQuality()
     {
         // Arrange
         await SetupDatabase(42, config =>
@@ -739,6 +739,39 @@ public class CompareTvShowPlexLibraryCommandOwnershipUnitTests : BaseCommandUnit
         var ownedSeasons = await GetLibrarySeasonsAsync(ownedLibrary.Id);
         var remoteEpisodes = await GetLibraryEpisodesAsync(remoteLibrary.Id);
         var ownedEpisodes = await GetLibraryEpisodesAsync(ownedLibrary.Id);
+        await dbContext.PlexTvShowEpisodeData.ExecuteDeleteAsync(CancellationToken);
+        await dbContext.PlexTvShowSeasonMediaQualities.ExecuteDeleteAsync(CancellationToken);
+        var seed = new Seed(42);
+        foreach (
+            var (season, episodes, qualities) in new[]
+            {
+                (remoteSeasons[0], remoteEpisodes, new[] { VideoQuality.nHD, VideoQuality.FullHD }),
+                (ownedSeasons[0], ownedEpisodes, new[] { VideoQuality.SD, VideoQuality.SubSD_CIF }),
+            }
+        )
+        {
+            var episode = episodes.Single(x => x.TvShowSeasonId == season.Id && x.EpisodeNumber == 1);
+            foreach (var quality in qualities)
+            {
+                var media = FakeData
+                    .GetPlexTvShowEpisodeMediaData(seed)
+                    .RuleFor(x => x.VideoQuality, _ => quality)
+                    .Generate();
+                media.PlexTvShowEpisodeId = episode.Id;
+                media.PlexLibraryId = episode.PlexLibraryId;
+                media.PlexServerId = episode.PlexServerId;
+                dbContext.PlexTvShowEpisodeData.Add(media);
+                dbContext.PlexTvShowSeasonMediaQualities.Add(
+                    new PlexTvShowSeasonMediaQuality
+                    {
+                        PlexTvShowSeasonId = season.Id,
+                        PlexLibraryId = season.PlexLibraryId,
+                        VideoQuality = quality,
+                    }
+                );
+            }
+        }
+        await dbContext.SaveChangesAsync(CancellationToken);
 
         // Act
         var result = await TestHandlerExecuteAsync(
@@ -759,6 +792,14 @@ public class CompareTvShowPlexLibraryCommandOwnershipUnitTests : BaseCommandUnit
             .Select(x => (x.RemotePlexMediaId, x.OwnedPlexMediaId))
             .ShouldBe(remoteSeasons.Select(x => (x.Id, ownedSeasons.Single(y => y.SeasonNumber == x.SeasonNumber).Id)));
         seasonHits.ShouldAllBe(x => x.MatchType == PlexMediaComparisonMatchType.ParentAndChildNumbers);
+        var upgradedSeason = seasonHits.Single(x => x.RemotePlexMediaId == remoteSeasons[0].Id);
+        (upgradedSeason.RemoteQuality, upgradedSeason.OwnedQuality, upgradedSeason.HitState).ShouldBe(
+            (VideoQuality.FullHD, VideoQuality.SD, PlexMediaComparisonHitState.HigherQuality)
+        );
+        var ungradedSeason = seasonHits.Single(x => x.RemotePlexMediaId != remoteSeasons[0].Id);
+        (ungradedSeason.RemoteQuality, ungradedSeason.OwnedQuality, ungradedSeason.HitState).ShouldBe(
+            (VideoQuality.Unknown, VideoQuality.Unknown, PlexMediaComparisonHitState.Matched)
+        );
         var episodeHits = await dbContext
             .PlexEpisodeComparisons.OrderBy(x => x.RemotePlexMediaId)
             .ToListAsync(CancellationToken);
@@ -784,6 +825,30 @@ public class CompareTvShowPlexLibraryCommandOwnershipUnitTests : BaseCommandUnit
                 )
             );
         episodeHits.ShouldAllBe(x => x.MatchType == PlexMediaComparisonMatchType.ParentAndChildNumbers);
+        var upgradedEpisodeId = remoteEpisodes
+            .Single(x => x.TvShowSeasonId == remoteSeasons[0].Id && x.EpisodeNumber == 1)
+            .Id;
+        var upgradedEpisode = episodeHits.Single(x => x.RemotePlexMediaId == upgradedEpisodeId);
+        (upgradedEpisode.RemoteQuality, upgradedEpisode.OwnedQuality, upgradedEpisode.HitState).ShouldBe(
+            (VideoQuality.FullHD, VideoQuality.SD, PlexMediaComparisonHitState.HigherQuality)
+        );
+        episodeHits
+            .Where(x => x.RemotePlexMediaId != upgradedEpisodeId)
+            .ShouldAllBe(x =>
+                x.RemoteQuality == VideoQuality.Unknown
+                && x.OwnedQuality == VideoQuality.Unknown
+                && x.HitState == PlexMediaComparisonHitState.Matched
+            );
+
+        var details = await Mock.Create<GetTvShowMediaComparisonDetailsCommandHandler>()
+            .ExecuteAsync(new GetTvShowMediaComparisonDetailsCommand(remoteShow.Id), CancellationToken);
+        details.IsSuccess.ShouldBeTrue();
+        details.Errors.Count.ShouldBe(0);
+        details.Value.State.ShouldBe(PlexMediaComparisonState.HigherQuality);
+        var row = details.Value.Rows.Single().Children.Single();
+        (row.PlexMediaId, row.RemoteQuality, row.OwnedQuality, row.State).ShouldBe(
+            (upgradedEpisodeId, VideoQuality.FullHD, VideoQuality.SD, PlexMediaComparisonState.HigherQuality)
+        );
     }
 
     [Test]
