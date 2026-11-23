@@ -93,11 +93,24 @@
 									</div>
 								</template>
 							</QCol>
-							<!-- Plex Media Sync Progress -->
+							<!-- Sync progress -->
 							<QCol cols="4">
 								<QProgressBar
 									v-if="shouldShowProgress(node)"
 									:value="node.percentage" />
+							</QCol>
+							<!-- Cancel queued syncs -->
+							<QCol
+								v-if="!isServer(node) && node.status === LibrarySyncJobStatus.Queued"
+								cols="auto">
+								<IconButton
+									:cy="`sync-server-media-dialog-cancel-library-${node.id}`"
+									icon="mdi-close"
+									size="sm"
+									:aria-label="t('components.media-overview.cancel-queued-refresh')"
+									:tooltip-text="t('components.media-overview.cancel-queued-refresh')"
+									:loading="get(cancellingLibraryIds).has(node.id)"
+									@click="cancelQueuedSync(node.id)" />
 							</QCol>
 						</QRow>
 					</template>
@@ -127,7 +140,8 @@ import {
 import { DialogType, LibrarySyncWaitingReason } from '@enums';
 import { sum, meanBy } from 'lodash-es';
 import { useLibraryStore, useServerStore } from '@store';
-import { useI18n } from '#imports';
+import { useSubscription } from '@vueuse/rxjs';
+import { finalize } from 'rxjs';
 
 interface IPlexMediaSyncServerNode {
 	id: number;
@@ -150,10 +164,25 @@ const expanded = ref<number[]>([]);
  */
 const plexServerId = ref<number | null>(null);
 const openedAt = ref<Date | null>(null);
+const cancellingLibraryIds = ref(new Set<number>());
 
 const { t } = useI18n();
 const serverStore = useServerStore();
 const libraryStore = useLibraryStore();
+
+function cancelQueuedSync(libraryId: number): void {
+	const cancelling = get(cancellingLibraryIds);
+	if (cancelling.has(libraryId)) return;
+
+	set(cancellingLibraryIds, new Set(cancelling).add(libraryId));
+	useSubscription(
+		libraryStore.cancelLibrarySync(libraryId).pipe(finalize(() => {
+			const pending = new Set(get(cancellingLibraryIds));
+			pending.delete(libraryId);
+			set(cancellingLibraryIds, pending);
+		})).subscribe(),
+	);
+}
 
 const libraryNodes = computed(() => get(plexServerNodes).flatMap((x) => x.children));
 const hasProcessingNodes = computed(() => get(libraryNodes).some((x) => x.status === LibrarySyncJobStatus.Processing));
