@@ -24,6 +24,8 @@ export function setupBackgroundEffect() {
 		minWidth: 0,
 		scale: 1.0,
 		scaleMobile: 1.0,
+		// The wave mesh may not fill a wide camera view. Show the static artwork through its edges.
+		backgroundAlpha: 0,
 		color: 0x880000,
 		shininess: 43.0,
 		waveHeight: 4.0,
