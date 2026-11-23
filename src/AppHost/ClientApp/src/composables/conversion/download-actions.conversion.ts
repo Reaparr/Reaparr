@@ -72,15 +72,13 @@ export function toDownloadActions(downloadStatus: DownloadStatus): DownloadActio
 			actions.push(DownloadActions.Pause, DownloadActions.Stop);
 			break;
 		case DownloadStatus.Error:
-		case DownloadStatus.StorageError:
 		case DownloadStatus.SourceUnavailable:
 		case DownloadStatus.DownloadClientError:
 		case DownloadStatus.IntegrityError:
 			actions.push(DownloadActions.Restart, DownloadActions.Delete);
 			break;
 		case DownloadStatus.AuthError:
-			actions.push(DownloadActions.Start, DownloadActions.Delete);
-			break;
+		case DownloadStatus.StorageError:
 		case DownloadStatus.MoveError:
 			actions.push(DownloadActions.Start, DownloadActions.Restart, DownloadActions.Delete);
 			break;
