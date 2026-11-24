@@ -426,10 +426,15 @@ public class CheckQueuedPlexLibraryToSyncCommandUnitTests : BaseCommandUnitTest<
     }
 
     [Test]
-    [Arguments(false, false)]
-    [Arguments(true, false)]
-    [Arguments(true, true)]
-    public async Task ShouldReleaseClaim_WhenSchedulingFails(bool failsDuringLookup, bool cancelled)
+    [Arguments(false, false, false)]
+    [Arguments(false, false, true)]
+    [Arguments(true, false, false)]
+    [Arguments(true, true, false)]
+    public async Task ShouldRetrySchedulingFailureAndReleaseUnsuccessfulClaims(
+        bool failsDuringLookup,
+        bool cancelled,
+        bool recovers
+    )
     {
         // Arrange
         await SetupDatabase(55204, config =>
@@ -476,17 +481,16 @@ public class CheckQueuedPlexLibraryToSyncCommandUnitTests : BaseCommandUnitTest<
             .Setup(x => x.Exists(jobKey, CancellationToken))
             .Returns(() =>
             {
-                if (++lookupCount == 2 && failsDuringLookup)
-                    return new ValueTask<bool>(
-                        Task.FromException<bool>(
-                            cancelled
-                                ? new OperationCanceledException()
-                                : new InvalidOperationException("Scheduler unavailable")
-                        )
+                if (++lookupCount % 2 == 0 && failsDuringLookup)
+                    return ValueTask.FromException<bool>(
+                        cancelled
+                            ? new OperationCanceledException()
+                            : new InvalidOperationException("Scheduler unavailable")
                     );
                 return new ValueTask<bool>(false);
             })
-            .Verifiable(Times.Exactly(2));
+            .Verifiable(Times.Exactly(cancelled ? 2 : 4));
+        var scheduleCount = 0;
         if (!failsDuringLookup)
             Mock.Mock<IScheduler>()
                 .Setup(x =>
@@ -497,8 +501,12 @@ public class CheckQueuedPlexLibraryToSyncCommandUnitTests : BaseCommandUnitTest<
                         CancellationToken
                     )
                 )
-                .ThrowsAsync(new InvalidOperationException("Scheduler unavailable"))
-                .Verifiable(Times.Once());
+                .Returns(() =>
+                    ++scheduleCount == 2 && recovers
+                        ? ValueTask.FromResult(DateTimeOffset.UtcNow)
+                        : ValueTask.FromException<DateTimeOffset>(new InvalidOperationException("Scheduler unavailable"))
+                )
+                .Verifiable(Times.Exactly(2));
 
         // Act
         var result = await TestHandlerExecuteAsync(new CheckQueuedPlexLibraryToSyncCommand());
@@ -506,16 +514,13 @@ public class CheckQueuedPlexLibraryToSyncCommandUnitTests : BaseCommandUnitTest<
         // Assert
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
-        (
-            await dbContext
-                .LibrarySyncJobQueues.Select(x => new
-                {
-                    x.PlexLibraryId,
-                    x.Status,
-                    x.StartedAt,
-                })
-                .SingleAsync(CancellationToken)
-        ).ShouldBe(before);
+        var after = await dbContext.LibrarySyncJobQueues.AsNoTracking().SingleAsync(CancellationToken);
+        after.PlexLibraryId.ShouldBe(library.Id);
+        after.Status.ShouldBe(recovers ? LibrarySyncJobStatus.Processing : before.Status);
+        if (recovers)
+            after.StartedAt.ShouldNotBeNull();
+        else
+            after.StartedAt.ShouldBeNull();
         Mock.Mock<IScheduler>().Verify();
         if (failsDuringLookup)
             Mock.Mock<IScheduler>()
