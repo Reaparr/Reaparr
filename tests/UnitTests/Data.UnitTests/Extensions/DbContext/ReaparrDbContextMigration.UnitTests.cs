@@ -131,7 +131,7 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
         movieLibraryId.ShouldNotBe(tvLibraryId);
 
         // Arrange: replace seeded legacy rows with a deterministic graph in the preceding schema.
-        await database.ExecuteSqlInterpolatedAsync(
+        await database.ExecuteSqlAsync(
             $"""
             DELETE FROM "PlexMovieGenres";
             DELETE FROM "PlexTvShowGenres";
@@ -157,7 +157,7 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
             CancellationToken
         );
 
-        await database.ExecuteSqlInterpolatedAsync(
+        await database.ExecuteSqlAsync(
             $"""
             UPDATE "PlexMovie" SET "Quality" = {movieParentQuality} WHERE "Id" = {movieId};
             UPDATE "PlexTvShows" SET "Quality" = {tvParentQuality} WHERE "Id" = {tvShowId};
@@ -378,7 +378,7 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
             )
         ).ShouldBe(0);
 
-        await database.ExecuteSqlInterpolatedAsync(
+        await database.ExecuteSqlAsync(
             $"""
             UPDATE "PlexLibraries" SET "MusicArtistCount" = {musicCount} WHERE "Id" = {musicLibraryId};
             UPDATE "PlexLibraries" SET "PhotoAlbumCount" = {photoCount} WHERE "Id" = {photosLibraryId};
