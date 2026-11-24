@@ -414,8 +414,13 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 		},
 		requestRange(startIndex: number, endIndex: number): Observable<(PlexMediaStatisticsDTO | null)[]> {
 			const generation = requestGeneration;
-			const firstPage = actions.getPageForIndex(Math.max(0, startIndex));
-			const lastPage = actions.getPageForIndex(Math.max(0, endIndex));
+			const start = Math.max(0, startIndex);
+			const end = state.totalCount > 0 || mediaPages.size > 0
+				? Math.min(endIndex, state.totalCount - 1)
+				: endIndex;
+			if (end < start) return of([]);
+			const firstPage = actions.getPageForIndex(start);
+			const lastPage = actions.getPageForIndex(end);
 			const requests: Observable<PlexMediaStatisticsDTO | null>[] = [];
 
 			for (let page = firstPage; page <= lastPage; page++) {
