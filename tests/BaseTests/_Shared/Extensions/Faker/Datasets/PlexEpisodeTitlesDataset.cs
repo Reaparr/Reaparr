@@ -3,7 +3,8 @@ namespace Reaparr.BaseTests;
 public static class PlexEpisodeShowTitlesDataset
 {
     public static readonly Lazy<HashSet<string>> PlexEpisodeTitles = new(() =>
-        [
+        new HashSet<string>
+        {
             "2 September 1991",
             "004 Creating Immediate Workflow Actions",
             "4:00 AM",
@@ -1004,6 +1005,6 @@ public static class PlexEpisodeShowTitlesDataset
             "You the Boss Now",
             "Your Cheating Art",
             "Zip or Ship",
-        ]
+        }
     );
 }

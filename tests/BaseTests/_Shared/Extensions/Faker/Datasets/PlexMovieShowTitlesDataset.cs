@@ -3,7 +3,8 @@ namespace Reaparr.BaseTests;
 public static class PlexMovieShowTitlesDataset
 {
     public static readonly Lazy<HashSet<string>> PlexMovieTitles = new(() =>
-        [
+        new HashSet<string>
+        {
             "3 Ekka",
             "3:30PM",
             "5K1",
@@ -1004,6 +1005,6 @@ public static class PlexMovieShowTitlesDataset
             "Zoom Up: Rape Site",
             "Zoomers",
             "Zuma Beach",
-        ]
+        }
     );
 }
