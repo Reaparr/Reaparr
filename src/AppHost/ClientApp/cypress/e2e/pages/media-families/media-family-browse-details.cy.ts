@@ -68,7 +68,7 @@ function compareRootSort(left: PlexMediaDTO, right: PlexMediaDTO, field: string)
 	}
 }
 
-function setupFamily(family: (typeof families)[number]) {
+function setupFamily(family: (typeof families)[number], extraArtists = 0) {
 	cy.intercept('http*://*/api/**', (request) => {
 		throw new Error(`Unmocked API request: ${request.method} ${request.url}`);
 	});
@@ -87,6 +87,9 @@ function setupFamily(family: (typeof families)[number]) {
 		cy.intercept('GET', PlexLibraryPaths.getAllPlexLibrariesEndpoint(), { statusCode: 200, body: generateResultDTO([library]), ...headers });
 		cy.intercept('GET', PlexLibraryPaths.getPlexLibraryByIdEndpoint(library.id), { statusCode: 200, body: generateResultDTO(library), ...headers });
 		const roots = createRoots(family.type, config, library.id, library.plexServerId);
+		roots.push(...Array.from({ length: extraArtists }, (_, index) => ({
+			...roots[0]!, id: 300 + index, title: `Synth ${String(index).padStart(2, '0')}`, children: [],
+		})));
 		const qualities = family.type === PlexMediaType.OtherVideos
 			? [{ id: 1080, count: 1, name: '1080p', quality: VideoQuality.FullHD }, { id: 720, count: 1, name: '720p', quality: VideoQuality.HD }]
 			: [];
@@ -203,6 +206,48 @@ function assertViewPersistence(family: (typeof families)[number], phone = false)
 		}
 		assertNoHorizontalOverflow();
 	}
+}
+
+for (const view of [ViewMode.Poster, ViewMode.Table]) {
+	it(`returns from music details to the filtered ${view} position`, () => {
+		cy.viewport(view === ViewMode.Poster ? 600 : 1280, 800);
+		setupFamily(families[0], 65).then(({ library }) => {
+			cy.visit(route(`/music/${library.id}?q=synth`));
+			cy.getPageData();
+			if (view === ViewMode.Table) {
+				cy.getCy('change-view-mode-btn').click();
+				cy.getCy('view-mode-table-btn').click();
+			}
+			const scroll = view === ViewMode.Poster ? '#poster-table' : '#media-table-scroll';
+			const item = view === ViewMode.Poster ? '.media-poster-card' : '.media-table-row--title';
+			cy.contains(item, 'Synth 00').should('exist');
+			cy.get(scroll).scrollTo(0, 1550);
+			cy.get(scroll).should(($scroll) => expect($scroll[0]!.scrollTop).to.be.greaterThan(1400));
+			cy.get(scroll).find(item).filter((_, element) => {
+				const bounds = element.getBoundingClientRect();
+				const viewport = element.closest(scroll)!.getBoundingClientRect();
+				return bounds.top >= viewport.top && bounds.bottom <= viewport.bottom;
+			}).first().then(($item) => {
+				if (view === ViewMode.Poster) {
+					cy.wrap($item).find('[data-cy="media-poster-menu-trigger"]').click({ scrollBehavior: false });
+					cy.getCy('media-poster-menu-details').click({ scrollBehavior: false });
+				} else {
+					cy.wrap($item).click({ scrollBehavior: false });
+				}
+			});
+			cy.location('pathname').should('include', '/details/');
+			cy.intercept('GET', '**/api/PlexMedia?*').as('restoredMusicOverview');
+			cy.get('.media-overview-bar button[aria-label="Back"]').click();
+			cy.location('pathname').should('eq', `/music/${library.id}`);
+			cy.location('search').should((search) => {
+				const query = new URLSearchParams(search);
+				expect(query.get('q')).to.eq('synth');
+				expect(Number(query.get('scrollIndex'))).to.be.greaterThan(1);
+			});
+			cy.wait('@restoredMusicOverview').its('request.query.q').should('eq', 'synth');
+			cy.get(scroll).should(($scroll) => expect($scroll[0]!.scrollTop).to.be.closeTo(1550, view === ViewMode.Poster ? 380 : 42));
+		});
+	});
 }
 
 for (const family of families) {

@@ -42,6 +42,7 @@
 						:selected="isSelected(getRowItem(virtualRow.index)!.id)"
 						:disable-highlight="disableHighlight"
 						:disable-hover-click="disableHoverClick"
+						@open-details="openDetails"
 						@selected="updateSelectedRow(getRowItem(virtualRow.index)!.id, $event)" />
 					<div
 						v-else
@@ -67,6 +68,7 @@ import {
 	waitForElement,
 } from '#imports';
 import { useMediaOverviewStore } from '@store';
+import Convert from '@class/Convert';
 import { getMediaTableColumns } from '~/composables/mediaTableColumns';
 
 type QScrollInstance = {
@@ -103,6 +105,7 @@ const autoScrollEnabled = ref(false);
 const pendingHighlightIndex = ref<number | null>(null);
 
 const mediaOverviewStore = useMediaOverviewStore();
+const router = useRouter();
 const $q = useQuasar();
 const rowVirtualizer = useVirtualizer(
 	computed(() => ({
@@ -183,6 +186,17 @@ function updateSelectedRow(mediaId: number, state: boolean) {
 			: (mediaOverviewStore.selection?.keys ?? []).filter((x) => x !== mediaId),
 		allSelected: false,
 	} as ISelection);
+}
+function openDetails(item: PlexMediaSlimDTO): void {
+	const detailPath = Convert.mediaTypeToDetailsPath(item);
+	if (!detailPath) return;
+
+	const index = Math.floor((getScrollElement()?.scrollTop ?? 0) / get(ROW_HEIGHT)) + 1;
+	const { path, query } = get(router.currentRoute);
+	mediaOverviewStore.setPendingMediaHighlight(item.id, mediaOverviewStore.libraryId);
+	router.replace({ path, query: { ...query, scrollIndex: String(index) } })
+		.then(() => router.push(detailPath))
+		.catch((error) => Log.error('Failed to navigate to media details', error));
 }
 function scrollToIndex(index: number, highlight = true) {
 	const container = getScrollElement();

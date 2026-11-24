@@ -174,7 +174,14 @@ listenMediaOverviewDownloadCommand((command) => {
 
 function backToArtists(): void {
 	const id = get(libraryId);
-	router.push(Number.isSafeInteger(id) && id > 0 ? `/music/${id}` : '/music').catch((error) => Log.error('Failed to return to music artists', error));
+	const overview = Number.isSafeInteger(id) && id > 0 ? `/music/${id}` : '/music';
+	const previous = router.options.history.state.back;
+	const previousPath = typeof previous === 'string' ? router.resolve(previous).path : null;
+	if (previousPath === overview || previousPath === '/music' || previousPath === '/') {
+		router.back();
+		return;
+	}
+	router.push(overview).catch((error) => Log.error('Failed to return to music artists', error));
 }
 function onAction(event: IMediaOverviewBarActions): void {
 	if (event === 'back')
