@@ -18,8 +18,19 @@ const passthrough = defineComponent({
 	inheritAttrs: false,
 	props: {
 		cy: { type: String, default: undefined },
+		justify: { type: String, default: '' },
+		align: { type: String, default: '' },
+		noWrap: { type: Boolean, default: false },
+		cols: { type: [String, Number], default: undefined },
+		textAlign: { type: String, default: '' },
 	},
-	template: '<div v-bind="$attrs" :data-cy="cy"><slot /></div>',
+	setup(props, { attrs, slots }) {
+		return () => h('div', {
+			...attrs,
+			class: [attrs.class, props.noWrap ? 'no-wrap' : '', props.cols ? `col-${props.cols}` : '', props.textAlign ? `text-${props.textAlign}` : ''],
+			'data-cy': props.cy,
+		}, slots.default?.());
+	},
 });
 
 const buttonStub = defineComponent({
@@ -189,6 +200,9 @@ describe('MediaOverviewRefresh queued presentation', () => {
 		expect(queuedCancel.attributes('data-tooltip')).toBe('Cancel queued refresh');
 		expect(queuedCancel.attributes('aria-label')).toBe('Cancel queued refresh');
 		expect(queuedCancel.attributes('data-size')).toBe('sm');
+		expect(queuedCancel.element.parentElement?.parentElement?.classList.contains('no-wrap')).toBe(true);
+		expect(queuedCancel.element.parentElement?.classList.contains('col-1')).toBe(true);
+		expect(queuedCancel.element.parentElement?.classList.contains('text-right')).toBe(true);
 		expect(cancel).toHaveBeenCalledExactlyOnceWith(queuedLibrary.id);
 		expect(queuedCancel.attributes('disabled')).toBeDefined();
 		cancelResponse.next({ isSuccess: true });

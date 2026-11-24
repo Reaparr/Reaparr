@@ -37,7 +37,8 @@
 						<QRow
 							justify="between"
 							class="q-mr-lg"
-							align="center">
+							align="center"
+							no-wrap>
 							<QCol
 								cols="4">
 								<div :class="{ 'text-weight-bold': isServer(node) }">
@@ -71,7 +72,8 @@
 							</QCol>
 							<!-- Time Remaining -->
 							<QCol
-								cols="4"
+								:cols="hasQueuedCancelAction(node) ? 3 : 4"
+								class="sync-server-media-dialog-library-status"
 								text-align="center">
 								<template v-if="!isServer(node)">
 									<QCountdown
@@ -101,8 +103,9 @@
 							</QCol>
 							<!-- Cancel queued syncs -->
 							<QCol
-								v-if="!isServer(node) && node.status === LibrarySyncJobStatus.Queued"
-								cols="auto">
+								v-if="hasQueuedCancelAction(node)"
+								cols="1"
+								text-align="right">
 								<IconButton
 									:cy="`sync-server-media-dialog-cancel-library-${node.id}`"
 									icon="mdi-close"
@@ -260,6 +263,11 @@ const plexServerNodes = computed((): IPlexMediaSyncServerNode[] => {
 function isServer(node: IPlexMediaSyncServerNode): boolean {
 	return node.type === 'server';
 }
+
+function hasQueuedCancelAction(node: IPlexMediaSyncServerNode): boolean {
+	return !isServer(node) && node.status === LibrarySyncJobStatus.Queued;
+}
+
 function shouldShowProgress(node: IPlexMediaSyncServerNode): boolean {
 	if (isServer(node)) {
 		return node.children.some((child) => child.status !== LibrarySyncJobStatus.Queued);
