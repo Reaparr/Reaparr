@@ -1,7 +1,6 @@
 import { acceptHMRUpdate, defineStore } from 'pinia';
 import { reactive, toRefs } from 'vue';
-import { forkJoin, type Observable } from 'rxjs';
-import { of } from 'rxjs';
+import { defer, forkJoin, type Observable, of } from 'rxjs';
 import { concatMap, map, switchMap, tap, catchError } from 'rxjs/operators';
 import { get } from '@vueuse/core';
 import {
@@ -48,6 +47,8 @@ export const useLibraryStore = defineStore(StoreNames.LibraryStore, () => {
 	const backgroundJobsStore = useBackgroundJobsStore();
 
 	const telemetry = useTelemetry();
+	let syncQueueRevision = 0;
+	let appliedSyncQueueRevision = 0;
 	const actions = {
 		setup(): Observable<ISetupResult> {
 			// Listen for refresh notifications
@@ -70,6 +71,7 @@ export const useLibraryStore = defineStore(StoreNames.LibraryStore, () => {
 			})));
 		},
 		updateSyncQueue(queue: LibrarySyncJobQueueDTO): void {
+			appliedSyncQueueRevision = ++syncQueueRevision;
 			const index = state.syncQueues.findIndex((x) => x.plexLibraryId === queue.plexLibraryId);
 			if (index > -1) {
 				state.syncQueues.splice(index, 1, queue);
@@ -101,18 +103,22 @@ export const useLibraryStore = defineStore(StoreNames.LibraryStore, () => {
 			}), tap((library) => actions.updateLibrary(library)));
 		},
 		refreshLibrarySyncStatus(): Observable<LibrarySyncJobQueueDTO[]> {
-			return plexLibraryApi.getLibrarySyncStatusEndpoint().pipe(
-				tap(({ isSuccess, value }) => {
-					if (isSuccess) {
-						state.syncQueues = value ?? [];
-					}
-				}),
-				map(({ isSuccess, value }) => isSuccess ? value ?? [] : [...state.syncQueues]),
-				catchError((error) => {
-					Log.error('Failed to refresh library sync status', error);
-					return of([...state.syncQueues]);
-				}),
-			);
+			return defer(() => {
+				const revision = ++syncQueueRevision;
+				return plexLibraryApi.getLibrarySyncStatusEndpoint().pipe(
+					map(({ isSuccess, value }) => {
+						if (isSuccess && revision > appliedSyncQueueRevision) {
+							appliedSyncQueueRevision = revision;
+							state.syncQueues = value ?? [];
+						}
+						return [...state.syncQueues];
+					}),
+					catchError((error) => {
+						Log.error('Failed to refresh library sync status', error);
+						return of([...state.syncQueues]);
+					}),
+				);
+			});
 		},
 		/**
      * Re-syncs a library by re-requesting all media from the Plex server.
@@ -200,6 +206,7 @@ export const useLibraryStore = defineStore(StoreNames.LibraryStore, () => {
 			}
 			state.libraries.push(Object.freeze(library));
 		}, $reset() {
+			appliedSyncQueueRevision = ++syncQueueRevision;
 			Object.assign(state, cloneDeep(defaultState));
 		},
 	};
