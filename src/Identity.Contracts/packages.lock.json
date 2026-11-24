@@ -8,6 +8,12 @@
         "resolved": "1.4.1",
         "contentHash": "hu0SfQwYxpv97DFkayf1LOxgVIS58xhcmFr45GSDchEPvXL58JGQj3gxZs/fyYhKtb5a4KlDRnqr6JwgQFkttQ=="
       },
+      "Meziantou.Analyzer": {
+        "type": "Direct",
+        "requested": "[3.0.341, )",
+        "resolved": "3.0.341",
+        "contentHash": "zpogT6IwYBgNRa9+oETzs7aTU6Te3M/Osdkk/HN1TlJTDjz9dZwoUgh/yWqovT3jTofQGGLB1JqEK8I4uA6+yA=="
+      },
       "Microsoft.AspNetCore.DataProtection.EntityFrameworkCore": {
         "type": "Direct",
         "requested": "[11.0.0, )",
@@ -28,6 +34,12 @@
           "Microsoft.Extensions.Identity.Stores": "11.0.0"
         }
       },
+      "Roslynator.Analyzers": {
+        "type": "Direct",
+        "requested": "[5.0.1, )",
+        "resolved": "5.0.1",
+        "contentHash": "sCZ0Di4B937wKa9pwKbdsE6Njr8A/FdCLw28+yDKyMaDZ/f8JWxcFn6NOCukzKhCG/eA6M2DbXlKkrPi0g0lIA=="
+      },
       "Autofac": {
         "type": "Transitive",
         "resolved": "9.3.4",
@@ -40,21 +52,22 @@
       },
       "EFCore.BulkExtensions.Core": {
         "type": "Transitive",
-        "resolved": "10.0.1",
-        "contentHash": "D++Wd1Qy6RM+yMy4nQ3r0nc/cSA0T+AdlFBEuKDhwl6r5bwuBQpluP5h2rvQ3i+CetUGppef6JNH9grg8lo+Bw==",
+        "resolved": "11.0.0",
+        "contentHash": "gDAAmxmbicm/WVQt6JAP4I0HHHBocFsM9XhagdujlBSZOg2nrYFowY2jmpB+3Cj1QFiluakaV0NCNfD1drVjFQ==",
         "dependencies": {
           "MedallionTopologicalSort": "1.0.0",
-          "Microsoft.EntityFrameworkCore.Relational": "10.0.3",
+          "Microsoft.EntityFrameworkCore": "11.0.0",
+          "Microsoft.EntityFrameworkCore.Relational": "11.0.0",
           "NetTopologySuite": "2.6.0"
         }
       },
       "EFCore.BulkExtensions.Sqlite": {
         "type": "Transitive",
-        "resolved": "10.0.1",
-        "contentHash": "KLwKYfyI6aoooLNXMe+KvTk45lFuAAcy5u12icfTr+1pcEWLawwnaGEDtWanlen5uWxO13B/j68dolSHIwL2/A==",
+        "resolved": "11.0.0",
+        "contentHash": "UpXM/mrAX+XQcEjNhhYzGLPRU1vMIwuyoTJ0H4/Ra+rG3DAblnrzjdlIJbJPSjD82Jhg6HGzJGx55tuT3WdFRQ==",
         "dependencies": {
-          "EFCore.BulkExtensions.Core": "10.0.1",
-          "Microsoft.EntityFrameworkCore.Sqlite.Core": "10.0.3",
+          "EFCore.BulkExtensions.Core": "11.0.0",
+          "Microsoft.EntityFrameworkCore.Sqlite.Core": "11.0.0",
           "NetTopologySuite.IO.SpatiaLite": "2.0.0"
         }
       },
@@ -518,7 +531,7 @@
       "Reaparr.Data.Contracts": {
         "type": "Project",
         "dependencies": {
-          "EFCore.BulkExtensions.SQLite": "[10.0.1, )",
+          "EFCore.BulkExtensions.SQLite": "[11.0.0, )",
           "FlexQuery.NET.EntityFrameworkCore": "[4.0.0, )",
           "Microsoft.EntityFrameworkCore": "[11.0.0, )",
           "Microsoft.EntityFrameworkCore.Sqlite": "[11.0.0, )",

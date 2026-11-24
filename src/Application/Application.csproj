@@ -4,7 +4,7 @@
         <AssemblyName>Reaparr.Application</AssemblyName>
     </PropertyGroup>
     <ItemGroup>
-        <PackageReference Include="Quartz" Version="4.7.3" />
+        <PackageReference Include="Quartz" Version="4.9.0-preview-20261123-1315" />
         <PackageReference Include="CSharpier.MsBuild" Version="1.4.1">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
