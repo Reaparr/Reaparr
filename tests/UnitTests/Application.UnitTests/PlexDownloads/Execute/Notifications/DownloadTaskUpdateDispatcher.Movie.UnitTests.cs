@@ -763,4 +763,57 @@ public class DownloadTaskUpdateDispatcherMovieUnitTests : BaseUnitTest<DownloadT
         orderedSequences.Count.ShouldBeGreaterThanOrEqualTo(2);
         orderedSequences[1].ShouldBeGreaterThan(orderedSequences[0]);
     }
+
+    [Test]
+    public async Task ShouldPublishBothRootsInOnePatch_WhenTransferProgressIsBufferedForOneServer()
+    {
+        // Arrange
+        await SetupDatabase(84346, config =>
+        {
+            config.PlexServerCount = 1;
+            config.MovieDownloadTasksCount = 2;
+        });
+        var files = await IDbContext.DownloadTaskMovieFile.ToListAsync(CancellationToken);
+        var serverId = files.Select(file => file.PlexServerId).Distinct().Single();
+        var expectedIds = files.SelectMany(file => new[] { file.Id, file.ParentId }).Order().ToArray();
+        expectedIds.Length.ShouldBe(4);
+        var published = new TaskCompletionSource<IReadOnlyCollection<DownloadPatchDTO>>(
+            TaskCreationOptions.RunContinuationsAsynchronously
+        );
+        var hub = Mock.Mock<IDownloadHubService>();
+        hub.Setup(x =>
+                x.SendDownloadPatchAsync(
+                    serverId,
+                    1,
+                    It.IsAny<IReadOnlyCollection<DownloadPatchDTO>>(),
+                    null,
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .Callback<int, long, IReadOnlyCollection<DownloadPatchDTO>, IReadOnlyCollection<Guid>?, CancellationToken>(
+                (_, _, upserts, _, _) => published.TrySetResult(upserts)
+            )
+            .Returns(Task.CompletedTask)
+            .Verifiable(Times.Once());
+        using var sut = Sut;
+
+        // Act
+        foreach (var file in files)
+            sut.NotifyFileTransferProgress(file.ToKey());
+
+        await sut.StartAsync(CancellationToken);
+        IReadOnlyCollection<DownloadPatchDTO> patch;
+        try
+        {
+            patch = await published.Task.WaitAsync(TimeSpan.FromMilliseconds(900), CancellationToken);
+        }
+        finally
+        {
+            await sut.StopAsync(CancellationToken.None);
+        }
+
+        // Assert
+        patch.Select(node => node.Id).Order().ToArray().ShouldBe(expectedIds);
+        hub.Verify();
+    }
 }
