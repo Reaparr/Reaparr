@@ -226,14 +226,16 @@ function highlightPendingMedia() {
 	}).catch((error) => Log.error('Failed to highlight the pending media item', error));
 }
 
-onMounted(() => {
+onMounted(async () => {
+	// Quasar exposes the scroll target after mount; let the virtualizer attach first.
+	await nextTick();
 	// Listen for scroll to navigation index command
 	useSubscription(mediaOverviewStore.getScrollCommand().subscribe(({ index, highlight }) => {
 		scrollToIndex(index, highlight);
 	}));
 
 	const requestedScrollIndex = get(mediaOverviewStore.currentScrollIndex);
-	if (requestedScrollIndex > 0) {
+	if (requestedScrollIndex > 0 && !props.rows) {
 		scrollToIndex(requestedScrollIndex - 1, get(mediaOverviewStore.pendingMediaHighlightId) === null);
 	}
 

@@ -246,6 +246,11 @@ for (const view of [ViewMode.Poster, ViewMode.Table]) {
 			});
 			cy.wait('@restoredMusicOverview').its('request.query.q').should('eq', 'synth');
 			cy.get(scroll).should(($scroll) => expect($scroll[0]!.scrollTop).to.be.closeTo(1550, view === ViewMode.Poster ? 380 : 42));
+			if (view === ViewMode.Table) {
+				cy.get(scroll).scrollTo(0, 450);
+				cy.wait(1100); // The old restore loop could override this scroll for roughly one second.
+				cy.get(scroll).should(($scroll) => expect($scroll[0]!.scrollTop).to.be.closeTo(450, 42));
+			}
 		});
 	});
 }
