@@ -18,8 +18,8 @@
         <PackageReference Include="Semver" Version="3.0.0" />
         <PackageReference Include="Velopack" Version="1.2.161" />
         <PackageReference Update="Meziantou.Analyzer" Version="3.0.342">
-          <PrivateAssets>all</PrivateAssets>
-          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
     </ItemGroup>
     <ItemGroup>

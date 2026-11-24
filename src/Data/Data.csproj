@@ -22,8 +22,8 @@
         </PackageReference>
         <PackageReference Include="Quartz.EntityFrameworkCore" Version="4.9.0-preview-20261123-1315" />
         <PackageReference Update="Meziantou.Analyzer" Version="3.0.342">
-          <PrivateAssets>all</PrivateAssets>
-          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
     </ItemGroup>
     <ItemGroup>
