@@ -14,9 +14,13 @@
         <PackageReference Include="FastEndpoints.Security" Version="9.0.0" />
         <PackageReference Include="Polly" Version="8.9.1" />
         <PackageReference Include="Polly.Core" Version="8.9.1" />
-        <PackageReference Include="PostHog" Version="2.26.5" />
+        <PackageReference Include="PostHog" Version="2.26.7" />
         <PackageReference Include="Semver" Version="3.0.0" />
         <PackageReference Include="Velopack" Version="1.2.161" />
+        <PackageReference Update="Meziantou.Analyzer" Version="3.0.342">
+          <PrivateAssets>all</PrivateAssets>
+          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
     </ItemGroup>
     <ItemGroup>
         <InternalsVisibleTo Include="Reaparr.Application.UnitTests" />

@@ -13,6 +13,10 @@
         <PackageReference Include="FastEndpoints" Version="9.0.0" />
         <PackageReference Include="HttpClientToCurl" Version="2.2.0" />
         <PackageReference Include="Polly.Core" Version="8.9.1" />
+        <PackageReference Update="Meziantou.Analyzer" Version="3.0.342">
+          <PrivateAssets>all</PrivateAssets>
+          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="..\Application.Contracts\Application.Contracts.csproj" />

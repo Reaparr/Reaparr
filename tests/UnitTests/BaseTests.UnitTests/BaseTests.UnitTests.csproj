@@ -9,7 +9,11 @@
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="TUnit" Version="1.87.12" />
-        <PackageReference Include="TestableIO.System.IO.Abstractions.TestingHelpers" Version="23.0.1" />
+        <PackageReference Include="TestableIO.System.IO.Abstractions.TestingHelpers" Version="23.1.0" />
+        <PackageReference Update="Meziantou.Analyzer" Version="3.0.342">
+          <PrivateAssets>all</PrivateAssets>
+          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="..\..\BaseTests\BaseTests.csproj" />

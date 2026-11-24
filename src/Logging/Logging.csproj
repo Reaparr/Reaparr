@@ -21,6 +21,10 @@
         <PackageReference Include="Serilog.Sinks.Seq" Version="9.1.0" />
         <PackageReference Include="Serilog.Sinks.OpenTelemetry" Version="4.2.0" />
         <PackageReference Include="Serilog.Sinks.TestCorrelator" Version="4.0.2" />
+        <PackageReference Update="Meziantou.Analyzer" Version="3.0.342">
+          <PrivateAssets>all</PrivateAssets>
+          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="..\Environment\Environment.csproj" />

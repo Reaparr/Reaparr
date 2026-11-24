@@ -38,6 +38,10 @@
         <PackageReference Include="Velopack" Version="1.2.161" />
         <PackageReference Include="Serilog.AspNetCore" Version="11.0.0" />
         <PackageReference Include="Serilog.Sinks.AspNetCore.App.SignalR" Version="1.3.0" />
+        <PackageReference Update="Meziantou.Analyzer" Version="3.0.342">
+          <PrivateAssets>all</PrivateAssets>
+          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
     </ItemGroup>
     <ItemGroup>
         <EmbeddedResource Include="Desktop\Window\Templates\DesktopStartupFailureDialog.html" />

@@ -39,9 +39,9 @@
       },
       "Meziantou.Analyzer": {
         "type": "Direct",
-        "requested": "[3.0.341, )",
-        "resolved": "3.0.341",
-        "contentHash": "zpogT6IwYBgNRa9+oETzs7aTU6Te3M/Osdkk/HN1TlJTDjz9dZwoUgh/yWqovT3jTofQGGLB1JqEK8I4uA6+yA=="
+        "requested": "[3.0.342, )",
+        "resolved": "3.0.342",
+        "contentHash": "g8p2VDRGOui0eTVEOG0MOS6ib4IPNVDwSSier3o95S1xeJltMF8ntpuBWzzmn6A6Y5a0VcEmeGkrMLNXPs/QeQ=="
       },
       "Polly.Core": {
         "type": "Direct",

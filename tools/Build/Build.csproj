@@ -18,7 +18,11 @@
         <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="11.0.0" />
         <PackageReference Include="Serilog.AspNetCore" Version="11.0.0" />
         <PackageReference Include="Spectre.Console.Cli" Version="0.57.2" />
-        <PackageReference Include="System.IO.Abstractions" Version="23.0.1" />
+        <PackageReference Include="System.IO.Abstractions" Version="23.1.0" />
+        <PackageReference Update="Meziantou.Analyzer" Version="3.0.342">
+          <PrivateAssets>all</PrivateAssets>
+          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
     </ItemGroup>
     <ItemGroup>
         <Using Include="Serilog" />

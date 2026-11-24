@@ -11,6 +11,10 @@
         </PackageReference>
         <PackageReference Include="Serilog" Version="4.4.0" />
         <PackageReference Include="Xdg.Directories" Version="0.2.0" />
+        <PackageReference Update="Meziantou.Analyzer" Version="3.0.342">
+          <PrivateAssets>all</PrivateAssets>
+          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
     </ItemGroup>
     <ItemGroup>
         <InternalsVisibleTo Include="Reaparr.BaseTests" />
