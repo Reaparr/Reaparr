@@ -18,8 +18,8 @@ public class PlexServerConnectionUnitTests : BaseUnitTest
             Url = "https://plex.example.test:32400",
             Local = false,
             Relay = false,
-            IPv4 = true,
-            IPv6 = false,
+            Ipv4 = true,
+            Ipv6 = false,
             IsCustom = false,
         };
         var other = new PlexServerConnection
@@ -32,8 +32,8 @@ public class PlexServerConnectionUnitTests : BaseUnitTest
             Url = "https://plex.example.test:32400",
             Local = false,
             Relay = false,
-            IPv4 = ipv4,
-            IPv6 = false,
+            Ipv4 = ipv4,
+            Ipv6 = false,
             IsCustom = false,
         };
 

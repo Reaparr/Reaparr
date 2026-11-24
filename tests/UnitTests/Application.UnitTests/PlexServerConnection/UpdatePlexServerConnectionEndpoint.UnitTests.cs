@@ -36,8 +36,8 @@ public class UpdatePlexServerConnectionEndpointUnitTests
                 x.Url,
                 x.Local,
                 x.Relay,
-                x.IPv4,
-                x.IPv6
+                x.Ipv4,
+                x.Ipv6
             ))
             .ToListAsync(CancellationToken);
         var request = CreateInvalidRequest(invalidProperty, connectionId, serverId);
@@ -54,8 +54,8 @@ public class UpdatePlexServerConnectionEndpointUnitTests
                 x.Url,
                 x.Local,
                 x.Relay,
-                x.IPv4,
-                x.IPv6
+                x.Ipv4,
+                x.Ipv6
             ))
             .ToListAsync(CancellationToken);
 
@@ -65,10 +65,10 @@ public class UpdatePlexServerConnectionEndpointUnitTests
         endpointResult.ValidationErrors.Single().PropertyName.ShouldBe(invalidProperty);
         endpointResult.Response.ShouldBeNull();
         connectionsAfter
-            .Select(x => (x.Id, x.Protocol, x.Address, x.Port, x.Url, x.Local, x.Relay, x.IPv4, x.IPv6))
+            .Select(x => (x.Id, x.Protocol, x.Address, x.Port, x.Url, x.Local, x.Relay, x.Ipv4, x.Ipv6))
             .ShouldBe(
                 connectionsBefore.Select(x =>
-                    (x.Id, x.Protocol, x.Address, x.Port, x.Url, x.Local, x.Relay, x.IPv4, x.IPv6)
+                    (x.Id, x.Protocol, x.Address, x.Port, x.Url, x.Local, x.Relay, x.Ipv4, x.Ipv6)
                 )
             );
     }
@@ -95,8 +95,8 @@ public class UpdatePlexServerConnectionEndpointUnitTests
                 x.Url,
                 x.Local,
                 x.Relay,
-                x.IPv4,
-                x.IPv6
+                x.Ipv4,
+                x.Ipv6
             ))
             .ToListAsync(CancellationToken);
         var missingConnectionId = connectionsBefore.Max(x => x.Id) + 1000;
@@ -124,8 +124,8 @@ public class UpdatePlexServerConnectionEndpointUnitTests
                 x.Url,
                 x.Local,
                 x.Relay,
-                x.IPv4,
-                x.IPv6
+                x.Ipv4,
+                x.Ipv6
             ))
             .ToListAsync(CancellationToken);
 
@@ -136,10 +136,10 @@ public class UpdatePlexServerConnectionEndpointUnitTests
         result.Errors.Count.ShouldBe(1);
         result.Value.ShouldBeNull();
         connectionsAfter
-            .Select(x => (x.Id, x.Protocol, x.Address, x.Port, x.Url, x.Local, x.Relay, x.IPv4, x.IPv6))
+            .Select(x => (x.Id, x.Protocol, x.Address, x.Port, x.Url, x.Local, x.Relay, x.Ipv4, x.Ipv6))
             .ShouldBe(
                 connectionsBefore.Select(x =>
-                    (x.Id, x.Protocol, x.Address, x.Port, x.Url, x.Local, x.Relay, x.IPv4, x.IPv6)
+                    (x.Id, x.Protocol, x.Address, x.Port, x.Url, x.Local, x.Relay, x.Ipv4, x.Ipv6)
                 )
             );
     }
@@ -172,8 +172,8 @@ public class UpdatePlexServerConnectionEndpointUnitTests
                 x.Url,
                 x.Local,
                 x.Relay,
-                x.IPv4,
-                x.IPv6
+                x.Ipv4,
+                x.Ipv6
             ))
             .ToListAsync(CancellationToken);
         var request = new UpdatePlexServerConnectionEndpointRequest
@@ -199,8 +199,8 @@ public class UpdatePlexServerConnectionEndpointUnitTests
                 x.Url,
                 x.Local,
                 x.Relay,
-                x.IPv4,
-                x.IPv6
+                x.Ipv4,
+                x.Ipv6
             ))
             .ToListAsync(CancellationToken);
 
@@ -211,10 +211,10 @@ public class UpdatePlexServerConnectionEndpointUnitTests
         result.Errors.Count.ShouldBe(1);
         result.Value.ShouldBeNull();
         connectionsAfter
-            .Select(x => (x.Id, x.Protocol, x.Address, x.Port, x.Url, x.Local, x.Relay, x.IPv4, x.IPv6))
+            .Select(x => (x.Id, x.Protocol, x.Address, x.Port, x.Url, x.Local, x.Relay, x.Ipv4, x.Ipv6))
             .ShouldBe(
                 connectionsBefore.Select(x =>
-                    (x.Id, x.Protocol, x.Address, x.Port, x.Url, x.Local, x.Relay, x.IPv4, x.IPv6)
+                    (x.Id, x.Protocol, x.Address, x.Port, x.Url, x.Local, x.Relay, x.Ipv4, x.Ipv6)
                 )
             );
     }
@@ -240,8 +240,8 @@ public class UpdatePlexServerConnectionEndpointUnitTests
             Url = "https://custom-owner.example.com:32400",
             Local = false,
             Relay = false,
-            IPv4 = false,
-            IPv6 = false,
+            Ipv4 = false,
+            Ipv6 = false,
             IsCustom = true,
             PlexServerId = servers[0].Id,
         };
@@ -258,8 +258,8 @@ public class UpdatePlexServerConnectionEndpointUnitTests
                 x.Url,
                 x.Local,
                 x.Relay,
-                x.IPv4,
-                x.IPv6
+                x.Ipv4,
+                x.Ipv6
             ))
             .ToListAsync(CancellationToken);
         var serversBefore = await dbContext
@@ -290,8 +290,8 @@ public class UpdatePlexServerConnectionEndpointUnitTests
                 x.Url,
                 x.Local,
                 x.Relay,
-                x.IPv4,
-                x.IPv6
+                x.Ipv4,
+                x.Ipv6
             ))
             .ToListAsync(CancellationToken);
         var serversAfter = await dbContext
@@ -307,10 +307,10 @@ public class UpdatePlexServerConnectionEndpointUnitTests
         result.Errors.Count.ShouldBe(1);
         result.Value.ShouldBeNull();
         connectionsAfter
-            .Select(x => (x.Id, x.Protocol, x.Address, x.Port, x.Url, x.Local, x.Relay, x.IPv4, x.IPv6))
+            .Select(x => (x.Id, x.Protocol, x.Address, x.Port, x.Url, x.Local, x.Relay, x.Ipv4, x.Ipv6))
             .ShouldBe(
                 connectionsBefore.Select(x =>
-                    (x.Id, x.Protocol, x.Address, x.Port, x.Url, x.Local, x.Relay, x.IPv4, x.IPv6)
+                    (x.Id, x.Protocol, x.Address, x.Port, x.Url, x.Local, x.Relay, x.Ipv4, x.Ipv6)
                 )
             );
         serversAfter.ShouldBe(serversBefore);
@@ -338,8 +338,8 @@ public class UpdatePlexServerConnectionEndpointUnitTests
             Url = "https://unchanged.example.com:32400",
             Local = false,
             Relay = false,
-            IPv4 = false,
-            IPv6 = false,
+            Ipv4 = false,
+            Ipv6 = false,
             PlexServerId = serverId,
             IsCustom = true,
         };
@@ -380,8 +380,8 @@ public class UpdatePlexServerConnectionEndpointUnitTests
             stored.Url,
             stored.Local,
             stored.Relay,
-            stored.IPv4,
-            stored.IPv6,
+            stored.Ipv4,
+            stored.Ipv6,
             stored.IsCustom
         ).ShouldBe(expected);
         (
@@ -591,7 +591,7 @@ public class UpdatePlexServerConnectionEndpointUnitTests
         string Url,
         bool Local,
         bool Relay,
-        bool IPv4,
-        bool IPv6
+        bool Ipv4,
+        bool Ipv6
     );
 }

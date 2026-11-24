@@ -4,7 +4,7 @@ using Reaparr.Settings.Contracts;
 
 namespace Reaparr.AppHost.UnitTests;
 
-public class INetworkSettingsExtensionsUnitTests : BaseUnitTest
+public class NetworkSettingsExtensionsUnitTests : BaseUnitTest
 {
     [Test]
     public void ShouldDisableForwardedHeaders_WhenAllowlistContainsOnlyBlankEntries()

@@ -28,7 +28,7 @@ concurrency:
 jobs:
     Pipeline-Deadline:
         name: Pipeline deadline
-        if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.draft == false && github.event.pull_request.head.repo.full_name == github.repository)
+        if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
         runs-on: ubuntu-latest
         timeout-minutes: 16
         permissions:
@@ -70,6 +70,82 @@ jobs:
         if: github.event.pull_request.draft == false
         steps:
             -   run: echo "PR is not in draft, proceeding with tests"
+
+    InspectCode:
+        name: InspectCode
+        needs: [ Check-PR-Status ]
+        if: always() && (github.event.pull_request.head.repo.full_name == github.repository || github.event_name == 'workflow_dispatch')
+        runs-on: ubuntu-latest
+        timeout-minutes: 60
+        env:
+            DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+            MSBuildMaxNodeCount: '1'
+            MSBUILDDISABLENODEREUSE: '1'
+            DOTNET_CLI_USE_MSBUILD_SERVER: '0'
+        steps:
+            -   uses: actions/checkout@v7
+                with:
+                    persist-credentials: false
+
+            -   name: Cache InspectCode and MSBuild data
+                uses: actions/cache@v6
+                with:
+                    path: |
+                        ~/.local/share/JetBrains
+                        ~/.cache/JetBrains
+                    key: ${{ runner.os }}-inspectcode-${{ hashFiles('global.json', 'Directory.Build.props', '**/*.csproj', '**/packages.lock.json') }}
+                    restore-keys: |
+                        ${{ runner.os }}-inspectcode-
+
+            -   name: Setup .NET SDK
+                uses: actions/setup-dotnet@v6
+                with:
+                    dotnet-version: 10.x
+
+            -   name: Restore solution for InspectCode
+                uses: ./.github/actions/dotnet-setup/
+                with:
+                    project-path: Reaparr.sln
+                    restore: true
+                    build: false
+
+            -   name: Run InspectCode
+                uses: JetBrains/ReSharper-InspectCode@v2026.3.0
+                with:
+                    solution: Reaparr.sln
+                    output: inspectcode.sarif
+                    format: Sarif
+                    sEverity: WARNING
+                    jobs: 1
+                    no-swea: true
+                    build: false
+                    upload-sarif: false
+
+            -   name: Require zero warnings and errors
+                shell: bash
+                run: |
+                    jq -e '
+                        .runs[0].invocations[0].executionSuccessful == true
+                        and ([.runs[].results[]? | select(.level == "warning" or .level == "error")] | length == 0)
+                    ' inspectcode.sarif >/dev/null || {
+                        echo "InspectCode reported warnings/errors or did not complete successfully." >&2
+                        jq -r '.runs[]?.results[]? | select(.level == "warning" or .level == "error") | "\(.level): \(.ruleId) \(.locations[0].physicalLocation.artifactLocation.uri // ""):\(.locations[0].physicalLocation.region.startLine // 0): \(.message.text)"' inspectcode.sarif >&2
+                        exit 1
+                    }
+
+            -   name: Report warning and error counts
+                if: always() && hashFiles('inspectcode.sarif') != ''
+                shell: bash
+                run: |
+                    if [[ ! -f inspectcode.sarif ]]; then
+                        echo "InspectCode SARIF report was not produced." >&2
+                        exit 1
+                    fi
+                    jq -r '
+                        [ .runs[].results[]? | select(.level == "warning") ] as $warnings
+                        | [ .runs[].results[]? | select(.level == "error") ] as $errors
+                        | "InspectCode totals: \($warnings | length) warnings, \($errors | length) errors"
+                    ' inspectcode.sarif
 
     Actionlint:
         needs: [ Check-PR-Status, Check-Github-Changes ]

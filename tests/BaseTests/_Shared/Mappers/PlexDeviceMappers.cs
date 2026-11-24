@@ -43,7 +43,7 @@ public static class PlexDeviceMappers
             Uri = connection.Url,
             Local = connection.Local,
             Relay = connection.Relay,
-            IPv6 = connection.IPv6,
+            IPv6 = connection.Ipv6,
         };
 
     public static List<PlexDevice> ToPlexApiDTO(this List<PlexServer> plexServers) =>

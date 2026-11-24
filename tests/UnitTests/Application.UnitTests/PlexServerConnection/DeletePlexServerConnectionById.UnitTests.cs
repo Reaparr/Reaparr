@@ -27,8 +27,8 @@ public class DeletePlexServerConnectionByIdUnitTests
                 x.Url,
                 x.Local,
                 x.Relay,
-                x.IPv4,
-                x.IPv6,
+                x.Ipv4,
+                x.Ipv6,
                 x.IsCustom
             ))
             .ToListAsync(CancellationToken);
@@ -53,8 +53,8 @@ public class DeletePlexServerConnectionByIdUnitTests
                 x.Url,
                 x.Local,
                 x.Relay,
-                x.IPv4,
-                x.IPv6,
+                x.Ipv4,
+                x.Ipv6,
                 x.IsCustom
             ))
             .ToListAsync(CancellationToken);
@@ -82,8 +82,8 @@ public class DeletePlexServerConnectionByIdUnitTests
                     x.Url,
                     x.Local,
                     x.Relay,
-                    x.IPv4,
-                    x.IPv6,
+                    x.Ipv4,
+                    x.Ipv6,
                     x.IsCustom
                 )
             )
@@ -98,8 +98,8 @@ public class DeletePlexServerConnectionByIdUnitTests
                         x.Url,
                         x.Local,
                         x.Relay,
-                        x.IPv4,
-                        x.IPv6,
+                        x.Ipv4,
+                        x.Ipv6,
                         x.IsCustom
                     )
                 )
@@ -129,8 +129,8 @@ public class DeletePlexServerConnectionByIdUnitTests
                 x.Url,
                 x.Local,
                 x.Relay,
-                x.IPv4,
-                x.IPv6,
+                x.Ipv4,
+                x.Ipv6,
                 x.IsCustom
             ))
             .ToListAsync(CancellationToken);
@@ -160,8 +160,8 @@ public class DeletePlexServerConnectionByIdUnitTests
                 x.Url,
                 x.Local,
                 x.Relay,
-                x.IPv4,
-                x.IPv6,
+                x.Ipv4,
+                x.Ipv6,
                 x.IsCustom
             ))
             .ToListAsync(CancellationToken);
@@ -188,8 +188,8 @@ public class DeletePlexServerConnectionByIdUnitTests
                     x.Url,
                     x.Local,
                     x.Relay,
-                    x.IPv4,
-                    x.IPv6,
+                    x.Ipv4,
+                    x.Ipv6,
                     x.IsCustom
                 )
             )
@@ -204,8 +204,8 @@ public class DeletePlexServerConnectionByIdUnitTests
                         x.Url,
                         x.Local,
                         x.Relay,
-                        x.IPv4,
-                        x.IPv6,
+                        x.Ipv4,
+                        x.Ipv6,
                         x.IsCustom
                     )
                 )
@@ -242,8 +242,8 @@ public class DeletePlexServerConnectionByIdUnitTests
                 x.Url,
                 x.Local,
                 x.Relay,
-                x.IPv4,
-                x.IPv6,
+                x.Ipv4,
+                x.Ipv6,
                 x.IsCustom
             ))
             .ToListAsync(CancellationToken);
@@ -271,8 +271,8 @@ public class DeletePlexServerConnectionByIdUnitTests
                 x.Url,
                 x.Local,
                 x.Relay,
-                x.IPv4,
-                x.IPv6,
+                x.Ipv4,
+                x.Ipv6,
                 x.IsCustom
             ))
             .ToListAsync(CancellationToken);
@@ -299,8 +299,8 @@ public class DeletePlexServerConnectionByIdUnitTests
                     x.Url,
                     x.Local,
                     x.Relay,
-                    x.IPv4,
-                    x.IPv6,
+                    x.Ipv4,
+                    x.Ipv6,
                     x.IsCustom
                 )
             )
@@ -315,8 +315,8 @@ public class DeletePlexServerConnectionByIdUnitTests
                         x.Url,
                         x.Local,
                         x.Relay,
-                        x.IPv4,
-                        x.IPv6,
+                        x.Ipv4,
+                        x.Ipv6,
                         x.IsCustom
                     )
                 )
@@ -347,8 +347,8 @@ public class DeletePlexServerConnectionByIdUnitTests
             Url = "https://custom.example.test:32400",
             Local = false,
             Relay = false,
-            IPv4 = false,
-            IPv6 = false,
+            Ipv4 = false,
+            Ipv6 = false,
             PlexServerId = server.Id,
             IsCustom = true,
         };
@@ -394,8 +394,8 @@ public class DeletePlexServerConnectionByIdUnitTests
         string Url,
         bool Local,
         bool Relay,
-        bool IPv4,
-        bool IPv6,
+        bool Ipv4,
+        bool Ipv6,
         bool IsCustom
     );
 }

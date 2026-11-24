@@ -40,7 +40,7 @@ public partial class BaseUnitTest : IDisposable
         }
     }
 
-    protected IAuthDbContext IAuthDbContext
+    protected IAuthDbContext AuthDbContext
     {
         get
         {

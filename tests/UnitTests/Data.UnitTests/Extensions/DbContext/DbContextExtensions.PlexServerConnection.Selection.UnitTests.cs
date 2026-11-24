@@ -200,8 +200,8 @@ public class PlexServerConnectionSelectionUnitTests
             Url = url,
             Local = local,
             Relay = false,
-            IPv4 = uri.HostNameType == UriHostNameType.IPv4,
-            IPv6 = uri.HostNameType == UriHostNameType.IPv6,
+            Ipv4 = uri.HostNameType == UriHostNameType.IPv4,
+            Ipv6 = uri.HostNameType == UriHostNameType.IPv6,
             IsCustom = false,
             PlexServerId = 0,
             LatestConnectionStatus = online is { } isSuccessful

@@ -2,7 +2,7 @@ using System.IO.Abstractions;
 
 namespace Reaparr.FileSystem.Contracts;
 
-public static class IPathExtensions
+public static class PathExtensions
 {
     public static Result<long> GetAvailableSpaceByDirectory(this IPath path, string directory)
     {

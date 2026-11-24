@@ -336,8 +336,6 @@ public class CommandExecutorUnitTests
 
     public sealed class ExecutionState
     {
-        public ExecutionState() { }
-
         public int ValidationCalls;
         public int HandlerCalls;
         public bool ThrowActivation;
@@ -355,8 +353,6 @@ public class CommandExecutorUnitTests
 
     public sealed class ScopeIdentity
     {
-        public ScopeIdentity() { }
-
         public Guid Id { get; } = Guid.NewGuid();
     }
 

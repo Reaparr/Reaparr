@@ -137,7 +137,7 @@ public abstract class BaseEndpointUnitTestBase<TEndpoint, TResponse> : BaseUnitT
                 s.AddTransient(_ => Mock.Create<ILogger>());
                 s.AddTransient(_ => IsDatabaseSetup ? IDbContext : Mock.Create<IReaparrDbContext>());
                 s.AddTransient(_ => Mock.Mock<IReaparrDbContextFactory>().Object);
-                s.AddTransient(_ => IsDatabaseSetup ? IAuthDbContext : Mock.Create<IAuthDbContext>());
+                s.AddTransient(_ => IsDatabaseSetup ? AuthDbContext : Mock.Create<IAuthDbContext>());
                 s.AddTransient(_ => Mock.Create<IAuthDbContextFactory>());
                 s.AddTransient(_ => Mock.Mock<ICommandExecutor>().Object);
                 s.AddSingleton(_ => Mock.Mock<ITelemetry>().Object);

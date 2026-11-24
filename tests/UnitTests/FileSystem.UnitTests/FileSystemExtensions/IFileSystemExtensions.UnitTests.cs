@@ -5,7 +5,7 @@ using Reaparr.FileSystem.Contracts;
 
 namespace Reaparr.FileSystem.UnitTests;
 
-public class IFileSystemExtensionsUnitTests : BaseUnitTest
+public class FileSystemExtensionsUnitTests : BaseUnitTest
 {
     [Test]
     public void ShouldReturnCorrectAvailableSpace_WhenUsingTheRootPath()

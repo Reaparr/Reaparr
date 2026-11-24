@@ -46,10 +46,11 @@ public class LogBufferService : ILogBufferService
         Add(logEvent.ToLiveLogEvent());
     }
 
-    private static long GetTextBytes(LiveLogEventDTO logEvent) =>
-        (
-            (long)logEvent.Message.Length
-            + (long)(logEvent.Exception?.Length ?? 0)
-            + (long)(logEvent.SourceContext?.Length ?? 0)
-        ) * sizeof(char);
+    private static long GetTextBytes(LiveLogEventDTO logEvent)
+    {
+        long textLength = logEvent.Message.Length;
+        textLength += logEvent.Exception?.Length ?? 0;
+        textLength += logEvent.SourceContext?.Length ?? 0;
+        return textLength * sizeof(char);
+    }
 }

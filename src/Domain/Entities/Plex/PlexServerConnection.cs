@@ -31,11 +31,11 @@ public class PlexServerConnection : BaseEntity
     [Column(Order = 6)]
     public required bool Relay { get; init; }
 
-    [Column(Order = 7)]
-    public required bool IPv4 { get; init; }
+    [Column("IPv4", Order = 7)]
+    public required bool Ipv4 { get; init; }
 
-    [Column(Order = 8)]
-    public required bool IPv6 { get; init; }
+    [Column("IPv6", Order = 8)]
+    public required bool Ipv6 { get; init; }
 
     /// <summary>
     /// Is this a custom connection created by the user.
@@ -92,7 +92,7 @@ public class PlexServerConnection : BaseEntity
     #region Equality
 
     /// <inheritdoc/>
-    public override int GetHashCode() => HashCode.Combine(Protocol, Address, Port, Url, Local, Relay, IPv4, IPv6);
+    public override int GetHashCode() => HashCode.Combine(Protocol, Address, Port, Url, Local, Relay, Ipv4, Ipv6);
 
     /// <inheritdoc/>
     public override bool Equals(object? obj)
@@ -113,12 +113,12 @@ public class PlexServerConnection : BaseEntity
         && Url == other.Url
         && Local == other.Local
         && Relay == other.Relay
-        && IPv4 == other.IPv4
-        && IPv6 == other.IPv6;
+        && Ipv4 == other.Ipv4
+        && Ipv6 == other.Ipv6;
 
     #endregion
 
     /// <inheritdoc/>
     public override string ToString() =>
-        $"[ServerId: {PlexServerId} - Url: {Url} - Local: {Local} - Relay: {Relay} - IPv6: {IPv6}]";
+        $"[ServerId: {PlexServerId} - Url: {Url} - Local: {Local} - Relay: {Relay} - IPv6: {Ipv6}]";
 }

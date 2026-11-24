@@ -104,7 +104,7 @@ public class ConnectionOwnershipIntegrationTests : BaseIntegrationTests
             Address = "127.0.0.42",
             Port = 32401,
             Url = "https://127.0.0.42:32401",
-            IPv4 = true,
+            Ipv4 = true,
         };
         using var client = container.GetApiClient();
         await client.SignIn();
@@ -274,8 +274,8 @@ public class ConnectionOwnershipIntegrationTests : BaseIntegrationTests
                 x.Url,
                 x.Local,
                 x.Relay,
-                x.IPv4,
-                x.IPv6,
+                x.Ipv4,
+                x.Ipv6,
                 x.IsCustom,
                 x.PlexServerId
             ))
@@ -298,8 +298,8 @@ public class ConnectionOwnershipIntegrationTests : BaseIntegrationTests
             Url = "http://custom.example.test:32400",
             Local = false,
             Relay = false,
-            IPv4 = false,
-            IPv6 = false,
+            Ipv4 = false,
+            Ipv6 = false,
             IsCustom = true,
             PlexServerId = serverId,
         };
@@ -325,8 +325,8 @@ public class ConnectionOwnershipIntegrationTests : BaseIntegrationTests
         string Url,
         bool Local,
         bool Relay,
-        bool IPv4,
-        bool IPv6,
+        bool Ipv4,
+        bool Ipv6,
         bool IsCustom,
         int PlexServerId
     );
