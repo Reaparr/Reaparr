@@ -37,7 +37,9 @@ update_unraid_container() {
     local container_name="${REAPARR_UNRAID_CONTAINER:-Reaparr}"
     local expected_image="${REAPARR_UNRAID_IMAGE:-${image}}"
     local api_key="${REAPARR_UNRAID_API_KEY:?Set REAPARR_UNRAID_API_KEY when REAPARR_UNRAID_AUTO_UPDATE=true}"
-    local containers_query='query { docker { containers { id names image } } }'
+    local containers_query='query { docker { containers { id names image imageId state } } }'
+    local readiness_url="${REAPARR_UNRAID_READINESS_URL:?Set REAPARR_UNRAID_READINESS_URL to the Reaparr login or readiness URL}"
+    local expected_image_id
     local response
     local container
     local container_id
@@ -45,7 +47,7 @@ update_unraid_container() {
     local display_name
     local update_mutation="mutation UpdateContainer(\$id: PrefixedID!) { docker { updateContainer(id: \$id) { id names image state status } } }"
     local update_response
-    local updated_id
+    local attempt
     local curl_resolve_args=()
     if [[ -n "${REAPARR_UNRAID_RESOLVE:-}" ]]; then
         # Keep TLS verification enabled while mapping the certificate hostname to a fixed IP.
@@ -61,9 +63,11 @@ update_unraid_container() {
         return 1
     }
 
+    expected_image_id="$(docker buildx imagetools inspect --raw "${expected_image}" | jq -er '.config.digest | select(startswith("sha256:"))')"
+
     response="$(
         jq -cn --arg query "${containers_query}" '{query: $query}' |
-            curl --fail --silent --show-error \
+            curl --fail --silent --show-error --max-time 15 \
                 --request POST "${graphql_url}" \
                 "${curl_resolve_args[@]}" \
                 --header 'Content-Type: application/json' \
@@ -96,28 +100,42 @@ update_unraid_container() {
     container_id="$(jq -r '.id // empty' <<<"${container}")"
     display_name="$(jq -r '(.names // []) | join(", ")' <<<"${container}")"
 
-    update_response="$(
+    if update_response="$(
         jq -cn \
             --arg query "${update_mutation}" \
             --arg id "${container_id}" \
             '{query: $query, variables: {id: $id}}' |
-            curl --fail --silent --show-error \
+            curl --fail --silent --show-error --max-time 60 \
                 --request POST "${graphql_url}" \
                 "${curl_resolve_args[@]}" \
                 --header 'Content-Type: application/json' \
                 --header "x-api-key: ${api_key}" \
                 --data-binary @-
-    )"
-
-    report_graphql_errors "${update_response}" "container update" "${graphql_url}"
-
-    updated_id="$(jq -r '.data.docker.updateContainer.id // empty' <<<"${update_response}")"
-    if [[ -z "${updated_id}" ]]; then
-        echo "Unraid did not return an updated container for '${display_name}'" >&2
-        return 1
+    )"; then
+        report_graphql_errors "${update_response}" "container update" "${graphql_url}"
+    else
+        echo "Unraid update response was unavailable; checking container state without repeating the update" >&2
     fi
 
-    echo "Unraid update requested for ${display_name} (${updated_id})"
+    for ((attempt = 1; attempt <= 12; attempt++)); do
+        if response="$(
+            jq -cn --arg query "${containers_query}" '{query: $query}' |
+                curl --fail --silent --show-error --max-time 5 \
+                    --request POST "${graphql_url}" "${curl_resolve_args[@]}" \
+                    --header 'Content-Type: application/json' --header "x-api-key: ${api_key}" --data-binary @-
+        )" && jq -e --arg name "${container_name}" --arg image "${expected_image}" --arg id "${expected_image_id}" '
+            [.data.docker.containers[]? | select(any(.names[]?; ltrimstr("/") == $name))]
+            | length == 1 and .[0].image == $image and .[0].imageId == $id and .[0].state == "RUNNING"
+        ' >/dev/null <<<"${response}" &&
+            [[ "$(curl --silent --show-error --max-time 5 --output /dev/null --write-out '%{http_code}' "${readiness_url}")" == 2?? ]]; then
+            echo "Verified ${display_name} is running ${expected_image_id} and Reaparr is ready"
+            return 0
+        fi
+        if ((attempt < 12)); then sleep 3; fi
+    done
+
+    echo "Could not verify the new image and readiness for ${display_name}" >&2
+    return 1
 }
 
 
@@ -125,6 +143,11 @@ update_unraid_container() {
 echo "Building and pushing ${image}"
 echo "Docker context: $(docker context show)"
 echo "Docker daemon: $(docker version --format '{{.Server.Os}}/{{.Server.Arch}}')"
+
+if [[ "${REAPARR_UNRAID_AUTO_UPDATE:-false}" == "true" ]]; then
+    : "${REAPARR_UNRAID_URL:?Set REAPARR_UNRAID_URL when REAPARR_UNRAID_AUTO_UPDATE=true}"
+    : "${REAPARR_UNRAID_READINESS_URL:?Set REAPARR_UNRAID_READINESS_URL to the Reaparr login or readiness URL}"
+fi
 
 docker buildx build \
     --progress=plain \
@@ -140,6 +163,5 @@ docker buildx build \
 
 echo "Successfully pushed ${image}"
 if [[ "${REAPARR_UNRAID_AUTO_UPDATE:-false}" == "true" ]]; then
-    : "${REAPARR_UNRAID_URL:?Set REAPARR_UNRAID_URL when REAPARR_UNRAID_AUTO_UPDATE=true}"
     update_unraid_container
 fi
