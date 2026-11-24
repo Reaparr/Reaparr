@@ -189,7 +189,7 @@ public class DirectPlexDownloadClient : IPlexDownloadClient
                     if (attempt > 0)
                         await _downloader.Clear();
 
-                    var progressGate = new object();
+                    var progressGate = new Lock();
                     var progressCompleted = false;
                     using var progressSubscription = Observable
                         .FromEventPattern<DownloadProgressChangedEventArgs>(

@@ -1,6 +1,6 @@
 using FlexQuery.NET.Models;
-using NaturalSort.Extension;
 using FlexQuery.NET.Models.Paging;
+using NaturalSort.Extension;
 using Reaparr.Application.Contracts;
 
 namespace Reaparr.Data;
