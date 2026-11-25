@@ -407,7 +407,7 @@ public class DownloadTaskSchedulerUnitTests : BaseUnitTest<DownloadTaskScheduler
     }
 
     private static bool IsRunningQuery(FireInstanceQuery query, int skip) =>
-                        query.SchedulerInstanceId == SCHEDULER_INSTANCE_ID
+        query.SchedulerInstanceId == SCHEDULER_INSTANCE_ID
         && query.State == FireInstanceState.Executing
         && query.Skip == skip
         && query.Take == PagedQuery.DefaultTake;

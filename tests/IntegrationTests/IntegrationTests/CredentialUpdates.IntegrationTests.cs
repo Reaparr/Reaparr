@@ -1,4 +1,3 @@
-
 namespace Reaparr.IntegrationTests;
 
 public class CredentialUpdatesIntegrationTests : BaseIntegrationTests
