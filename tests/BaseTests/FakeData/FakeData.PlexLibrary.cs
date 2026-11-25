@@ -57,6 +57,7 @@ public static partial class FakeData
 
     public static Faker<PlexLibrary> GetPlexLibrary(Seed seed, PlexMediaType libraryType = PlexMediaType.None) =>
         _plexLibraryFaker
+            .Clone() // Isolate each caller's library type and random seed.
             .RuleFor(x => x.Type, f => libraryType == PlexMediaType.None ? f.Reaparr().LibraryType : libraryType)
             .UseSeed(seed.Next());
 }
