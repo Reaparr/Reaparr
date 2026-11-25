@@ -94,19 +94,19 @@ describe('BackgroundActivityToggleButton', () => {
 		wrapper = await render();
 		const dialogStore = useDialogStore();
 		const openDialog = vi.spyOn(dialogStore, 'openCheckServerConnectionsDialog');
-		publish(JobStatus.Started, { '12': [34, 35] });
+		publish(JobStatus.Started, { 12: [34, 35] });
 		await wrapper.vm.$nextTick();
 
 		await wrapper.findComponent(itemSectionStub).trigger('click');
 
 		expect(openDialog).toHaveBeenCalledExactlyOnceWith({
-			plexServersWithConnectionIds: { '12': [34, 35] },
+			plexServersWithConnectionIds: { 12: [34, 35] },
 		});
 	});
 
 	test.each([JobStatus.Completed, JobStatus.Failed, JobStatus.Cancelled])('clears activity on %s', async (terminalStatus) => {
 		wrapper = await render();
-		publish(JobStatus.Started, { '12': [34] });
+		publish(JobStatus.Started, { 12: [34] });
 		await wrapper.vm.$nextTick();
 		expect(wrapper.find('[data-cy="background-activity-button-loading"]').exists()).toBe(true);
 
