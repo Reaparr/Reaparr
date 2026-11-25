@@ -11,8 +11,8 @@
         <PackageReference Include="TUnit" Version="1.87.12" />
         <PackageReference Include="Serilog.Sinks.TestCorrelator" Version="4.0.2" />
         <PackageReference Update="Meziantou.Analyzer" Version="3.0.342">
-          <PrivateAssets>all</PrivateAssets>
-          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
     </ItemGroup>
 

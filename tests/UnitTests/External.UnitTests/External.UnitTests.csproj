@@ -11,8 +11,8 @@
         <PackageReference Include="TUnit" Version="1.87.12" />
         <PackageReference Include="System.Reactive" Version="7.0.0" />
         <PackageReference Update="Meziantou.Analyzer" Version="3.0.342">
-          <PrivateAssets>all</PrivateAssets>
-          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
     </ItemGroup>
     <ItemGroup>
