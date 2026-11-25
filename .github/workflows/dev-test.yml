@@ -49,6 +49,7 @@ jobs:
                             });
                             const testJobs = jobs.filter(job =>
                                 job.name !== 'Pipeline deadline'
+                                && job.name !== 'InspectCode'
                                 && !job.name.startsWith('Test-Docker-Build / ')
                                 && !job.name.startsWith('Test-Desktop-Build / '));
                             if (testJobs.length > 0 && testJobs.every(job => job.status === 'completed')) {
@@ -96,11 +97,6 @@ jobs:
                     key: ${{ runner.os }}-inspectcode-${{ hashFiles('global.json', 'Directory.Build.props', '**/*.csproj', '**/packages.lock.json') }}
                     restore-keys: |
                         ${{ runner.os }}-inspectcode-
-
-            -   name: Setup .NET SDK
-                uses: actions/setup-dotnet@v6
-                with:
-                    dotnet-version: 11.x
 
             -   name: Restore solution for InspectCode
                 uses: ./.github/actions/dotnet-setup/
