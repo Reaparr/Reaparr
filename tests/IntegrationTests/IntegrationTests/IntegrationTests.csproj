@@ -14,8 +14,8 @@
         <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="11.0.0" />
         <PackageReference Include="TUnit" Version="1.87.12" />
         <PackageReference Update="Meziantou.Analyzer" Version="3.0.342">
-          <PrivateAssets>all</PrivateAssets>
-          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
     </ItemGroup>
     <ItemGroup>
