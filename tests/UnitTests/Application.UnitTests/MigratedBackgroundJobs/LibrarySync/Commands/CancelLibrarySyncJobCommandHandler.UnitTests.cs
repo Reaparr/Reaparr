@@ -236,9 +236,9 @@ public class CancelLibrarySyncJobCommandHandlerUnitTests : BaseCommandUnitTest<C
         Mock.Mock<IScheduler>()
             .Setup(x => x.QueryFireInstances(It.IsAny<FireInstanceQuery>(), It.IsAny<CancellationToken>()))
             .Returns(
-                (FireInstanceQuery _, CancellationToken _) =>
+                async (FireInstanceQuery _, CancellationToken _) =>
                 {
-                    dbContext
+                    await dbContext
                         .LibrarySyncJobQueues.Where(x =>
                             x.PlexServerId == library.PlexServerId && x.PlexLibraryId == library.Id
                         )
@@ -247,10 +247,8 @@ public class CancelLibrarySyncJobCommandHandlerUnitTests : BaseCommandUnitTest<C
                                 s.SetProperty(x => x.CreatedAt, successorCreatedAt)
                                     .SetProperty(x => x.StartedAt, successorStartedAt),
                             CancellationToken.None
-                        )
-                        .GetAwaiter()
-                        .GetResult();
-                    return new ValueTask<PagedResult<FireInstance>>(new PagedResult<FireInstance>([], false));
+                        );
+                    return new PagedResult<FireInstance>([], false);
                 }
             )
             .Verifiable(Times.Once());
@@ -405,9 +403,9 @@ public class CancelLibrarySyncJobCommandHandlerUnitTests : BaseCommandUnitTest<C
         Mock.Mock<IScheduler>()
             .Setup(x => x.QueryFireInstances(It.IsAny<FireInstanceQuery>(), It.IsAny<CancellationToken>()))
             .Returns(
-                (FireInstanceQuery _, CancellationToken _) =>
+                async (FireInstanceQuery _, CancellationToken _) =>
                 {
-                    dbContext
+                    await dbContext
                         .LibrarySyncJobQueues.Where(x =>
                             x.PlexServerId == library.PlexServerId && x.PlexLibraryId == library.Id
                         )
@@ -416,10 +414,8 @@ public class CancelLibrarySyncJobCommandHandlerUnitTests : BaseCommandUnitTest<C
                                 s.SetProperty(x => x.Status, LibrarySyncJobStatus.Processing)
                                     .SetProperty(x => x.StartedAt, startedAt),
                             CancellationToken.None
-                        )
-                        .GetAwaiter()
-                        .GetResult();
-                    return new ValueTask<PagedResult<FireInstance>>(new PagedResult<FireInstance>([], false));
+                        );
+                    return new PagedResult<FireInstance>([], false);
                 }
             )
             .Verifiable(Times.Once());

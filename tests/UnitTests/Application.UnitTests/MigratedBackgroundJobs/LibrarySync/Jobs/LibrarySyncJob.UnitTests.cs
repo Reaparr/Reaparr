@@ -928,7 +928,7 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
         Task execution;
         using (await coordinator.AcquireRebuildLeaseAsync(CancellationToken))
         {
-            execution = Sut.Execute(context.Object, context.Object.CancellationToken);
+            execution = Sut.Execute(context.Object, context.Object.CancellationToken).AsTask();
             await dbContext
                 .PlexServers.Where(x => x.Id == library.PlexServerId)
                 .ExecuteUpdateAsync(x => x.SetProperty(y => y.IsEnabled, false), CancellationToken);
@@ -1115,7 +1115,7 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
         Task execution;
         using (await coordinator.AcquireRebuildLeaseAsync(CancellationToken))
         {
-            execution = Sut.Execute(context.Object, context.Object.CancellationToken);
+            execution = Sut.Execute(context.Object, context.Object.CancellationToken).AsTask();
             await leaseRequested.Task;
             await dbContext
                 .PlexServers.Where(x => x.Id == library.PlexServerId)

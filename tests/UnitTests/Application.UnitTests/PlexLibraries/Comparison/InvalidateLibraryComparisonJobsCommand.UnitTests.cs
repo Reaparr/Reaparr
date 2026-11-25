@@ -35,7 +35,7 @@ public class InvalidateLibraryComparisonJobsCommandUnitTests
                 x.QueryJobs(
                     It.Is<JobQuery>(query =>
                         query.Group != null
-                        && query.Group.CompareToValue == JobTypes.LibraryComparisonJob.ToString()
+                        && query.Group.CompareToValue == nameof(JobTypes.LibraryComparisonJob)
                         && query.Skip == 0
                         && query.Take == PagedQuery.DefaultTake
                     ),
@@ -463,7 +463,7 @@ public class InvalidateLibraryComparisonJobsCommandUnitTests
                 x.QueryJobs(
                     It.Is<JobQuery>(query =>
                         query.Group != null
-                        && query.Group.CompareToValue == JobTypes.LibraryComparisonJob.ToString()
+                        && query.Group.CompareToValue == nameof(JobTypes.LibraryComparisonJob)
                         && query.Skip == 0
                         && query.Take == PagedQuery.DefaultTake
                     ),

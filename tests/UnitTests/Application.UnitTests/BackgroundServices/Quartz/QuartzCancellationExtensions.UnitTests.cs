@@ -485,7 +485,7 @@ public class QuartzCancellationExtensionsUnitTests : BaseUnitTest
         // Arrange
         var key = new JobKey("not-mutated", nameof(JobTypes.LibrarySyncJob));
         using var caller = new CancellationTokenSource();
-        caller.Cancel();
+        await caller.CancelAsync();
         var callerToken = caller.Token;
         var failure = new OperationCanceledException(callerToken);
         var scheduler = Mock.Mock<IScheduler>();
@@ -648,7 +648,7 @@ public class QuartzCancellationExtensionsUnitTests : BaseUnitTest
         // Arrange
         var key = new JobKey("caller-cancelled", nameof(JobTypes.LibrarySyncJob));
         using var caller = new CancellationTokenSource();
-        caller.Cancel();
+        await caller.CancelAsync();
         var callerToken = caller.Token;
         var scheduler = Mock.Mock<IScheduler>();
         scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(SchedulerNode).Verifiable(Times.Once());
@@ -837,7 +837,7 @@ public class QuartzCancellationExtensionsUnitTests : BaseUnitTest
         var cancelled = new JobKey("cancelled", nameof(JobTypes.LibrarySyncJob));
         var completed = new JobKey("completed", cancelled.Group);
         using var caller = new CancellationTokenSource();
-        caller.Cancel();
+        await caller.CancelAsync();
         var callerToken = caller.Token;
         var scheduler = Mock.Mock<IScheduler>();
         scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(SchedulerNode).Verifiable(Times.Exactly(2));
@@ -946,7 +946,7 @@ public class QuartzCancellationExtensionsUnitTests : BaseUnitTest
         // Arrange
         var key = new JobKey("still-running", nameof(JobTypes.LibrarySyncJob));
         using var caller = new CancellationTokenSource();
-        caller.Cancel();
+        await caller.CancelAsync();
         var callerToken = caller.Token;
         var scheduler = Mock.Mock<IScheduler>();
         scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(SchedulerNode).Verifiable(Times.Once());

@@ -199,7 +199,7 @@ public class QuartzQueryExtensionsUnitTests : BaseUnitTest
     {
         // Arrange
         var key = new JobKey("target", nameof(JobTypes.DownloadJob));
-        JobKey? firingKey = scenario switch
+        var firingKey = scenario switch
         {
             0 => null,
             1 => new JobKey("other", key.Group),

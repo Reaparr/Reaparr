@@ -194,8 +194,8 @@ public class QuartzRuntimeIntegrationTests : BaseIntegrationTests
             oldRowsCommand.CommandText = "SELECT MISFIRE_THRESHOLD, FIXED_DELAY FROM QRTZ_TRIGGERS";
             await using var oldRowsReader = await oldRowsCommand.ExecuteReaderAsync(CancellationToken);
             (await oldRowsReader.ReadAsync(CancellationToken)).ShouldBeTrue();
-            oldRowsReader.IsDBNull(0).ShouldBeTrue();
-            oldRowsReader.IsDBNull(1).ShouldBeTrue();
+            (await oldRowsReader.IsDBNullAsync(0, CancellationToken)).ShouldBeTrue();
+            (await oldRowsReader.IsDBNullAsync(1, CancellationToken)).ShouldBeTrue();
         }
         await database.Database.CloseConnectionAsync();
         databasePathReads.ShouldBe(0);
@@ -414,7 +414,7 @@ public class QuartzRuntimeIntegrationTests : BaseIntegrationTests
         {
             GC.KeepAlive(scope);
             state.TokenMatched = cancellationToken == context.CancellationToken;
-            using var registration = cancellationToken.Register(() => state.Cancelled.TrySetResult());
+            await using var registration = cancellationToken.Register(() => state.Cancelled.TrySetResult());
             state.Executing.TrySetResult();
             await state.Cancelled.Task;
         }

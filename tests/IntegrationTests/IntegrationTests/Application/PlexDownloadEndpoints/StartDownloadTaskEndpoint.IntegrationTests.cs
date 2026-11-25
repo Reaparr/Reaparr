@@ -204,7 +204,7 @@ public class StartDownloadTaskEndpointIntegrationTests : BaseIntegrationTests
             LastModified = server.LastModified,
         };
         fileSystem.Directory.CreateDirectory(task.DownloadDirectory);
-        using (var partialFile = fileSystem.File.Create(task.DownloadFilePath))
+        await using (var partialFile = fileSystem.File.Create(task.DownloadFilePath))
         {
             partialFile.SetLength(payload.Length);
             partialFile.Write(payload.AsSpan(0, 17));
