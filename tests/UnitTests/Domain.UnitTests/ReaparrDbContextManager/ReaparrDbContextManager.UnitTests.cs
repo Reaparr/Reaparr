@@ -199,76 +199,57 @@ public class ReaparrDbContextManagerUnitTests : BaseUnitTest<ReaparrDbContextMan
     }
 
     [Test]
-    public async Task ShouldPreserveDatabase_WhenReaparrMigrationFails()
+    [Arguments(false, false)]
+    [Arguments(true, false)]
+    [Arguments(false, true)]
+    public async Task ShouldBackUpAndResetDatabase_WhenMigrationFails(bool authFails, bool throws)
     {
         // Arrange
-        Mock.Mock<IFile>().Setup(x => x.Exists(It.IsAny<string>())).Returns(true);
-        Mock.Mock<IReaparrDbContextDatabase>().Setup(x => x.CanConnect()).Returns(true);
-        Mock.Mock<IReaparrDbContextDatabase>().Setup(x => x.IsInMemory()).Returns(false);
-        Mock.Mock<IReaparrDbContextDatabase>().Setup(x => x.GetPendingMigrations()).Returns(["Migration1"]);
-        var migrationFailure = Result.Fail("Migration failed");
-        Mock.Mock<IReaparrDbContextDatabase>().Setup(x => x.Migrate()).Returns(migrationFailure);
-        Mock.Mock<IAuthDbContextDatabase>().Setup(x => x.IsInMemory()).Returns(true);
+        var reaparr = Mock.Mock<IReaparrDbContextDatabase>();
+        var auth = Mock.Mock<IAuthDbContextDatabase>();
+        var file = Mock.Mock<IFile>();
+        file.Setup(x => x.Exists(It.IsAny<string>())).Returns(true);
+        Mock.Mock<IDirectory>()
+            .Setup(x => x.CreateDirectory(It.IsAny<string>()))
+            .Returns(new Mock<IDirectoryInfo>().Object);
+        Mock.Mock<IGeneralSettings>().SetupSet(x => x.FirstTimeSetup = true).Verifiable(Times.Once);
+        reaparr.Setup(x => x.CanConnect()).Returns(true);
+        reaparr.Setup(x => x.IsInMemory()).Returns(false);
+        auth.Setup(x => x.IsInMemory()).Returns(!authFails);
+        reaparr.Setup(x => x.GetPendingMigrations()).Returns(authFails ? [] : ["Migration1"]);
+        if (authFails)
+            auth.SetupSequence(x => x.GetPendingMigrations()).Returns(["AuthMigration1"]).Returns([]).Returns([]);
+        else
+            auth.Setup(x => x.GetPendingMigrations()).Returns([]);
+
+        if (authFails)
+            auth.Setup(x => x.Migrate()).Returns(Result.Fail("Auth migration failed"));
+        else if (throws)
+            reaparr.SetupSequence(x => x.Migrate()).Throws<InvalidOperationException>().Returns(Result.Ok());
+        else
+            reaparr.SetupSequence(x => x.Migrate()).Returns(Result.Fail("Migration failed")).Returns(Result.Ok());
+
+        reaparr.Setup(x => x.Optimize(It.IsAny<CancellationToken>())).ReturnsAsync(Result.Ok(0));
+
+        var reset = new MockSequence();
+        reaparr.InSequence(reset).Setup(x => x.CloseConnection());
+        file.InSequence(reset).Setup(x => x.Copy(DatabasePath, It.IsAny<string>()));
+        file.InSequence(reset).Setup(x => x.Copy(DatabasePath + "-shm", It.IsAny<string>()));
+        file.InSequence(reset).Setup(x => x.Copy(DatabasePath + "-wal", It.IsAny<string>()));
+        reaparr.InSequence(reset).Setup(x => x.EnsureDeleted()).Returns(Result.Ok(true));
 
         // Act
         var result = await Sut.SetupAsync();
 
         // Assert
-        result.IsFailed.ShouldBeTrue();
-        result.Errors.Count.ShouldBe(1);
-        result.Errors.Single().Message.ShouldBe("Migration failed");
-        Mock.Mock<IReaparrDbContextDatabase>().Verify(x => x.Migrate(), Times.Once);
-        Mock.Mock<IReaparrDbContextDatabase>().Verify(x => x.EnsureDeleted(), Times.Never);
-        Mock.Mock<IReaparrDbContextDatabase>().Verify(x => x.CloseConnection(), Times.Never);
-        Mock.Mock<IFile>().Verify(x => x.Copy(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
-    }
-
-    [Test]
-    public async Task ShouldPreserveDatabase_WhenAuthMigrationFails()
-    {
-        // Arrange
-        Mock.Mock<IFile>().Setup(x => x.Exists(It.IsAny<string>())).Returns(true);
-        Mock.Mock<IReaparrDbContextDatabase>().Setup(x => x.CanConnect()).Returns(true);
-        Mock.Mock<IReaparrDbContextDatabase>().Setup(x => x.IsInMemory()).Returns(false);
-        Mock.Mock<IReaparrDbContextDatabase>().Setup(x => x.GetPendingMigrations()).Returns([]);
-        Mock.Mock<IReaparrDbContextDatabase>().Setup(x => x.Migrate()).Returns(Result.Ok());
-        Mock.Mock<IAuthDbContextDatabase>().Setup(x => x.IsInMemory()).Returns(false);
-        Mock.Mock<IAuthDbContextDatabase>().Setup(x => x.GetPendingMigrations()).Returns(["AuthMigration1"]);
-        var migrationFailure = Result.Fail("Auth migration failed");
-        Mock.Mock<IAuthDbContextDatabase>().Setup(x => x.Migrate()).Returns(migrationFailure);
-
-        // Act
-        var result = await Sut.SetupAsync();
-
-        // Assert
-        result.IsFailed.ShouldBeTrue();
-        result.Errors.Count.ShouldBe(1);
-        result.Errors.Single().Message.ShouldBe("Auth migration failed");
-        Mock.Mock<IReaparrDbContextDatabase>().Verify(x => x.EnsureDeleted(), Times.Never);
-        Mock.Mock<IAuthDbContextDatabase>().Verify(x => x.EnsureDeleted(), Times.Never);
-        Mock.Mock<IFile>().Verify(x => x.Copy(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
-    }
-
-    [Test]
-    public async Task ShouldPreserveDatabase_WhenMigrationThrowsException()
-    {
-        // Arrange
-        Mock.Mock<IFile>().Setup(x => x.Exists(It.IsAny<string>())).Returns(true);
-        Mock.Mock<IReaparrDbContextDatabase>().Setup(x => x.CanConnect()).Returns(true);
-        Mock.Mock<IReaparrDbContextDatabase>().Setup(x => x.IsInMemory()).Returns(false);
-        Mock.Mock<IReaparrDbContextDatabase>().Setup(x => x.GetPendingMigrations()).Returns(["Migration1"]);
-        Mock.Mock<IReaparrDbContextDatabase>().Setup(x => x.Migrate()).Throws<InvalidOperationException>();
-        Mock.Mock<IAuthDbContextDatabase>().Setup(x => x.IsInMemory()).Returns(true);
-
-        // Act
-        var result = await Sut.SetupAsync();
-
-        // Assert
-        result.IsFailed.ShouldBeTrue();
-        result.Errors.Count.ShouldBe(1);
-        result.Errors.Single().ShouldBeOfType<ExceptionalError>();
-        Mock.Mock<IReaparrDbContextDatabase>().Verify(x => x.EnsureDeleted(), Times.Never);
-        Mock.Mock<IReaparrDbContextDatabase>().Verify(x => x.CloseConnection(), Times.Never);
+        result.IsSuccess.ShouldBeTrue(result.ToString());
+        result.Errors.ShouldBeEmpty();
+        reaparr.Verify(x => x.CloseConnection(), Times.Once);
+        file.Verify(x => x.Copy(It.IsAny<string>(), It.IsAny<string>()), Times.Exactly(3));
+        reaparr.Verify(x => x.EnsureDeleted(), Times.Once);
+        reaparr.Verify(x => x.Migrate(), Times.Exactly(authFails ? 0 : 2));
+        auth.Verify(x => x.Migrate(), Times.Exactly(authFails ? 1 : 0));
+        Mock.Mock<IGeneralSettings>().VerifySet(x => x.FirstTimeSetup = true, Times.Once);
     }
 
     [Test]
