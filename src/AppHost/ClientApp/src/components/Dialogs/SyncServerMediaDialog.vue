@@ -31,7 +31,7 @@
 					v-if="plexServerNodes.length > 0"
 					v-model:expanded="expanded"
 					:nodes="plexServerNodes"
-					node-key="index"
+					node-key="key"
 					default-expand-all>
 					<template #default-header="{ node }: { node: IPlexMediaSyncServerNode }">
 						<QRow
@@ -149,7 +149,7 @@ import { finalize } from 'rxjs';
 interface IPlexMediaSyncServerNode {
 	id: number;
 	title: string;
-	index: number;
+	key: string;
 	type: 'server' | 'library';
 	percentage: number;
 	completed: boolean;
@@ -160,7 +160,7 @@ interface IPlexMediaSyncServerNode {
 	children: IPlexMediaSyncServerNode[];
 }
 
-const expanded = ref<number[]>([]);
+const expanded = ref<string[]>([]);
 /**
  * When set, only progress for the server that initiated the sync is displayed.
  * A null value keeps the background activity dialog's all-server view.
@@ -187,6 +187,10 @@ function cancelQueuedSync(libraryId: number): void {
 	);
 }
 
+const groupedQueues = computed(() => libraryStore.getLibrarySyncQueueGrouped(
+	get(plexServerId) ?? undefined,
+	get(openedAt) ?? undefined,
+));
 const libraryNodes = computed(() => get(plexServerNodes).flatMap((x) => x.children));
 const hasProcessingNodes = computed(() => get(libraryNodes).some((x) => x.status === LibrarySyncJobStatus.Processing));
 const hasQueuedNodes = computed(() => get(libraryNodes).some((x) => x.status === LibrarySyncJobStatus.Queued));
@@ -212,8 +216,9 @@ const getProgressText = computed(() => {
 	const nodes = get(libraryNodes);
 	const completed = nodes.filter((x) => x.status === LibrarySyncJobStatus.Completed).length;
 	const failed = nodes.filter((x) => x.status === LibrarySyncJobStatus.Failed).length;
-	const cancelled = nodes.filter((x) => x.status === LibrarySyncJobStatus.Cancelled).length;
-	const terminal = completed + failed + cancelled;
+	const cancelled = get(groupedQueues).reduce((count, server) =>
+		count + server.progress.filter((queue) => queue.status === LibrarySyncJobStatus.Cancelled).length, 0);
+	const terminal = completed + failed;
 	if (terminal === nodes.length) {
 		set(expanded, []);
 		return t('components.sync-server-media-dialog.finished', { completed, failed, cancelled });
@@ -225,39 +230,36 @@ const getProgressText = computed(() => {
 	});
 });
 const plexServerNodes = computed((): IPlexMediaSyncServerNode[] => {
-	let uniqueIndex = 0;
+	return get(groupedQueues).flatMap((server) => {
+		const progress = server.progress.filter((queue) => queue.status !== LibrarySyncJobStatus.Cancelled);
+		if (progress.length === 0) return [];
 
-	return libraryStore
-		.getLibrarySyncQueueGrouped(get(plexServerId) ?? undefined, get(openedAt) ?? undefined)
-		.map((server) => {
-			const percentage = server.progress.length > 0
-				? meanBy(server.progress, (x) => x.percentage ?? 0)
-				: 0;
-			return {
-				id: server.serverId,
-				index: uniqueIndex++,
-				type: 'server',
-				title: serverStore.getServerName(server.serverId),
-				percentage: percentage,
-				completed: percentage === 100,
-				children: server.progress.map((libraryProgress) => {
-					const library = libraryStore.getLibrary(libraryProgress.plexLibraryId);
-					return {
-						id: libraryProgress.plexLibraryId,
-						index: uniqueIndex++,
-						type: 'library',
-						mediaType: library?.type,
-						percentage: libraryProgress.percentage ?? 0,
-						title: library ? libraryStore.getLibraryName(libraryProgress.plexLibraryId) : t('general.error.unknown'),
-						completed: libraryProgress.status === LibrarySyncJobStatus.Completed,
-						status: libraryProgress.status,
-						errorMessage: libraryProgress.errorMessage,
-						progress: libraryProgress,
-						children: [],
-					};
-				}),
-			};
-		});
+		const percentage = meanBy(progress, (x) => x.percentage ?? 0);
+		return [{
+			id: server.serverId,
+			key: `server-${server.serverId}`,
+			type: 'server',
+			title: serverStore.getServerName(server.serverId),
+			percentage,
+			completed: percentage === 100,
+			children: progress.map((libraryProgress) => {
+				const library = libraryStore.getLibrary(libraryProgress.plexLibraryId);
+				return {
+					id: libraryProgress.plexLibraryId,
+					key: `library-${libraryProgress.plexLibraryId}`,
+					type: 'library',
+					mediaType: library?.type,
+					percentage: libraryProgress.percentage ?? 0,
+					title: library ? libraryStore.getLibraryName(libraryProgress.plexLibraryId) : t('general.error.unknown'),
+					completed: libraryProgress.status === LibrarySyncJobStatus.Completed,
+					status: libraryProgress.status,
+					errorMessage: libraryProgress.errorMessage,
+					progress: libraryProgress,
+					children: [],
+				};
+			}),
+		}];
+	});
 });
 
 function isServer(node: IPlexMediaSyncServerNode): boolean {
@@ -275,9 +277,11 @@ function shouldShowProgress(node: IPlexMediaSyncServerNode): boolean {
 
 	return node.status !== LibrarySyncJobStatus.Queued;
 }
+
 function getStatusText(status?: LibrarySyncJobStatus, libraryId?: number): string {
 	if (status === LibrarySyncJobStatus.Queued && libraryId !== undefined) {
 		const reason = libraryStore.getLibrarySyncWaitingReason(libraryId);
+
 		if (reason === LibrarySyncWaitingReason.Offline) {
 			return t('components.sync-server-media-dialog.status.queued-offline');
 		}
@@ -307,8 +311,6 @@ function getStatusText(status?: LibrarySyncJobStatus, libraryId?: number): strin
 			return t('components.sync-server-media-dialog.status.completed');
 		case LibrarySyncJobStatus.Failed:
 			return t('components.sync-server-media-dialog.status.failed');
-		case LibrarySyncJobStatus.Cancelled:
-			return t('components.sync-server-media-dialog.status.cancelled');
 		default:
 			return t('components.sync-server-media-dialog.status.unknown');
 	}

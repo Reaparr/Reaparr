@@ -142,6 +142,12 @@ export const useLibraryStore = defineStore(StoreNames.LibraryStore, () => {
 		cancelLibrarySync(libraryId: number) {
 			telemetry.librarySyncCancelRequested(libraryId);
 			return plexLibraryApi.cancelLibrarySyncEndpoint(libraryId).pipe(
+				tap(({ isSuccess }) => {
+					const queue = isSuccess ? getters.getLibrarySyncQueue(libraryId) : null;
+					if (queue?.status === LibrarySyncJobStatus.Queued) {
+						actions.updateSyncQueue({ ...queue, status: LibrarySyncJobStatus.Cancelled });
+					}
+				}),
 				switchMap((response) =>
 					response.isSuccess
 						? actions.refreshLibrarySyncStatus().pipe(map(() => response))
