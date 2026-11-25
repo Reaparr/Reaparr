@@ -5,7 +5,7 @@ namespace Reaparr.Application.UnitTests;
 
 public class QuartzCancellationExtensionsUnitTests : BaseUnitTest
 {
-    private const string SchedulerNode = "cancellation-test-node";
+    private const string SCHEDULER_NODE = "cancellation-test-node";
 
     [Test]
     public async Task ShouldFailWithoutDeletingOrInterrupting_WhenTheRequestedJobIsNotScheduled()
@@ -14,12 +14,12 @@ public class QuartzCancellationExtensionsUnitTests : BaseUnitTest
         var key = new JobKey("requested", nameof(JobTypes.LibrarySyncJob));
         var unrelatedKey = new JobKey(key.Name, nameof(JobTypes.DownloadJob));
         var scheduler = Mock.Mock<IScheduler>();
-        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(SchedulerNode).Verifiable(Times.Once());
+        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(SCHEDULER_NODE).Verifiable(Times.Once());
         scheduler
             .Setup(x =>
                 x.QueryFireInstances(
                     It.Is<FireInstanceQuery>(q =>
-                        q.SchedulerInstanceId == SchedulerNode
+                        q.SchedulerInstanceId == SCHEDULER_NODE
                         && q.State == FireInstanceState.Executing
                         && q.Skip == 0
                         && q.Take == PagedQuery.DefaultTake
@@ -62,13 +62,13 @@ public class QuartzCancellationExtensionsUnitTests : BaseUnitTest
         var scheduler = Mock.Mock<IScheduler>();
         scheduler
             .SetupGet(x => x.SchedulerInstanceId)
-            .Returns(SchedulerNode)
+            .Returns(SCHEDULER_NODE)
             .Verifiable(Times.Exactly(expectedSucceeded ? 2 : 1));
         scheduler
             .Setup(x =>
                 x.QueryFireInstances(
                     It.Is<FireInstanceQuery>(q =>
-                        q.SchedulerInstanceId == SchedulerNode
+                        q.SchedulerInstanceId == SCHEDULER_NODE
                         && q.State == FireInstanceState.Executing
                         && q.Skip == 0
                         && q.Take == PagedQuery.DefaultTake
@@ -117,12 +117,12 @@ public class QuartzCancellationExtensionsUnitTests : BaseUnitTest
         var key = new JobKey("completed-trigger", nameof(JobTypes.LibrarySyncJob));
         var triggerQueries = 0;
         var scheduler = Mock.Mock<IScheduler>();
-        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(SchedulerNode).Verifiable(Times.Exactly(2));
+        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(SCHEDULER_NODE).Verifiable(Times.Exactly(2));
         scheduler
             .Setup(x =>
                 x.QueryFireInstances(
                     It.Is<FireInstanceQuery>(q =>
-                        q.SchedulerInstanceId == SchedulerNode
+                        q.SchedulerInstanceId == SCHEDULER_NODE
                         && q.State == FireInstanceState.Executing
                         && q.Skip == 0
                         && q.Take == PagedQuery.DefaultTake
@@ -165,12 +165,12 @@ public class QuartzCancellationExtensionsUnitTests : BaseUnitTest
         var key = new JobKey("started-during-delete", nameof(JobTypes.LibrarySyncJob));
         var executionQueries = 0;
         var scheduler = Mock.Mock<IScheduler>();
-        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(SchedulerNode).Verifiable(Times.Exactly(2));
+        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(SCHEDULER_NODE).Verifiable(Times.Exactly(2));
         scheduler
             .Setup(x =>
                 x.QueryFireInstances(
                     It.Is<FireInstanceQuery>(q =>
-                        q.SchedulerInstanceId == SchedulerNode
+                        q.SchedulerInstanceId == SCHEDULER_NODE
                         && q.State == FireInstanceState.Executing
                         && q.Skip == 0
                         && q.Take == PagedQuery.DefaultTake
@@ -229,13 +229,13 @@ public class QuartzCancellationExtensionsUnitTests : BaseUnitTest
         var scheduler = Mock.Mock<IScheduler>();
         scheduler
             .SetupGet(x => x.SchedulerInstanceId)
-            .Returns(SchedulerNode)
+            .Returns(SCHEDULER_NODE)
             .Verifiable(Times.Exactly(waitForCompletion ? 2 : 1));
         scheduler
             .Setup(x =>
                 x.QueryFireInstances(
                     It.Is<FireInstanceQuery>(q =>
-                        q.SchedulerInstanceId == SchedulerNode
+                        q.SchedulerInstanceId == SCHEDULER_NODE
                         && q.State == FireInstanceState.Executing
                         && q.Skip == 0
                         && q.Take == PagedQuery.DefaultTake
@@ -265,7 +265,7 @@ public class QuartzCancellationExtensionsUnitTests : BaseUnitTest
                 .Setup(x =>
                     x.QueryFireInstances(
                         It.Is<FireInstanceQuery>(q =>
-                            q.SchedulerInstanceId == SchedulerNode
+                            q.SchedulerInstanceId == SCHEDULER_NODE
                             && q.State == FireInstanceState.Executing
                             && q.Skip == 0
                             && q.Take == PagedQuery.DefaultTake
@@ -308,12 +308,12 @@ public class QuartzCancellationExtensionsUnitTests : BaseUnitTest
         var key = new JobKey("running", nameof(JobTypes.LibrarySyncJob));
         var executionQueries = 0;
         var scheduler = Mock.Mock<IScheduler>();
-        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(SchedulerNode).Verifiable(Times.Exactly(2));
+        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(SCHEDULER_NODE).Verifiable(Times.Exactly(2));
         scheduler
             .Setup(x =>
                 x.QueryFireInstances(
                     It.Is<FireInstanceQuery>(q =>
-                        q.SchedulerInstanceId == SchedulerNode
+                        q.SchedulerInstanceId == SCHEDULER_NODE
                         && q.State == FireInstanceState.Executing
                         && q.Skip == 0
                         && q.Take == PagedQuery.DefaultTake
@@ -366,12 +366,12 @@ public class QuartzCancellationExtensionsUnitTests : BaseUnitTest
             ? new OperationCanceledException("Completion was cancelled")
             : new InvalidOperationException("Completion lookup failed");
         var scheduler = Mock.Mock<IScheduler>();
-        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(SchedulerNode).Verifiable(Times.Exactly(2));
+        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(SCHEDULER_NODE).Verifiable(Times.Exactly(2));
         scheduler
             .Setup(x =>
                 x.QueryFireInstances(
                     It.Is<FireInstanceQuery>(q =>
-                        q.SchedulerInstanceId == SchedulerNode
+                        q.SchedulerInstanceId == SCHEDULER_NODE
                         && q.State == FireInstanceState.Executing
                         && q.Skip == 0
                         && q.Take == PagedQuery.DefaultTake
@@ -387,7 +387,7 @@ public class QuartzCancellationExtensionsUnitTests : BaseUnitTest
             .Setup(x =>
                 x.QueryFireInstances(
                     It.Is<FireInstanceQuery>(q =>
-                        q.SchedulerInstanceId == SchedulerNode
+                        q.SchedulerInstanceId == SCHEDULER_NODE
                         && q.State == FireInstanceState.Executing
                         && q.Skip == 0
                         && q.Take == PagedQuery.DefaultTake
@@ -426,12 +426,12 @@ public class QuartzCancellationExtensionsUnitTests : BaseUnitTest
         using var caller = new CancellationTokenSource();
         var callerToken = caller.Token;
         var scheduler = Mock.Mock<IScheduler>();
-        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(SchedulerNode).Verifiable(Times.Exactly(2));
+        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(SCHEDULER_NODE).Verifiable(Times.Exactly(2));
         scheduler
             .Setup(x =>
                 x.QueryFireInstances(
                     It.Is<FireInstanceQuery>(q =>
-                        q.SchedulerInstanceId == SchedulerNode
+                        q.SchedulerInstanceId == SCHEDULER_NODE
                         && q.State == FireInstanceState.Executing
                         && q.Skip == 0
                         && q.Take == PagedQuery.DefaultTake
@@ -451,7 +451,7 @@ public class QuartzCancellationExtensionsUnitTests : BaseUnitTest
             .Setup(x =>
                 x.QueryFireInstances(
                     It.Is<FireInstanceQuery>(q =>
-                        q.SchedulerInstanceId == SchedulerNode
+                        q.SchedulerInstanceId == SCHEDULER_NODE
                         && q.State == FireInstanceState.Executing
                         && q.Skip == 0
                         && q.Take == PagedQuery.DefaultTake
@@ -489,12 +489,12 @@ public class QuartzCancellationExtensionsUnitTests : BaseUnitTest
         var callerToken = caller.Token;
         var failure = new OperationCanceledException(callerToken);
         var scheduler = Mock.Mock<IScheduler>();
-        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(SchedulerNode).Verifiable(Times.Once());
+        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(SCHEDULER_NODE).Verifiable(Times.Once());
         scheduler
             .Setup(x =>
                 x.QueryFireInstances(
                     It.Is<FireInstanceQuery>(q =>
-                        q.SchedulerInstanceId == SchedulerNode
+                        q.SchedulerInstanceId == SCHEDULER_NODE
                         && q.State == FireInstanceState.Executing
                         && q.Skip == 0
                         && q.Take == PagedQuery.DefaultTake
@@ -527,12 +527,12 @@ public class QuartzCancellationExtensionsUnitTests : BaseUnitTest
         using var caller = new CancellationTokenSource();
         var callerToken = caller.Token;
         var scheduler = Mock.Mock<IScheduler>();
-        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(SchedulerNode).Verifiable(Times.Once());
+        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(SCHEDULER_NODE).Verifiable(Times.Once());
         scheduler
             .Setup(x =>
                 x.QueryFireInstances(
                     It.Is<FireInstanceQuery>(q =>
-                        q.SchedulerInstanceId == SchedulerNode
+                        q.SchedulerInstanceId == SCHEDULER_NODE
                         && q.State == FireInstanceState.Executing
                         && q.Skip == 0
                         && q.Take == PagedQuery.DefaultTake
@@ -567,12 +567,12 @@ public class QuartzCancellationExtensionsUnitTests : BaseUnitTest
         var executionQueries = 0;
         var queriedTokens = new List<CancellationToken>();
         var scheduler = Mock.Mock<IScheduler>();
-        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(SchedulerNode).Verifiable(Times.Exactly(2));
+        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(SCHEDULER_NODE).Verifiable(Times.Exactly(2));
         scheduler
             .Setup(x =>
                 x.QueryFireInstances(
                     It.Is<FireInstanceQuery>(q =>
-                        q.SchedulerInstanceId == SchedulerNode
+                        q.SchedulerInstanceId == SCHEDULER_NODE
                         && q.State == FireInstanceState.Executing
                         && q.Skip == 0
                         && q.Take == PagedQuery.DefaultTake
@@ -610,12 +610,12 @@ public class QuartzCancellationExtensionsUnitTests : BaseUnitTest
         var key = new JobKey("timed-out", nameof(JobTypes.LibrarySyncJob));
         CancellationToken timeoutToken = default;
         var scheduler = Mock.Mock<IScheduler>();
-        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(SchedulerNode).Verifiable(Times.Once());
+        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(SCHEDULER_NODE).Verifiable(Times.Once());
         scheduler
             .Setup(x =>
                 x.QueryFireInstances(
                     It.Is<FireInstanceQuery>(q =>
-                        q.SchedulerInstanceId == SchedulerNode
+                        q.SchedulerInstanceId == SCHEDULER_NODE
                         && q.State == FireInstanceState.Executing
                         && q.Skip == 0
                         && q.Take == PagedQuery.DefaultTake
@@ -651,12 +651,12 @@ public class QuartzCancellationExtensionsUnitTests : BaseUnitTest
         await caller.CancelAsync();
         var callerToken = caller.Token;
         var scheduler = Mock.Mock<IScheduler>();
-        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(SchedulerNode).Verifiable(Times.Once());
+        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(SCHEDULER_NODE).Verifiable(Times.Once());
         scheduler
             .Setup(x =>
                 x.QueryFireInstances(
                     It.Is<FireInstanceQuery>(q =>
-                        q.SchedulerInstanceId == SchedulerNode
+                        q.SchedulerInstanceId == SCHEDULER_NODE
                         && q.State == FireInstanceState.Executing
                         && q.Skip == 0
                         && q.Take == PagedQuery.DefaultTake
@@ -689,12 +689,12 @@ public class QuartzCancellationExtensionsUnitTests : BaseUnitTest
         var key = new JobKey("lookup-failed", nameof(JobTypes.LibrarySyncJob));
         var failure = new InvalidOperationException("Cannot inspect execution");
         var scheduler = Mock.Mock<IScheduler>();
-        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(SchedulerNode).Verifiable(Times.Once());
+        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(SCHEDULER_NODE).Verifiable(Times.Once());
         scheduler
             .Setup(x =>
                 x.QueryFireInstances(
                     It.Is<FireInstanceQuery>(q =>
-                        q.SchedulerInstanceId == SchedulerNode
+                        q.SchedulerInstanceId == SCHEDULER_NODE
                         && q.State == FireInstanceState.Executing
                         && q.Skip == 0
                         && q.Take == PagedQuery.DefaultTake
@@ -747,12 +747,12 @@ public class QuartzCancellationExtensionsUnitTests : BaseUnitTest
         var callerToken = caller.Token;
         var queriedTokens = new List<CancellationToken>();
         var scheduler = Mock.Mock<IScheduler>();
-        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(SchedulerNode).Verifiable(Times.Exactly(2));
+        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(SCHEDULER_NODE).Verifiable(Times.Exactly(2));
         scheduler
             .Setup(x =>
                 x.QueryFireInstances(
                     It.Is<FireInstanceQuery>(q =>
-                        q.SchedulerInstanceId == SchedulerNode
+                        q.SchedulerInstanceId == SCHEDULER_NODE
                         && q.State == FireInstanceState.Executing
                         && q.Skip == 0
                         && q.Take == PagedQuery.DefaultTake
@@ -792,12 +792,12 @@ public class QuartzCancellationExtensionsUnitTests : BaseUnitTest
         var lastFailure = new InvalidOperationException("Last failing wait");
         var executionQueries = 0;
         var scheduler = Mock.Mock<IScheduler>();
-        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(SchedulerNode).Verifiable(Times.Exactly(3));
+        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(SCHEDULER_NODE).Verifiable(Times.Exactly(3));
         scheduler
             .Setup(x =>
                 x.QueryFireInstances(
                     It.Is<FireInstanceQuery>(q =>
-                        q.SchedulerInstanceId == SchedulerNode
+                        q.SchedulerInstanceId == SCHEDULER_NODE
                         && q.State == FireInstanceState.Executing
                         && q.Skip == 0
                         && q.Take == PagedQuery.DefaultTake
@@ -840,12 +840,12 @@ public class QuartzCancellationExtensionsUnitTests : BaseUnitTest
         await caller.CancelAsync();
         var callerToken = caller.Token;
         var scheduler = Mock.Mock<IScheduler>();
-        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(SchedulerNode).Verifiable(Times.Exactly(2));
+        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(SCHEDULER_NODE).Verifiable(Times.Exactly(2));
         scheduler
             .Setup(x =>
                 x.QueryFireInstances(
                     It.Is<FireInstanceQuery>(q =>
-                        q.SchedulerInstanceId == SchedulerNode
+                        q.SchedulerInstanceId == SCHEDULER_NODE
                         && q.State == FireInstanceState.Executing
                         && q.Skip == 0
                         && q.Take == PagedQuery.DefaultTake
@@ -880,12 +880,12 @@ public class QuartzCancellationExtensionsUnitTests : BaseUnitTest
     {
         // Arrange
         var scheduler = Mock.Mock<IScheduler>();
-        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(SchedulerNode).Verifiable(Times.Once());
+        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(SCHEDULER_NODE).Verifiable(Times.Once());
         scheduler
             .Setup(x =>
                 x.QueryFireInstances(
                     It.Is<FireInstanceQuery>(q =>
-                        q.SchedulerInstanceId == SchedulerNode
+                        q.SchedulerInstanceId == SCHEDULER_NODE
                         && q.State == FireInstanceState.Executing
                         && q.Skip == 0
                         && q.Take == PagedQuery.DefaultTake
@@ -913,12 +913,12 @@ public class QuartzCancellationExtensionsUnitTests : BaseUnitTest
         var key = new JobKey("finishing", nameof(JobTypes.LibrarySyncJob));
         var executionQueries = 0;
         var scheduler = Mock.Mock<IScheduler>();
-        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(SchedulerNode).Verifiable(Times.Exactly(2));
+        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(SCHEDULER_NODE).Verifiable(Times.Exactly(2));
         scheduler
             .Setup(x =>
                 x.QueryFireInstances(
                     It.Is<FireInstanceQuery>(q =>
-                        q.SchedulerInstanceId == SchedulerNode
+                        q.SchedulerInstanceId == SCHEDULER_NODE
                         && q.State == FireInstanceState.Executing
                         && q.Skip == 0
                         && q.Take == PagedQuery.DefaultTake
@@ -949,12 +949,12 @@ public class QuartzCancellationExtensionsUnitTests : BaseUnitTest
         await caller.CancelAsync();
         var callerToken = caller.Token;
         var scheduler = Mock.Mock<IScheduler>();
-        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(SchedulerNode).Verifiable(Times.Once());
+        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(SCHEDULER_NODE).Verifiable(Times.Once());
         scheduler
             .Setup(x =>
                 x.QueryFireInstances(
                     It.Is<FireInstanceQuery>(q =>
-                        q.SchedulerInstanceId == SchedulerNode
+                        q.SchedulerInstanceId == SCHEDULER_NODE
                         && q.State == FireInstanceState.Executing
                         && q.Skip == 0
                         && q.Take == PagedQuery.DefaultTake
@@ -986,12 +986,12 @@ public class QuartzCancellationExtensionsUnitTests : BaseUnitTest
         // Arrange
         var failure = new InvalidOperationException("Scheduler lookup failed");
         var scheduler = Mock.Mock<IScheduler>();
-        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(SchedulerNode).Verifiable(Times.Once());
+        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(SCHEDULER_NODE).Verifiable(Times.Once());
         scheduler
             .Setup(x =>
                 x.QueryFireInstances(
                     It.Is<FireInstanceQuery>(q =>
-                        q.SchedulerInstanceId == SchedulerNode
+                        q.SchedulerInstanceId == SCHEDULER_NODE
                         && q.State == FireInstanceState.Executing
                         && q.Skip == 0
                         && q.Take == PagedQuery.DefaultTake
@@ -1020,12 +1020,12 @@ public class QuartzCancellationExtensionsUnitTests : BaseUnitTest
         var key = new JobKey("never-finishes", nameof(JobTypes.LibrarySyncJob));
         var executionQueries = 0;
         var scheduler = Mock.Mock<IScheduler>();
-        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(SchedulerNode).Verifiable(Times.AtLeastOnce());
+        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(SCHEDULER_NODE).Verifiable(Times.AtLeastOnce());
         scheduler
             .Setup(x =>
                 x.QueryFireInstances(
                     It.Is<FireInstanceQuery>(q =>
-                        q.SchedulerInstanceId == SchedulerNode
+                        q.SchedulerInstanceId == SCHEDULER_NODE
                         && q.State == FireInstanceState.Executing
                         && q.Skip == 0
                         && q.Take == PagedQuery.DefaultTake
@@ -1055,7 +1055,7 @@ public class QuartzCancellationExtensionsUnitTests : BaseUnitTest
             x =>
                 x.QueryFireInstances(
                     It.Is<FireInstanceQuery>(q =>
-                        q.SchedulerInstanceId == SchedulerNode
+                        q.SchedulerInstanceId == SCHEDULER_NODE
                         && q.State == FireInstanceState.Executing
                         && q.Skip == 0
                         && q.Take == PagedQuery.DefaultTake
@@ -1073,7 +1073,7 @@ public class QuartzCancellationExtensionsUnitTests : BaseUnitTest
             $"fire-{key.Group}-{key.Name}",
             new TriggerKey($"trigger-{key.Name}", key.Group),
             key,
-            SchedulerNode,
+            SCHEDULER_NODE,
             FireInstanceState.Executing,
             DateTimeOffset.UnixEpoch,
             null,

@@ -590,6 +590,7 @@ public class UpdatePlexServerConnectionEndpointUnitTests
         int Port,
         string Url,
         bool Local,
+        bool Relay,
         // ReSharper disable once InconsistentNaming
         bool IPv4,
         // ReSharper disable once InconsistentNaming

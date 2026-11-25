@@ -4,12 +4,12 @@ namespace Reaparr.Application.UnitTests;
 
 public class DownloadTaskSchedulerUnitTests : BaseUnitTest<DownloadTaskScheduler>
 {
-    private const string SchedulerInstanceId = "test-scheduler";
+    private const string SCHEDULER_INSTANCE_ID = "test-scheduler";
 
     [Test]
     public async Task ShouldSucceed_WhenJobCompletesBeforeInterrupt()
     {
-        Mock.Mock<IScheduler>().SetupGet(x => x.SchedulerInstanceId).Returns(SchedulerInstanceId);
+        Mock.Mock<IScheduler>().SetupGet(x => x.SchedulerInstanceId).Returns(SCHEDULER_INSTANCE_ID);
         // Arrange
         var key = new DownloadTaskKey
         {
@@ -56,7 +56,7 @@ public class DownloadTaskSchedulerUnitTests : BaseUnitTest<DownloadTaskScheduler
     [Test]
     public async Task ShouldFail_WhenJobRemainsRunningAfterInterruptFails()
     {
-        Mock.Mock<IScheduler>().SetupGet(x => x.SchedulerInstanceId).Returns(SchedulerInstanceId);
+        Mock.Mock<IScheduler>().SetupGet(x => x.SchedulerInstanceId).Returns(SCHEDULER_INSTANCE_ID);
         // Arrange
         var key = new DownloadTaskKey
         {
@@ -99,7 +99,7 @@ public class DownloadTaskSchedulerUnitTests : BaseUnitTest<DownloadTaskScheduler
     [Test]
     public async Task ShouldDeleteQueuedJob_WhenStoppingQueuedDownload()
     {
-        Mock.Mock<IScheduler>().SetupGet(x => x.SchedulerInstanceId).Returns(SchedulerInstanceId);
+        Mock.Mock<IScheduler>().SetupGet(x => x.SchedulerInstanceId).Returns(SCHEDULER_INSTANCE_ID);
         // Arrange
         var key = new DownloadTaskKey
         {
@@ -154,7 +154,7 @@ public class DownloadTaskSchedulerUnitTests : BaseUnitTest<DownloadTaskScheduler
     [Test]
     public async Task ShouldReturnCancelledResult_WhenCompletionWaitIsCancelled()
     {
-        Mock.Mock<IScheduler>().SetupGet(x => x.SchedulerInstanceId).Returns(SchedulerInstanceId);
+        Mock.Mock<IScheduler>().SetupGet(x => x.SchedulerInstanceId).Returns(SCHEDULER_INSTANCE_ID);
         // Arrange
         var key = new DownloadTaskKey
         {
@@ -237,7 +237,7 @@ public class DownloadTaskSchedulerUnitTests : BaseUnitTest<DownloadTaskScheduler
     [Test]
     public async Task ShouldReplaceInactiveJob_WhenStartingDownload()
     {
-        Mock.Mock<IScheduler>().SetupGet(x => x.SchedulerInstanceId).Returns(SchedulerInstanceId);
+        Mock.Mock<IScheduler>().SetupGet(x => x.SchedulerInstanceId).Returns(SCHEDULER_INSTANCE_ID);
         // Arrange
         var key = new DownloadTaskKey
         {
@@ -295,7 +295,7 @@ public class DownloadTaskSchedulerUnitTests : BaseUnitTest<DownloadTaskScheduler
     [Test]
     public async Task ShouldReturnQueuedKeyForRequestedServer()
     {
-        Mock.Mock<IScheduler>().SetupGet(x => x.SchedulerInstanceId).Returns(SchedulerInstanceId);
+        Mock.Mock<IScheduler>().SetupGet(x => x.SchedulerInstanceId).Returns(SCHEDULER_INSTANCE_ID);
         // Arrange
         var targetKey = new DownloadTaskKey
         {
@@ -407,7 +407,7 @@ public class DownloadTaskSchedulerUnitTests : BaseUnitTest<DownloadTaskScheduler
     }
 
     private static bool IsRunningQuery(FireInstanceQuery query, int skip) =>
-        query.SchedulerInstanceId == SchedulerInstanceId
+                        query.SchedulerInstanceId == SCHEDULER_INSTANCE_ID
         && query.State == FireInstanceState.Executing
         && query.Skip == skip
         && query.Take == PagedQuery.DefaultTake;
@@ -459,7 +459,7 @@ public class DownloadTaskSchedulerUnitTests : BaseUnitTest<DownloadTaskScheduler
             $"fire-{key.Id}",
             new TriggerKey(jobKey.Name, jobKey.Group),
             jobKey,
-            SchedulerInstanceId,
+            SCHEDULER_INSTANCE_ID,
             FireInstanceState.Executing,
             now,
             now,

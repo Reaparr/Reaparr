@@ -136,7 +136,7 @@ public class MediaOverviewServerVisibilityIntegrationTests : BaseIntegrationTest
                     })
                     .ToArrayAsync(CancellationToken)
             )
-                .Select(x => (Id: x.Id, LibraryId: x.PlexLibraryId, ServerId: x.PlexServerId, MediaSize: x.MediaSize))
+                .Select(x => (x.Id, LibraryId: x.PlexLibraryId, ServerId: x.PlexServerId, x.MediaSize))
                 .ToArray(),
             PlexMediaType.TvShow => (
                 await beforeContext
@@ -150,7 +150,7 @@ public class MediaOverviewServerVisibilityIntegrationTests : BaseIntegrationTest
                     })
                     .ToArrayAsync(CancellationToken)
             )
-                .Select(x => (Id: x.Id, LibraryId: x.PlexLibraryId, ServerId: x.PlexServerId, MediaSize: x.MediaSize))
+                .Select(x => (x.Id, LibraryId: x.PlexLibraryId, ServerId: x.PlexServerId, x.MediaSize))
                 .ToArray(),
             PlexMediaType.MusicArtist => (
                 await beforeContext
@@ -164,7 +164,7 @@ public class MediaOverviewServerVisibilityIntegrationTests : BaseIntegrationTest
                     })
                     .ToArrayAsync(CancellationToken)
             )
-                .Select(x => (Id: x.Id, LibraryId: x.PlexLibraryId, ServerId: x.PlexServerId, MediaSize: x.MediaSize))
+                .Select(x => (x.Id, LibraryId: x.PlexLibraryId, ServerId: x.PlexServerId, x.MediaSize))
                 .ToArray(),
             PlexMediaType.PhotoAlbum => (
                 await beforeContext
@@ -178,7 +178,7 @@ public class MediaOverviewServerVisibilityIntegrationTests : BaseIntegrationTest
                     })
                     .ToArrayAsync(CancellationToken)
             )
-                .Select(x => (Id: x.Id, LibraryId: x.PlexLibraryId, ServerId: x.PlexServerId, MediaSize: x.MediaSize))
+                .Select(x => (x.Id, LibraryId: x.PlexLibraryId, ServerId: x.PlexServerId, x.MediaSize))
                 .ToArray(),
             PlexMediaType.OtherVideos => (
                 await beforeContext
@@ -192,7 +192,7 @@ public class MediaOverviewServerVisibilityIntegrationTests : BaseIntegrationTest
                     })
                     .ToArrayAsync(CancellationToken)
             )
-                .Select(x => (Id: x.Id, LibraryId: x.PlexLibraryId, ServerId: x.PlexServerId, MediaSize: x.MediaSize))
+                .Select(x => (x.Id, LibraryId: x.PlexLibraryId, ServerId: x.PlexServerId, x.MediaSize))
                 .ToArray(),
             _ => throw new ArgumentOutOfRangeException(nameof(mediaType), mediaType, null),
         };

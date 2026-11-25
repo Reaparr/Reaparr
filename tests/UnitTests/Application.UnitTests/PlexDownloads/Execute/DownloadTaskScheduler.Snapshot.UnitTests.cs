@@ -4,7 +4,7 @@ namespace Reaparr.Application.UnitTests;
 
 public class DownloadTaskSchedulerSnapshotUnitTests : BaseUnitTest<DownloadTaskScheduler>
 {
-    private const string SchedulerInstanceId = "test-scheduler";
+    private const string SCHEDULER_INSTANCE_ID = "test-scheduler";
 
     [Test]
     public async Task ShouldReuseExecutingPayloadsAcrossPagesWithoutReadingIndividualStoredJobs()
@@ -16,7 +16,7 @@ public class DownloadTaskSchedulerSnapshotUnitTests : BaseUnitTest<DownloadTaskS
         var targetJobKey = DownloadJob.GetJobKey(target.Id);
         var otherJobKey = DownloadJob.GetJobKey(otherServer.Id);
         var scheduler = Mock.Mock<IScheduler>();
-        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(SchedulerInstanceId);
+        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(SCHEDULER_INSTANCE_ID);
         scheduler
             .Setup(x =>
                 x.QueryFireInstances(
@@ -91,7 +91,7 @@ public class DownloadTaskSchedulerSnapshotUnitTests : BaseUnitTest<DownloadTaskS
         var target = CreateKey(4);
         var jobKey = DownloadJob.GetJobKey(target.Id);
         var scheduler = Mock.Mock<IScheduler>();
-        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(SchedulerInstanceId);
+        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(SCHEDULER_INSTANCE_ID);
         var queryCount = 0;
         scheduler
             .Setup(x =>
@@ -161,7 +161,7 @@ public class DownloadTaskSchedulerSnapshotUnitTests : BaseUnitTest<DownloadTaskS
         var disappeared = CreateKey(8);
         var missingPayload = CreateKey(9);
         var scheduler = Mock.Mock<IScheduler>();
-        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(SchedulerInstanceId);
+        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(SCHEDULER_INSTANCE_ID);
         scheduler
             .Setup(x =>
                 x.QueryFireInstances(
@@ -264,7 +264,7 @@ public class DownloadTaskSchedulerSnapshotUnitTests : BaseUnitTest<DownloadTaskS
         };
 
     private static bool IsRunningQuery(FireInstanceQuery query, int skip) =>
-        query.SchedulerInstanceId == SchedulerInstanceId
+        query.SchedulerInstanceId == SCHEDULER_INSTANCE_ID
         && query.State == FireInstanceState.Executing
         && query.Skip == skip
         && query.Take == PagedQuery.DefaultTake;
@@ -285,7 +285,7 @@ public class DownloadTaskSchedulerSnapshotUnitTests : BaseUnitTest<DownloadTaskS
             $"fire-{key.Id}",
             new TriggerKey(jobKey.Name, jobKey.Group),
             jobKey,
-            SchedulerInstanceId,
+            SCHEDULER_INSTANCE_ID,
             FireInstanceState.Executing,
             now,
             now,

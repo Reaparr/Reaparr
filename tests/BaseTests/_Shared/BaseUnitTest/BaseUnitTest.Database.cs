@@ -73,6 +73,7 @@ public partial class BaseUnitTest : IDisposable
     /// </summary>
     /// <param name="seed"> The fake data seed to use for the database setup.</param>
     /// <param name="options"> The options to use for the fake data setup.</param>
+    /// <param name="targetMigration">The migration to apply, or null to apply all pending migrations.</param>
     protected async Task<Seed> SetupDatabase(
         Seed seed,
         Action<FakeDataConfig>? options = null,

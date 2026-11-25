@@ -226,7 +226,7 @@ public class GetMediaDetailByIdEndpointUnitTests
                     isOwned
                         ? new ApplyOwnedMusicComparisonStateCommandHandler(
                             IDbContext,
-                            Mock.Mock<Quartz.IScheduler>().Object
+                            Mock.Mock<IScheduler>().Object
                         ).ExecuteAsync(
                             new ApplyOwnedMusicComparisonStateCommand(
                                 ((ApplyComparisonStateCommand)cmd).Items,
@@ -236,7 +236,7 @@ public class GetMediaDetailByIdEndpointUnitTests
                         )
                         : new ApplyRemoteMusicComparisonStateCommandHandler(
                             IDbContext,
-                            Mock.Mock<Quartz.IScheduler>().Object
+                            Mock.Mock<IScheduler>().Object
                         ).ExecuteAsync(
                             new ApplyRemoteMusicComparisonStateCommand(
                                 ((ApplyComparisonStateCommand)cmd).Items,
@@ -246,11 +246,11 @@ public class GetMediaDetailByIdEndpointUnitTests
                         )
             )
             .Verifiable(Times.Once());
-        Mock.Mock<Quartz.IScheduler>().SetupGet(x => x.SchedulerInstanceId).Returns("test-scheduler");
-        Mock.Mock<Quartz.IScheduler>()
+        Mock.Mock<IScheduler>().SetupGet(x => x.SchedulerInstanceId).Returns("test-scheduler");
+        Mock.Mock<IScheduler>()
             .Setup(x => x.QueryFireInstances(It.IsAny<FireInstanceQuery>(), CancellationToken))
             .ReturnsAsync(new PagedResult<FireInstance>([], false));
-        Mock.Mock<Quartz.IScheduler>()
+        Mock.Mock<IScheduler>()
             .Setup(x => x.QueryJobs(It.IsAny<JobQuery>(), CancellationToken))
             .ReturnsAsync(new PagedResult<JobHeader>([], false));
 
@@ -427,7 +427,7 @@ public class GetMediaDetailByIdEndpointUnitTests
                         isOwned
                             ? new ApplyOwnedMusicComparisonStateCommandHandler(
                                 IDbContext,
-                                Mock.Mock<Quartz.IScheduler>().Object
+                                Mock.Mock<IScheduler>().Object
                             ).ExecuteAsync(
                                 new ApplyOwnedMusicComparisonStateCommand(
                                     ((ApplyComparisonStateCommand)cmd).Items,
@@ -437,7 +437,7 @@ public class GetMediaDetailByIdEndpointUnitTests
                             )
                             : new ApplyRemoteMusicComparisonStateCommandHandler(
                                 IDbContext,
-                                Mock.Mock<Quartz.IScheduler>().Object
+                                Mock.Mock<IScheduler>().Object
                             ).ExecuteAsync(
                                 new ApplyRemoteMusicComparisonStateCommand(
                                     ((ApplyComparisonStateCommand)cmd).Items,
@@ -447,11 +447,11 @@ public class GetMediaDetailByIdEndpointUnitTests
                             )
                 )
                 .Verifiable(Times.Once());
-            Mock.Mock<Quartz.IScheduler>().SetupGet(x => x.SchedulerInstanceId).Returns("test-scheduler");
-            Mock.Mock<Quartz.IScheduler>()
+            Mock.Mock<IScheduler>().SetupGet(x => x.SchedulerInstanceId).Returns("test-scheduler");
+            Mock.Mock<IScheduler>()
                 .Setup(x => x.QueryFireInstances(It.IsAny<FireInstanceQuery>(), CancellationToken))
                 .ReturnsAsync(new PagedResult<FireInstance>([], false));
-            Mock.Mock<Quartz.IScheduler>()
+            Mock.Mock<IScheduler>()
                 .Setup(x => x.QueryJobs(It.IsAny<JobQuery>(), CancellationToken))
                 .ReturnsAsync(new PagedResult<JobHeader>([], false));
         }
@@ -833,7 +833,7 @@ public class GetMediaDetailByIdMusicComparisonEndpointUnitTests
                 (cmd, ct) =>
                     new ApplyRemoteMusicComparisonStateCommandHandler(
                         IDbContext,
-                        Mock.Mock<Quartz.IScheduler>().Object
+                        Mock.Mock<IScheduler>().Object
                     ).ExecuteAsync(
                         new ApplyRemoteMusicComparisonStateCommand(((ApplyComparisonStateCommand)cmd).Items, remote.Id),
                         ct
@@ -953,7 +953,7 @@ public class GetMediaDetailByIdConnectionIndependenceUnitTests
                     (command, ct) =>
                     {
                         var items = ((ApplyComparisonStateCommand)command).Items;
-                        var scheduler = Mock.Mock<Quartz.IScheduler>().Object;
+                        var scheduler = Mock.Mock<IScheduler>().Object;
                         return type switch
                         {
                             PlexMediaType.Movie => new ApplyOwnedMovieComparisonStateCommandHandler(

@@ -71,8 +71,7 @@ public class CheckQueuedPlexLibraryToSyncCommandUnitTests : BaseCommandUnitTest<
                 x.ScheduleJob(
                     It.Is<IJobDetail>(job =>
                         job.Key.Equals(secondKey)
-                        && job.JobDataMap.GetPayload<LibrarySyncJobPayload>()
-                            == new LibrarySyncJobPayload(secondLibrary.PlexServerId, secondLibrary.Id)
+                        && job.JobDataMap.GetPayload<LibrarySyncJobPayload>() == new LibrarySyncJobPayload(secondLibrary.PlexServerId, secondLibrary.Id)
                     ),
                     It.Is<ITrigger>(trigger => trigger.JobKey.Equals(secondKey)),
                     It.IsAny<ScheduleJobOptions>(),

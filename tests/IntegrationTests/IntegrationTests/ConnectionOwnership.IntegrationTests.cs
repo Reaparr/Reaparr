@@ -1,4 +1,3 @@
-using System.Net.Http.Json;
 
 namespace Reaparr.IntegrationTests;
 
@@ -325,6 +324,7 @@ public class ConnectionOwnershipIntegrationTests : BaseIntegrationTests
         int Port,
         string Url,
         bool Local,
+        bool Relay,
         // ReSharper disable once InconsistentNaming
         bool IPv4,
         // ReSharper disable once InconsistentNaming

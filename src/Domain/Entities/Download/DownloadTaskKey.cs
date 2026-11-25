@@ -19,19 +19,6 @@ public record DownloadTaskKey
 
     public bool IsValid => Id != Guid.Empty && PlexServerId > 0 && PlexLibraryId > 0 && Type != DownloadTaskType.None;
 
-    public virtual bool Equals(DownloadTaskKey? other)
-    {
-        if (other is null)
-            return false;
-        if (ReferenceEquals(this, other))
-            return true;
-
-        return Type == other.Type
-            && Id.Equals(other.Id)
-            && PlexServerId == other.PlexServerId
-            && PlexLibraryId == other.PlexLibraryId;
-    }
-
     public override int GetHashCode() => HashCode.Combine((int)Type, Id, PlexServerId, PlexLibraryId);
 
     public override string ToString() => $"{Type} Id: {Id}, Server: {PlexServerId}, Library: {PlexLibraryId}";

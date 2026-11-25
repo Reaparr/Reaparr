@@ -283,7 +283,7 @@ public class ClearCompletedDownloadTasksByDownloadTaskKeyCommandUnitTests
                 x =>
                     x.Send(
                         It.Is<DeleteDownloadTasksByKeyCommand>(cmd =>
-                            cmd.Keys.Count == taskKeys.Count && taskKeys.TrueForAll(k => cmd.Keys.Any(ck => ck == k))
+                            cmd.Keys.Count == taskKeys.Count && taskKeys.TrueForAll(k => cmd.Keys.Any(ck => Equals(ck, k)))
                         ),
                         It.IsAny<CancellationToken>()
                     ),

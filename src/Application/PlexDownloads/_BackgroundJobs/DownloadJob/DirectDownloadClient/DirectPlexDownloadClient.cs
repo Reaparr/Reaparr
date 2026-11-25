@@ -189,8 +189,7 @@ public class DirectPlexDownloadClient : IPlexDownloadClient
                     if (attempt > 0)
                         await _downloader.Clear();
 
-                    var progressGate = new Lock();
-                    var progressCompleted = false;
+                    var progressState = (Gate: new Lock(), Completed: false);
                     using var progressSubscription = Observable
                         .FromEventPattern<DownloadProgressChangedEventArgs>(
                             h => _downloader.DownloadProgressChanged += h,
@@ -200,9 +199,9 @@ public class DirectPlexDownloadClient : IPlexDownloadClient
                         .Sample(TimeSpan.FromMilliseconds(300), ProgressScheduler)
                         .Subscribe(args =>
                         {
-                            lock (progressGate)
+                            lock (progressState.Gate)
                             {
-                                if (progressCompleted)
+                                if (progressState.Completed)
                                     return;
 
                                 var progress = new DownloadTaskProgress
@@ -236,8 +235,8 @@ public class DirectPlexDownloadClient : IPlexDownloadClient
                     );
                     void OnDownloadCompleted(object? _, AsyncCompletedEventArgs args)
                     {
-                        lock (progressGate)
-                            progressCompleted = true;
+                        lock (progressState.Gate)
+                            progressState.Completed = true;
 
                         completionSource.TrySetResult(args);
                     }
@@ -286,8 +285,8 @@ public class DirectPlexDownloadClient : IPlexDownloadClient
                             attemptDownloadUrl,
                             token
                         );
-                        lock (progressGate)
-                            progressCompleted = true;
+                        lock (progressState.Gate)
+                            progressState.Completed = true;
                         if (downloadResult.IsCancelledOrFailed)
                             return downloadResult;
 

@@ -44,14 +44,14 @@ public class QuartzRuntimeIntegrationTests : BaseIntegrationTests
     {
         // Arrange
         var databasePath = Path.Combine(Path.GetTempPath(), $"reaparr-quartz-{Guid.NewGuid():N}.db");
-        var databasePathReads = 0;
+        var databasePathState = (Count: 0, Path: databasePath);
         var paths = new Mock<IPathProvider>();
         paths
             .SetupGet(x => x.DatabasePath)
             .Returns(() =>
             {
-                Interlocked.Increment(ref databasePathReads);
-                return databasePath;
+                Interlocked.Increment(ref databasePathState.Count);
+                return databasePathState.Path;
             });
         paths.SetupGet(x => x.DatabaseName).Returns(Path.GetFileNameWithoutExtension(databasePath));
         paths.SetupGet(x => x.DefaultDownloadsDestinationFolder).Returns("/quartz-test/downloads");
@@ -71,7 +71,7 @@ public class QuartzRuntimeIntegrationTests : BaseIntegrationTests
         restartedServices.AddScoped<ProbeScope>();
         restartedServices.AddScoped<ProbeJob>();
         restartedServices.ConfigureQuartz(integrationTestMode: false);
-        var applicationJobTypes = typeof(Reaparr.Application.BackgroundJobsSetup)
+        var applicationJobTypes = typeof(BackgroundJobsSetup)
             .Assembly.GetTypes()
             .Where(type => typeof(IJob).IsAssignableFrom(type) && !type.IsAbstract && !type.IsInterface)
             .OrderBy(type => type.FullName)
@@ -85,7 +85,7 @@ public class QuartzRuntimeIntegrationTests : BaseIntegrationTests
         var restartedBuilder = new ContainerBuilder();
         restartedBuilder.Populate(restartedServices);
         await using var restartedContainer = restartedBuilder.Build();
-        databasePathReads.ShouldBe(0);
+        databasePathState.Count.ShouldBe(0);
         File.Exists(databasePath).ShouldBeFalse();
         registeredApplicationJobTypes.ShouldBe(applicationJobTypes);
         await using var initializer = new SqliteConnection(
@@ -147,8 +147,8 @@ public class QuartzRuntimeIntegrationTests : BaseIntegrationTests
                 .Database.SqlQueryRaw<string>("SELECT ENTRY_ID AS Value FROM QRTZ_EXECUTION_HISTORY ORDER BY ENTRY_ID")
                 .ToListAsync(CancellationToken)
         ).ShouldBe(["expired", "within-week"]);
-        Interlocked.Exchange(ref databasePathReads, 0);
-        databasePathReads.ShouldBe(0);
+        Interlocked.Exchange(ref databasePathState.Count, 0);
+        databasePathState.Count.ShouldBe(0);
         var schemaConnection = database.Database.GetDbConnection();
         await database.Database.OpenConnectionAsync(CancellationToken);
         await using (var schemaCommand = schemaConnection.CreateCommand())
@@ -198,14 +198,14 @@ public class QuartzRuntimeIntegrationTests : BaseIntegrationTests
             (await oldRowsReader.IsDBNullAsync(1, CancellationToken)).ShouldBeTrue();
         }
         await database.Database.CloseConnectionAsync();
-        databasePathReads.ShouldBe(0);
+        databasePathState.Count.ShouldBe(0);
 
         // Act
         var restarted = restartedContainer.Resolve<IScheduler>();
         var restoredJob = await restarted.GetJobDetail(jobKey, CancellationToken);
         var restoredState = await restarted.GetTriggerState(triggerKey, CancellationToken);
         await restarted.Start(CancellationToken);
-        databasePathReads.ShouldBe(1);
+        databasePathState.Count.ShouldBe(1);
         await restarted.TriggerJob(jobKey, cancellationToken: CancellationToken);
         await completions.Disposed.Task.WaitAsync(TimeSpan.FromSeconds(15), CancellationToken);
         foreach (var status in new[] { JobStatus.Failed, JobStatus.Cancelled })
@@ -231,7 +231,7 @@ public class QuartzRuntimeIntegrationTests : BaseIntegrationTests
         await restarted.Shutdown(true, CancellationToken);
 
         registeredApplicationJobTypes.ShouldBe(applicationJobTypes);
-        databasePathReads.ShouldBe(1);
+        databasePathState.Count.ShouldBe(1);
         restoredJob.ShouldNotBeNull();
         restoredJob.JobDataMap.GetString("payload").ShouldBe("original");
         restoredState.ShouldBe(TriggerState.Paused);

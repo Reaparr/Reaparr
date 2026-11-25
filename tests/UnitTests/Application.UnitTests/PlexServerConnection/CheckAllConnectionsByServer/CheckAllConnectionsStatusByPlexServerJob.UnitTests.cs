@@ -154,7 +154,7 @@ public class CheckAllConnectionsStatusByPlexServerJobUnitTests : BaseUnitTest<Ch
         SetupBeginJob();
 
         // Act
-        Func<Task> action = async () => await Sut.Execute(context.Object, context.Object.CancellationToken);
+        var action = async () => await Sut.Execute(context.Object, context.Object.CancellationToken);
 
         // Assert
         await action.ShouldNotThrowAsync();

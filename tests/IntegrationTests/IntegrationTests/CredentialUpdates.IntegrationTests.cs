@@ -1,4 +1,3 @@
-using System.Net.Http.Json;
 
 namespace Reaparr.IntegrationTests;
 
