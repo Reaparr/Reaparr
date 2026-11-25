@@ -4,6 +4,10 @@ linter: qodana-cdnet
 withinDocker: true
 bootstrap: |+
     set -eu
+    # The linter container does not inherit the SDK installed on the Actions runner.
+    if ! dotnet --version >/dev/null 2>&1; then
+        bash -o pipefail -c 'curl -fsSL https://dot.net/v1/dotnet-install.sh | bash -s -- --jsonfile global.json --install-dir /usr/share/dotnet'
+    fi
     dotnet restore Reaparr.sln --locked-mode
 
 dotnet:
