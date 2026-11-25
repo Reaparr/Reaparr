@@ -117,7 +117,7 @@ jobs:
                     output: inspectcode.sarif
                     format: Sarif
                     sEverity: WARNING
-                    jobs: 2
+                    jobs: 4
                     no-swea: true
                     build: false
                     upload-sarif: false
