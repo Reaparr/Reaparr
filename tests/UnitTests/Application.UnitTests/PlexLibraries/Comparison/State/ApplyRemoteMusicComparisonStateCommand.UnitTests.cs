@@ -297,7 +297,11 @@ public class ApplyRemoteMusicComparisonStateCommandUnitTests
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
         items.Single().ComparisonId.ShouldBe(PlexMediaComparisonState.Owned.ToComparisonId());
-        Mock.Mock<IScheduler>().Verify(x => x.QueryFireInstances(It.IsAny<FireInstanceQuery>(), It.IsAny<CancellationToken>()), Times.Never());
+        Mock.Mock<IScheduler>()
+            .Verify(
+                x => x.QueryFireInstances(It.IsAny<FireInstanceQuery>(), It.IsAny<CancellationToken>()),
+                Times.Never()
+            );
         Mock.Mock<IScheduler>()
             .Verify(x => x.QueryJobs(It.IsAny<JobQuery>(), It.IsAny<CancellationToken>()), Times.Never());
     }

@@ -504,7 +504,9 @@ public class CheckQueuedPlexLibraryToSyncCommandUnitTests : BaseCommandUnitTest<
                 .Returns(() =>
                     ++scheduleCount == 2 && recovers
                         ? ValueTask.FromResult(DateTimeOffset.UtcNow)
-                        : ValueTask.FromException<DateTimeOffset>(new InvalidOperationException("Scheduler unavailable"))
+                        : ValueTask.FromException<DateTimeOffset>(
+                            new InvalidOperationException("Scheduler unavailable")
+                        )
                 )
                 .Verifiable(Times.Exactly(2));
 

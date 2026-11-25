@@ -80,7 +80,6 @@ public class DownloadTaskUpdateDispatcherCommonUnitTests : BaseUnitTest<Download
                 "_statusByNodeId",
                 "_finalizedProgressNodes",
                 "_lastProgressLogByNodeId",
-                "_seenProgressNodes",
             }
         )
         {

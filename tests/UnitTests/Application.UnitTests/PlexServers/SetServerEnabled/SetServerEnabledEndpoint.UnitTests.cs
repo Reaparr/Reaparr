@@ -387,6 +387,16 @@ public class SetServerEnabledEndpointUnitTests
             .PlexServers.IgnoreIsEnabledFilter()
             .OrderBy(x => x.Id)
             .FirstAsync(CancellationToken);
+        var libraryIds = await dbContext
+            .PlexLibraries.IgnoreIsEnabledFilter()
+            .Where(x => x.PlexServerId == server.Id)
+            .Select(x => x.Id)
+            .ToListAsync(CancellationToken);
+        libraryIds.Count.ShouldBe(4);
+        foreach (var libraryId in libraryIds)
+            Mock.SetupCommand(() => new CancelLibrarySyncJobCommand(libraryId))
+                .ReturnsAsync(Result.Ok())
+                .Verifiable(Times.Once());
         Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand()).ReturnsAsync(Result.Ok());
 
         // Act
@@ -397,6 +407,7 @@ public class SetServerEnabledEndpointUnitTests
         // Assert
         endpointResult.Response.ShouldNotBeNull();
         endpointResult.Response.IsSuccess.ShouldBe(true);
+        Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<ICommandExecutor>()
             .Verify(
                 x => x.Send(It.IsAny<QueueMediaOverviewRebuildCommand>(), It.IsAny<CancellationToken>()),

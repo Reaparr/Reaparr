@@ -153,7 +153,7 @@ public class RefreshPlexServerAccessCommandUnitTests : BaseCommandUnitTest<Refre
             .Select(x => x.PlexLibraryId)
             .OrderBy(x => x)
             .ToListAsync(CancellationToken);
-        targetLibraryIds.Count.ShouldBe(4);
+        targetLibraryIds.Count.ShouldBe(8);
 
         var commandExecutor = Mock.Mock<ICommandExecutor>();
         commandExecutor

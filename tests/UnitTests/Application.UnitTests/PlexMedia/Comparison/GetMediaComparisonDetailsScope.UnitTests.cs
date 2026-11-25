@@ -99,11 +99,11 @@ public class GetMediaComparisonDetailsScopeUnitTests : BaseUnitTest
         row.PlexLibraryId.ShouldBe(remote.Id);
         row.PlexServerId.ShouldBe(remote.PlexServerId);
         row.Children.ShouldBeEmpty();
-        scheduler.Verify(x => x.QueryFireInstances(It.IsAny<FireInstanceQuery>(), It.IsAny<CancellationToken>()), Times.Never());
         scheduler.Verify(
-            x => x.QueryJobs(It.IsAny<JobQuery>(), It.IsAny<CancellationToken>()),
+            x => x.QueryFireInstances(It.IsAny<FireInstanceQuery>(), It.IsAny<CancellationToken>()),
             Times.Never()
         );
+        scheduler.Verify(x => x.QueryJobs(It.IsAny<JobQuery>(), It.IsAny<CancellationToken>()), Times.Never());
     }
 
     [Test]
@@ -117,10 +117,14 @@ public class GetMediaComparisonDetailsScopeUnitTests : BaseUnitTest
         var (remote, owned) = await SetupLibrariesAsync(mediaType);
         var scheduler = Mock.Mock<IScheduler>();
         scheduler.SetupGet(x => x.SchedulerInstanceId).Returns("test-scheduler");
-        scheduler.Setup(x => x.QueryFireInstances(It.IsAny<FireInstanceQuery>(), CancellationToken))
-            .ReturnsAsync(new PagedResult<FireInstance>([], false)).Verifiable(Times.Once());
-        scheduler.Setup(x => x.QueryJobs(It.IsAny<JobQuery>(), CancellationToken))
-            .ReturnsAsync(new PagedResult<JobHeader>([], false)).Verifiable(Times.Once());
+        scheduler
+            .Setup(x => x.QueryFireInstances(It.IsAny<FireInstanceQuery>(), CancellationToken))
+            .ReturnsAsync(new PagedResult<FireInstance>([], false))
+            .Verifiable(Times.Once());
+        scheduler
+            .Setup(x => x.QueryJobs(It.IsAny<JobQuery>(), CancellationToken))
+            .ReturnsAsync(new PagedResult<JobHeader>([], false))
+            .Verifiable(Times.Once());
 
         // Act
         var result = await GetDetailsAsync(mediaType, isOwned ? owned.Id : remote.Id);

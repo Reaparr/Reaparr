@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 
 namespace Reaparr.Application.UnitTests;
 
@@ -765,7 +766,7 @@ public class DownloadTaskUpdateDispatcherMovieUnitTests : BaseUnitTest<DownloadT
     }
 
     [Test]
-    public async Task ShouldPublishBothRootsInOnePatch_WhenTransferProgressIsBufferedForOneServer()
+    public async Task ShouldPublishLatestProgressForBothRootsInOnePatch_OnTheOneSecondTick()
     {
         // Arrange
         await SetupDatabase(84346, config =>
@@ -777,9 +778,10 @@ public class DownloadTaskUpdateDispatcherMovieUnitTests : BaseUnitTest<DownloadT
         var serverId = files.Select(file => file.PlexServerId).Distinct().Single();
         var expectedIds = files.SelectMany(file => new[] { file.Id, file.ParentId }).Order().ToArray();
         expectedIds.Length.ShouldBe(4);
-        var published = new TaskCompletionSource<IReadOnlyCollection<DownloadPatchDTO>>(
+        var published = new TaskCompletionSource<(IReadOnlyCollection<DownloadPatchDTO> Patch, TimeSpan Elapsed)>(
             TaskCreationOptions.RunContinuationsAsynchronously
         );
+        long started = 0;
         var hub = Mock.Mock<IDownloadHubService>();
         hub.Setup(x =>
                 x.SendDownloadPatchAsync(
@@ -791,7 +793,7 @@ public class DownloadTaskUpdateDispatcherMovieUnitTests : BaseUnitTest<DownloadT
                 )
             )
             .Callback<int, long, IReadOnlyCollection<DownloadPatchDTO>, IReadOnlyCollection<Guid>?, CancellationToken>(
-                (_, _, upserts, _, _) => published.TrySetResult(upserts)
+                (_, _, upserts, _, _) => published.TrySetResult((upserts, Stopwatch.GetElapsedTime(started)))
             )
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
@@ -799,13 +801,30 @@ public class DownloadTaskUpdateDispatcherMovieUnitTests : BaseUnitTest<DownloadT
 
         // Act
         foreach (var file in files)
-            sut.NotifyFileTransferProgress(file.ToKey());
-
+        {
+            var progress = new DownloadTaskProgress
+            {
+                DataReceived = 250,
+                DataTotal = 1000,
+                Percentage = 25,
+            };
+            sut.OnProgressUpdated(file.ToKey(), progress);
+            sut.OnProgressUpdated(
+                file.ToKey(),
+                new DownloadTaskProgress
+                {
+                    DataReceived = 500,
+                    DataTotal = 1000,
+                    Percentage = 50,
+                }
+            );
+        }
+        started = Stopwatch.GetTimestamp();
         await sut.StartAsync(CancellationToken);
-        IReadOnlyCollection<DownloadPatchDTO> patch;
+        (IReadOnlyCollection<DownloadPatchDTO> Patch, TimeSpan Elapsed) publication;
         try
         {
-            patch = await published.Task.WaitAsync(TimeSpan.FromMilliseconds(900), CancellationToken);
+            publication = await published.Task.WaitAsync(TimeSpan.FromSeconds(4), CancellationToken);
         }
         finally
         {
@@ -813,7 +832,21 @@ public class DownloadTaskUpdateDispatcherMovieUnitTests : BaseUnitTest<DownloadT
         }
 
         // Assert
-        patch.Select(node => node.Id).Order().ToArray().ShouldBe(expectedIds);
+        publication.Elapsed.ShouldBeGreaterThanOrEqualTo(TimeSpan.FromMilliseconds(950));
+        publication.Patch.Select(node => node.Id).Order().ToArray().ShouldBe(expectedIds);
+        foreach (var file in files)
+            publication.Patch.Single(node => node.Id == file.Id).DataReceived.ShouldBe(500);
+        hub.Verify(
+            x =>
+                x.SendDownloadPatchAsync(
+                    serverId,
+                    It.IsAny<long>(),
+                    It.IsAny<IReadOnlyCollection<DownloadPatchDTO>>(),
+                    null,
+                    It.IsAny<CancellationToken>()
+                ),
+            Times.Once()
+        );
         hub.Verify();
     }
 }
