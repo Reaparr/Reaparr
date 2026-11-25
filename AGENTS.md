@@ -31,6 +31,7 @@ Reaparr is a cross-platform Plex media downloader hosted on GitHub: https://gith
 - Prefer `==` or `is` for canonical internal string comparisons. Normalize external representations at their owning boundary; reserve case-insensitive matching for external contracts that require it rather than scattering `string.Equals` or `StringComparison.OrdinalIgnoreCase` through internal code.
 - Avoid breaking public APIs unless explicitly coordinated.
 - **Do not commit automatically.** The user reviews committed work carefully; only create commits when explicitly asked to commit. Plans should include verification checkpoints, not per-task commit steps.
+- **Never edit `CHANGELOG.md` directly.** The CI/CD release pipeline generates and updates it from commit messages.
 
 ---
 

@@ -189,9 +189,7 @@ public class SyncPlexTvShowsCommandHandler : ICommandHandler<SyncPlexTvShowsComm
                     x.MediaDataList.Count
                 ))
                 .ToListAsync(cancellationToken);
-            var currentShowByKey = currentShows.ToDictionary(x => x.PlexApiRatingKey);
-            var currentSeasonByKey = currentSeasons.ToDictionary(x => x.PlexApiRatingKey);
-            var currentEpisodeByKey = currentEpisodes.ToDictionary(x => x.PlexApiRatingKey);
+            Dictionary<int, CurrentEpisode>? currentEpisodeByKey = null;
 
             var createdShows = new List<PlexTvShow>();
             var updatedShows = new List<PlexTvShow>();
@@ -219,6 +217,11 @@ public class SyncPlexTvShowsCommandHandler : ICommandHandler<SyncPlexTvShowsComm
             }
             else
             {
+                // A forced refresh replaces rows without matching their cached rating keys.
+                var currentShowByKey = currentShows.ToDictionary(x => x.PlexApiRatingKey);
+                var currentSeasonByKey = currentSeasons.ToDictionary(x => x.PlexApiRatingKey);
+                currentEpisodeByKey = currentEpisodes.ToDictionary(x => x.PlexApiRatingKey);
+
                 foreach (var show in incomingShows)
                 {
                     if (!currentShowByKey.TryGetValue(show.PlexApiRatingKey, out var current))
@@ -288,7 +291,7 @@ public class SyncPlexTvShowsCommandHandler : ICommandHandler<SyncPlexTvShowsComm
             var episodeMediaDataCount = 0;
             foreach (var episode in incomingEpisodes)
             {
-                if (!forceMediaRefresh && !changedEpisodeKeys.Contains(episode.PlexApiRatingKey))
+                if (currentEpisodeByKey is not null && !changedEpisodeKeys.Contains(episode.PlexApiRatingKey))
                 {
                     var current = currentEpisodeByKey[episode.PlexApiRatingKey];
                     mediaSize += current.MediaSize;
