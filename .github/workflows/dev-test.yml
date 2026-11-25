@@ -42,9 +42,9 @@ jobs:
                         const { data } = await github.rest.actions.getWorkflowRun(run);
                         const deadline = Date.parse(data.run_started_at) + 15 * 60 * 1000;
                         while (true) {
-                            const jobs = await github.paginate(github.rest.actions.listJobsForWorkflowRun, {
+                            const jobs = await github.paginate(github.rest.actions.listJobsForWorkflowRunAttempt, {
                                 ...run,
-                                filter: 'latest',
+                                attempt_number: context.runAttempt,
                                 per_page: 100,
                             });
                             const testJobs = jobs.filter(job =>
