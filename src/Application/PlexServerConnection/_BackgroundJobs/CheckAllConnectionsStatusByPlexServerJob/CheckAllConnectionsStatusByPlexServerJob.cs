@@ -30,14 +30,13 @@ public class CheckAllConnectionsStatusByPlexServerJob : IJob
         _telemetry = telemetry;
     }
 
-    public async Task Execute(IJobExecutionContext context)
+    public async ValueTask Execute(IJobExecutionContext context, CancellationToken cancellationToken = default)
     {
         using var telemetryScope = _telemetry.BeginJob(
             TelemetryActivity.ScheduledConnectionCheck,
             context.GetTelemetryContext()
         );
 
-        var cancellationToken = context.CancellationToken;
         var payload = new CheckAllConnectionStatusUpdateDTO { PlexServersWithConnectionIds = [] };
         var result = await Result.Try(
             async Task<Result> () =>

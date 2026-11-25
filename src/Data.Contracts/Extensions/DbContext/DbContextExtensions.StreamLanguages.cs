@@ -74,7 +74,7 @@ public static partial class DbContextExtensions
                 cancellationToken
             );
             var found = await dbContext
-                .StreamLanguages.FromSqlInterpolated(FormattableStringFactory.Create(select.ToString(), arguments))
+                .StreamLanguages.FromSql(FormattableStringFactory.Create(select.ToString(), arguments))
                 .Select(x => new
                 {
                     x.Id,

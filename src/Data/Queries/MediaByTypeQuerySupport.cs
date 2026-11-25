@@ -1,4 +1,5 @@
 using FlexQuery.NET.Models;
+using FlexQuery.NET.Models.Paging;
 using NaturalSort.Extension;
 using Reaparr.Application.Contracts;
 

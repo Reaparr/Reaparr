@@ -196,6 +196,8 @@ jobs:
 
             -   name: Setup .NET 9 runtime for vpk
                 uses: actions/setup-dotnet@v6
+                env:
+                    DOTNET_INSTALL_DIR: ${{ env.DOTNET_ROOT }}
                 with:
                     dotnet-version: 9.0.x
 

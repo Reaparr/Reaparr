@@ -27,7 +27,7 @@ public class CheckForUpdateJob : IJob
         _telemetry = telemetry;
     }
 
-    public async Task Execute(IJobExecutionContext context)
+    public async ValueTask Execute(IJobExecutionContext context, CancellationToken cancellationToken = default)
     {
         using var telemetryScope = _telemetry.BeginJob(TelemetryActivity.UpdateCheck, context.GetTelemetryContext());
 
@@ -36,7 +36,7 @@ public class CheckForUpdateJob : IJob
         // Jobs must not throw — Quartz would otherwise keep re-executing.
         var result = await Result.Try(async Task<Result<AppUpdateCheckResult>> () =>
         {
-            var checkResult = await _commandExecutor.Send(new CheckForUpdatesCommand(), context.CancellationToken);
+            var checkResult = await _commandExecutor.Send(new CheckForUpdatesCommand(), cancellationToken);
             if (checkResult.IsCancelledOrFailed)
                 return checkResult;
 

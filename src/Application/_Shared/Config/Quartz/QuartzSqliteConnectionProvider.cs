@@ -19,19 +19,18 @@ namespace Reaparr.Application;
 public sealed class QuartzSqliteConnectionProvider : IDbProvider
 {
     private readonly DbProviderFactory _factory;
-    private string _connectionString = "";
+    private string _connectionString;
 
-    /// <summary>
-    /// Parameterless constructor required by Quartz's reflection-based instantiation
-    /// via <c>ObjectUtils.InstantiateType</c>.
-    /// </summary>
-    public QuartzSqliteConnectionProvider()
+    public QuartzSqliteConnectionProvider(IPathProvider pathProvider)
     {
-        _factory = SqliteFactory.Instance;
-    }
+        ArgumentNullException.ThrowIfNull(pathProvider);
 
-    /// <inheritdoc />
-    public void Initialize() { }
+        _factory = SqliteFactory.Instance;
+        _connectionString = DbContextConnections.GetConnectionString(
+            pathProvider.DatabasePath,
+            SqliteOpenMode.ReadWriteCreate
+        );
+    }
 
     /// <inheritdoc />
     public void Shutdown() { }

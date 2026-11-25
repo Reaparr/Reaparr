@@ -1,11 +1,10 @@
 using System.Data;
 using System.Diagnostics;
 using System.Reflection;
-using AppAny.Quartz.EntityFrameworkCore.Migrations;
-using AppAny.Quartz.EntityFrameworkCore.Migrations.SQLite;
 using EFCore.BulkExtensions;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.DependencyInjection;
+using Quartz;
 
 // ReSharper disable UnusedAutoPropertyAccessor.Global
 
@@ -232,7 +231,7 @@ public sealed class ReaparrDbContext : DbContext, IReaparrDbContext, IReaparrDbC
     public Task<int> ExecuteSqlInterpolatedAsync(
         FormattableString sql,
         CancellationToken cancellationToken = default
-    ) => Database.ExecuteSqlInterpolatedAsync(sql, cancellationToken);
+    ) => Database.ExecuteSqlAsync(sql, cancellationToken);
 
     /// <inheritdoc/>
     public IQueryable<T> SqlQuery<T>(FormattableString sql) => Database.SqlQuery<T>(sql);
@@ -391,7 +390,7 @@ public sealed class ReaparrDbContext : DbContext, IReaparrDbContext, IReaparrDbC
 
         builder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
 
-        builder.AddQuartz(x => x.UseSqlite());
+        builder.AddQuartzTables(Database.ProviderName);
 
         base.OnModelCreating(builder);
     }

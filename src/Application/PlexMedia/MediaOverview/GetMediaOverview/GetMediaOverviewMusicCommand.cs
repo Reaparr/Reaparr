@@ -1,5 +1,4 @@
 using FlexQuery.NET;
-using FlexQuery.NET.Parsers;
 
 namespace Reaparr.Application;
 
@@ -55,7 +54,7 @@ public sealed class GetMediaOverviewMusicCommandHandler
     {
         var stopwatch = Stopwatch.StartNew();
         var filter = command.Filter;
-        var options = QueryOptionsParser.Parse(filter.Parameters);
+        var options = filter.Parameters.ToQueryOptions();
         var sort = options.ResolveSort();
         if (filter.ComparisonState.HasValue || sort is null || sort.Value.Field == SortType.AudioQuality)
         {

@@ -15,7 +15,6 @@ import { ContentType } from "./http-client";
 
 import type {
   BaseResultDTO,
-  LiveLogEventDTO,
   PlexMediaType,
   SendTelemetryDiagnosticRequest,
 } from "./data-contracts";
@@ -32,13 +31,13 @@ export class Debug {
    * @secure
    */
   getAllLogsEndpoint = (params: RequestParams = {}) =>
-    axiosObservable<LiveLogEventDTO[]>({
+    axiosObservable<import("./data-contracts").LiveLogEventDTO[]>({
       url: `/api/Debug/logs`,
       method: "GET",
       secure: true,
       responseType: "json",
       ...params,
-    }).pipe(apiCheckPipe<LiveLogEventDTO[]>);
+    }).pipe(apiCheckPipe<import("./data-contracts").LiveLogEventDTO[]>);
 
   /**
    * No description

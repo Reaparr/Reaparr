@@ -4,15 +4,15 @@
         <AssemblyName>Reaparr.PlexApi.UnitTests</AssemblyName>
     </PropertyGroup>
     <ItemGroup>
-        <PackageReference Include="coverlet.collector" Version="8.0.1">
+        <PackageReference Include="CSharpier.MsBuild" Version="1.4.1">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="CSharpier.MsBuild" Version="1.4.0">
+        <PackageReference Include="TUnit" Version="1.87.12" />
+        <PackageReference Update="Meziantou.Analyzer" Version="3.0.342">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="TUnit" Version="1.45.29" />
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="..\..\BaseTests\BaseTests.csproj" />

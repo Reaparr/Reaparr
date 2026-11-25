@@ -98,7 +98,10 @@ public class UpdateUserSettingsEndpoint : Endpoint<UpdateUserSettingsEndpointReq
                             CancellationToken.None
                         );
 
-                    await _scheduler.TriggerJob(UpdateScheduledDownloadLimitsJob.GetJobKey(), CancellationToken.None);
+                    await _scheduler.TriggerJob(
+                        UpdateScheduledDownloadLimitsJob.GetJobKey(),
+                        cancellationToken: CancellationToken.None
+                    );
                 });
                 result.LogIfFailed();
             }

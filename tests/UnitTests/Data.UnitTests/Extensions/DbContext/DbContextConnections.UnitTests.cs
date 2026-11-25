@@ -69,8 +69,12 @@ public class DbContextConnectionsUnitTests : BaseUnitTest
         await using var context = new ReaparrDbContext(options.Options, Log, pathProvider, appRuntimeInfo);
         var configuration = await ReadConfiguration(context);
         var cacheSize = await ReadInt64(context.Database.GetDbConnection(), "cache_size");
+        await using var queryCommand = context.Database.GetDbConnection().CreateCommand();
+        queryCommand.CommandText = "SELECT 1;";
+        var result = await queryCommand.ExecuteScalarAsync();
 
         // Assert
+        result.ShouldBe(1L);
         configuration.DefaultCommandTimeout.ShouldBe(120);
         cacheSize.ShouldBe(-20000);
     }

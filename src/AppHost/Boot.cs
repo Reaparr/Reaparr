@@ -19,6 +19,8 @@ public class Boot : IHostedService
     private readonly IDownloadQueue _downloadQueue;
     private readonly IMoveDownloadFileQueue _moveDownloadFileQueue;
     private readonly ITelemetry _telemetry;
+    private readonly Lock _stopGate = new();
+    private Task? _stopTask;
 
     #endregion
 
@@ -127,19 +129,25 @@ public class Boot : IHostedService
     }
 
     /// <inheritdoc/>
-    public async Task StopAsync(CancellationToken cancellationToken)
+    public Task StopAsync(CancellationToken cancellationToken)
+    {
+        lock (_stopGate)
+            return _stopTask ??= StopCoreAsync(cancellationToken);
+    }
+
+    private async Task StopCoreAsync(CancellationToken cancellationToken)
     {
         _log.Here().Information("Shutting down the container");
 
         await _scheduler.Standby(cancellationToken);
-        var activeMoveJobs = (await _scheduler.GetCurrentlyExecutingJobs(cancellationToken))
-            .Where(x => x.JobDetail.Key.Group == nameof(JobTypes.MoveDownloadFileJob))
+        var activeMoveJobs = (await _scheduler.GetLocalExecutingFireInstances(cancellationToken))
+            .Where(x => x.JobKey?.Group == nameof(JobTypes.MoveDownloadFileJob))
             .ToList();
-        foreach (var context in activeMoveJobs)
-            await _scheduler.Interrupt(context.FireInstanceId, cancellationToken);
+        foreach (var firing in activeMoveJobs)
+            await _scheduler.InterruptFireInstance(firing.FireInstanceId, cancellationToken);
 
         var moveJobsResult = await _scheduler.WaitForJobsToFinish(
-            activeMoveJobs.Select(x => x.JobDetail.Key),
+            activeMoveJobs.Select(x => x.JobKey!).Distinct(),
             TimeSpan.FromSeconds(30),
             cancellationToken
         );

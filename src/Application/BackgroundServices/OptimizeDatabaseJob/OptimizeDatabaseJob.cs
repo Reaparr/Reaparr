@@ -13,9 +13,9 @@ public sealed class OptimizeDatabaseJob : IJob
 
     public static JobKey GetJobKey() => new(nameof(JobTypes.OptimizeDatabaseJob), nameof(JobTypes.OptimizeDatabaseJob));
 
-    public async Task Execute(IJobExecutionContext context)
+    public async ValueTask Execute(IJobExecutionContext context, CancellationToken cancellationToken = default)
     {
-        var optimizeResult = await _reaparrDbContextDatabase.Optimize(context.CancellationToken);
+        var optimizeResult = await _reaparrDbContextDatabase.Optimize(cancellationToken);
         optimizeResult.LogIfFailed();
 
         if (optimizeResult.IsCancelled)

@@ -90,8 +90,8 @@ export class FolderPath {
    * @secure
    */
   getFolderPathDirectoryEndpoint = (
-    query?: {
-      path?: string;
+    query: {
+      path: string;
     },
     params: RequestParams = {},
   ) =>
@@ -131,7 +131,7 @@ export class FolderPathPaths {
   static updateFolderPathEndpoint = () =>
     queryString.stringifyUrl({ url: `/api/FolderPath` });
 
-  static getFolderPathDirectoryEndpoint = (query?: { path?: string }) =>
+  static getFolderPathDirectoryEndpoint = (query: { path: string }) =>
     queryString.stringifyUrl({ url: `/api/FolderPath/directory`, query });
 
   static deleteFolderPathEndpoint = (id: number) =>

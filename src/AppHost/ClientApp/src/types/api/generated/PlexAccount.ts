@@ -102,6 +102,7 @@ export class PlexAccount {
    */
   isUsernameAvailableEndpoint = (
     query: {
+      /** @minLength 5 */
       username: string;
     },
     params: RequestParams = {},
@@ -248,8 +249,10 @@ export class PlexAccountPaths {
   static updatePlexAccountByIdEndpoint = () =>
     queryString.stringifyUrl({ url: `/api/PlexAccount` });
 
-  static isUsernameAvailableEndpoint = (query: { username: string }) =>
-    queryString.stringifyUrl({ url: `/api/PlexAccount/check`, query });
+  static isUsernameAvailableEndpoint = (query: {
+    /** @minLength 5 */
+    username: string;
+  }) => queryString.stringifyUrl({ url: `/api/PlexAccount/check`, query });
 
   static generatePlexTokenEndpoint = (
     plexAccountId: number,

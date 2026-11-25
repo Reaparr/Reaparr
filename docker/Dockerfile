@@ -36,7 +36,7 @@ FROM scratch AS frontend-public
 COPY --from=client-build /tmp/ClientApp/.output/public /
 
 # Stage 2 - Build the .NET back-end
-FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0 AS back-end
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:11.0 AS back-end
 
 ARG VERSION
 ARG INFORMATIONAL_VERSION
@@ -51,7 +51,7 @@ ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 \
     DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1 \
     NUGET_XMLDOC_MODE=skip
 
-COPY ["Directory.Build.props", "."]
+COPY ["Directory.Build.props", "NuGet.Config", "."]
 COPY --parents src/*/*.csproj src/*/packages.lock.json /src/
 
 ## Restore Projects
@@ -78,14 +78,14 @@ RUN case "${TARGETPLATFORM}" in \
     -p:CSharpier_Bypass=true
 
 # Stage 3a - .NET runtime (Alpine/musl-based; compatible with the Alpine final image)
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine3.22 AS dotnet-runtime
+FROM mcr.microsoft.com/dotnet/aspnet:11.0-alpine3.24 AS dotnet-runtime
 
 # Stage 3b - glibc donor: Ubuntu noble ships glibc 2.39, satisfying dash-mpd-cli's >= 2.38 requirement.
 # This stage is never included in the final image; only individual .so files are bind-mounted from it.
 FROM ubuntu:24.04 AS glibc-source
 
-# Stage 3c - build a static MP4Box binary from GPAC (gpac is not packaged for Alpine 3.22)
-FROM alpine:3.22 AS gpac-builder
+# Stage 3c - build a static MP4Box binary from GPAC (gpac is not packaged for Alpine 3.24)
+FROM alpine:3.24 AS gpac-builder
 
 WORKDIR /src
 RUN apk add --no-cache musl-dev pkgconfig git g++ binutils make zlib-dev zlib-static && \
@@ -95,7 +95,7 @@ RUN apk add --no-cache musl-dev pkgconfig git g++ binutils make zlib-dev zlib-st
     make -j 3
 
 # Stage 4 - Final Image with s6-overlay
-FROM ghcr.io/linuxserver/baseimage-alpine:3.22 AS final
+FROM ghcr.io/linuxserver/baseimage-alpine:3.24 AS final
 
 ARG VERSION
 ARG INFORMATIONAL_VERSION

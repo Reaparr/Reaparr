@@ -9,12 +9,16 @@
         <ProjectReference Include="..\FileSystem.Contracts\FileSystem.Contracts.csproj" />
     </ItemGroup>
     <ItemGroup>
-        <PackageReference Include="Autofac" Version="9.1.0" />
-        <PackageReference Include="CSharpier.MsBuild" Version="1.4.0">
+        <PackageReference Include="Autofac" Version="9.3.4" />
+        <PackageReference Include="CSharpier.MsBuild" Version="1.4.1">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="System.IO.Abstractions" Version="22.1.1" />
+        <PackageReference Include="System.IO.Abstractions" Version="23.1.0" />
+        <PackageReference Update="Meziantou.Analyzer" Version="3.0.342">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
     </ItemGroup>
     <ItemGroup></ItemGroup>
     <ItemGroup>

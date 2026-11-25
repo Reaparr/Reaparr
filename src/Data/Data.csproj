@@ -4,26 +4,27 @@
         <AssemblyName>Reaparr.Data</AssemblyName>
     </PropertyGroup>
     <ItemGroup>
-        <PackageReference Include="AppAny.Quartz.EntityFrameworkCore.Migrations.SQLite" Version="0.6.0" />
-        <PackageReference Include="Autofac" Version="9.1.0" />
-        <PackageReference Include="CSharpier.MsBuild" Version="1.4.0">
+        <PackageReference Include="Autofac" Version="9.3.4" />
+        <PackageReference Include="CSharpier.MsBuild" Version="1.4.1">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.13">
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="11.0.0">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.13" />
-        <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.13" />
-        <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.13" />
-        <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.13">
+        <PackageReference Include="Microsoft.Data.Sqlite" Version="11.0.0" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="11.0.0" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="11.0.0" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="11.0.0">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="SQLitePCLRaw.core" Version="3.0.3" />
-        <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="3.53.3" />
-        <PackageReference Include="SQLitePCLRaw.provider.e_sqlite3" Version="3.0.3" />
+        <PackageReference Include="Quartz.EntityFrameworkCore" Version="4.9.0-preview-20261123-1315" />
+        <PackageReference Update="Meziantou.Analyzer" Version="3.0.342">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="..\Data.Contracts\Data.Contracts.csproj" />

@@ -65,12 +65,19 @@ public partial class BaseUnitTest : IDisposable
     protected Task<Seed> SetupDatabase(int seed, Action<FakeDataConfig>? options = null) =>
         SetupDatabase(new Seed(seed), options);
 
+    protected Task<Seed> SetupDatabase(int seed, Action<FakeDataConfig>? options, string? targetMigration) =>
+        SetupDatabase(new Seed(seed), options, targetMigration);
+
     /// <summary>
     /// Creates and maintains a unique in memory database <see cref="ReaparrDbContext"/> for every test.
     /// </summary>
     /// <param name="seed"> The fake data seed to use for the database setup.</param>
     /// <param name="options"> The options to use for the fake data setup.</param>
-    protected async Task<Seed> SetupDatabase(Seed seed, Action<FakeDataConfig>? options = null)
+    protected async Task<Seed> SetupDatabase(
+        Seed seed,
+        Action<FakeDataConfig>? options = null,
+        string? targetMigration = null
+    )
     {
         // Database context can be set up once and then retrieved by its DB name.
         _databaseName = MockDatabase.GetMemoryDatabaseName();
@@ -86,7 +93,7 @@ public partial class BaseUnitTest : IDisposable
         // Hold references so setup contexts can be cleaned up in Dispose().
         _setupReaparrDbContext = reaparrContext;
         _setupAuthDbContext = authContext;
-        await (reaparrContext, authContext).Setup(seed, mockPathProvider, mockAppRuntimeInfo, options);
+        await (reaparrContext, authContext).Setup(seed, mockPathProvider, mockAppRuntimeInfo, options, targetMigration);
         IsDatabaseSetup = true;
         return seed;
     }

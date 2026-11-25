@@ -4,20 +4,23 @@
         <AssemblyName>Reaparr.Application</AssemblyName>
     </PropertyGroup>
     <ItemGroup>
-        <PackageReference Include="Autofac.Extras.Quartz" Version="11.0.0" />
-        <PackageReference Include="CSharpier.MsBuild" Version="1.4.0">
+        <PackageReference Include="Quartz" Version="4.9.0-preview-20261123-1315" />
+        <PackageReference Include="CSharpier.MsBuild" Version="1.4.1">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="Downloader" Version="5.5.0" />
+        <PackageReference Include="Downloader" Version="7.1.0" />
         <PackageReference Include="FastEndpoints" Version="9.0.0" />
         <PackageReference Include="FastEndpoints.Security" Version="9.0.0" />
-        <PackageReference Include="Polly" Version="8.6.5" />
-        <PackageReference Include="Polly.Core" Version="8.6.6" />
-        <PackageReference Include="PostHog" Version="2.18.1" />
-        <PackageReference Include="Quartz.Serialization.SystemTextJson" Version="3.19.1" />
+        <PackageReference Include="Polly" Version="8.9.1" />
+        <PackageReference Include="Polly.Core" Version="8.9.1" />
+        <PackageReference Include="PostHog" Version="2.26.7" />
         <PackageReference Include="Semver" Version="3.0.0" />
-        <PackageReference Include="Velopack" Version="0.0.1298" />
+        <PackageReference Include="Velopack" Version="1.2.161" />
+        <PackageReference Update="Meziantou.Analyzer" Version="3.0.342">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
     </ItemGroup>
     <ItemGroup>
         <InternalsVisibleTo Include="Reaparr.Application.UnitTests" />

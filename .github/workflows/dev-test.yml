@@ -143,11 +143,12 @@ jobs:
                 id: check_changes
                 uses: dorny/paths-filter@v4
                 with:
-                    predicate-quantifier: 'every'
+                    predicate-quantifier: 'some-with-excludes'
                     filters: |
                         backend:
                             - '{src/**,tests/**}'
                             - '!src/AppHost/ClientApp/**'
+                            - '{Directory.Build.props,global.json,docker/Dockerfile,.github/actions/dotnet-setup/action.yml}'
 
             -   name: Discover backend test projects
                 id: discover_tests

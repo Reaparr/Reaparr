@@ -192,7 +192,8 @@ public class TorrentIdentityIntegrationTests : BaseIntegrationTests
 
     private async Task<BaseContainer> CreatePausedContainer(int movieCount, int existingTasks)
     {
-        var container = await CreateContainer(new Seed(8682), config => config.DatabaseOptions = database =>
+        var container = await CreateContainer(new Seed(8682), config =>
+            config.DatabaseOptions = database =>
             {
                 database.PlexServerCount = 1;
                 database.PlexMovieLibraryCount = 1;
@@ -204,7 +205,8 @@ public class TorrentIdentityIntegrationTests : BaseIntegrationTests
                 database.TvShowEpisodeCount = 1;
                 database.RadarrIntegrationCount = 1;
                 database.SonarrIntegrationCount = 1;
-            });
+            }
+        );
         await container.DbContext.PlexServers.ExecuteUpdateAsync(
             update =>
                 update

@@ -125,26 +125,33 @@ export class PlexMedia {
     query: {
       /**
        * @format int32
+       * @min 1
+       * @max 4096
        * @example 400
        */
       height: number;
       /**
        * @format int32
+       * @exclusiveMin 0
        * @example 57920
        */
       metaDataKey: number;
       /**
        * @format int32
+       * @exclusiveMin 0
        * @example 1756014789
        */
       plexKey: number;
       /**
        * @format int32
+       * @exclusiveMin 0
        * @example 1
        */
       plexServerId: number;
       /**
        * @format int32
+       * @min 1
+       * @max 4096
        * @example 200
        */
       width: number;
@@ -212,26 +219,33 @@ export class PlexMediaPaths {
   static getPlexMediaThumbnailImageEndpoint = (query: {
     /**
      * @format int32
+     * @min 1
+     * @max 4096
      * @example 400
      */
     height: number;
     /**
      * @format int32
+     * @exclusiveMin 0
      * @example 57920
      */
     metaDataKey: number;
     /**
      * @format int32
+     * @exclusiveMin 0
      * @example 1756014789
      */
     plexKey: number;
     /**
      * @format int32
+     * @exclusiveMin 0
      * @example 1
      */
     plexServerId: number;
     /**
      * @format int32
+     * @min 1
+     * @max 4096
      * @example 200
      */
     width: number;

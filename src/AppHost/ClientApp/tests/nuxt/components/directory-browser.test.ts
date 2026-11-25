@@ -6,12 +6,13 @@ import { mountSuspended } from '@nuxt/test-utils/runtime';
 import { createI18n } from 'vue-i18n';
 import { baseSetup, baseVars, getAxiosMock } from '@services-test-base';
 import { generateFailedResultDTO, generateResultDTO } from '@mock';
-import { FolderPathPaths } from '@api/api-paths';
 import { useDialogStore } from '@store';
 import DirectoryBrowser from '@/components/Dialogs/DirectoryBrowser.vue';
 import { FileSystemEntityType, FolderType, PlexMediaType, type FileSystemDTO, type FileSystemModelDTO, type FolderPathDTO } from '@dto';
 import { DialogType } from '@enums';
 import messages from '@/lang/en-US.json';
+
+const directoryEndpoint = '/api/FolderPath/directory';
 
 const CardDialog = defineComponent({
 	name: 'QCardDialog',
@@ -140,7 +141,7 @@ describe('DirectoryBrowser', () => {
 			files: [],
 			parent: '/',
 		};
-		mock.onGet(FolderPathPaths.getFolderPathDirectoryEndpoint()).reply(200, generateResultDTO(directoryResult));
+		mock.onGet(directoryEndpoint).reply(200, generateResultDTO(directoryResult));
 		const wrapper = await mountSuspended(DirectoryBrowser, {
 			props,
 			global: {
@@ -221,8 +222,7 @@ describe('DirectoryBrowser', () => {
 		const wrapper = await render({ saving: false, errorMessage: '' });
 		wrapper.getComponent(CardDialog).vm.$emit('opened', folderPath);
 		await flushPromises();
-		const endpoint = FolderPathPaths.getFolderPathDirectoryEndpoint();
-		mock.onGet(endpoint).reply((request) => [200, generateResultDTO(directoryResult(request.params.path))]);
+		mock.onGet(directoryEndpoint).reply((request) => [200, generateResultDTO(directoryResult(request.params.path))]);
 		mock.resetHistory();
 		const pathInput = wrapper.get('input').element;
 		const focus = vi.spyOn(pathInput, 'focus');
@@ -249,7 +249,7 @@ describe('DirectoryBrowser', () => {
 		const wrapper = await render({ saving: false, errorMessage: '' });
 		const result = directoryResult('/root');
 		result.directories[0]!.hasReadPermission = false;
-		mock.onGet(FolderPathPaths.getFolderPathDirectoryEndpoint()).reply(200, generateResultDTO(result));
+		mock.onGet(directoryEndpoint).reply(200, generateResultDTO(result));
 		wrapper.getComponent(CardDialog).vm.$emit('opened', folderPath);
 		await flushPromises();
 		mock.resetHistory();
@@ -274,11 +274,10 @@ describe('DirectoryBrowser', () => {
 		const oldBack = wrapper.get('[data-cy="directory-browser-row-return"]');
 		const older = deferredDirectoryResponse();
 		const newer = deferredDirectoryResponse();
-		const endpoint = FolderPathPaths.getFolderPathDirectoryEndpoint();
 		mock.resetHandlers();
-		mock.onGet(endpoint).replyOnce(() => older.response)
-			.onGet(endpoint).replyOnce(() => newer.response)
-			.onGet(endpoint).reply(200, generateResultDTO(directoryResult('/root')));
+		mock.onGet(directoryEndpoint).replyOnce(() => older.response)
+			.onGet(directoryEndpoint).replyOnce(() => newer.response)
+			.onGet(directoryEndpoint).reply(200, generateResultDTO(directoryResult('/root')));
 		const confirm = wrapper.get('[data-cy="directory-browser-confirm-button"]');
 
 		try {
@@ -327,10 +326,9 @@ describe('DirectoryBrowser', () => {
 		await flushPromises();
 		const older = deferredDirectoryResponse();
 		const newer = deferredDirectoryResponse();
-		const endpoint = FolderPathPaths.getFolderPathDirectoryEndpoint();
 		mock.resetHandlers();
-		mock.onGet(endpoint).replyOnce(() => older.response)
-			.onGet(endpoint).replyOnce(() => newer.response);
+		mock.onGet(directoryEndpoint).replyOnce(() => older.response)
+			.onGet(directoryEndpoint).replyOnce(() => newer.response);
 
 		try {
 			// Act: replacing a pending lookup keeps the input available and busy.
@@ -365,10 +363,9 @@ describe('DirectoryBrowser', () => {
 	test('Should release a failed first load and allow correction to a writable directory', async () => {
 		// Arrange
 		const wrapper = await render({ saving: false, errorMessage: '' });
-		const endpoint = FolderPathPaths.getFolderPathDirectoryEndpoint();
 		mock.resetHandlers();
-		mock.onGet(endpoint).replyOnce(500, generateFailedResultDTO({ statusCode: 500 }))
-			.onGet(endpoint).reply(200, generateResultDTO(directoryResult('/root/recovered')));
+		mock.onGet(directoryEndpoint).replyOnce(500, generateFailedResultDTO({ statusCode: 500 }))
+			.onGet(directoryEndpoint).reply(200, generateResultDTO(directoryResult('/root/recovered')));
 		wrapper.getComponent(CardDialog).vm.$emit('opened', folderPath);
 
 		// Act and assert: failure leaves no permissions and releases the first-load overlay.
@@ -388,10 +385,9 @@ describe('DirectoryBrowser', () => {
 		// Arrange
 		const wrapper = await render({ saving: false, errorMessage: '' });
 		const old = deferredDirectoryResponse();
-		const endpoint = FolderPathPaths.getFolderPathDirectoryEndpoint();
 		mock.resetHandlers();
-		mock.onGet(endpoint).replyOnce(() => old.response)
-			.onGet(endpoint).reply(200, generateResultDTO(directoryResult('/new-dialog')));
+		mock.onGet(directoryEndpoint).replyOnce(() => old.response)
+			.onGet(directoryEndpoint).reply(200, generateResultDTO(directoryResult('/new-dialog')));
 		const dialog = wrapper.getComponent(CardDialog);
 		const reopened = { ...folderPath, id: 8, displayName: 'Other destination', directory: '/new-dialog' };
 		dialog.vm.$emit('opened', folderPath);

@@ -616,7 +616,7 @@ public class SyncPlexTvShowsCommandUnitTests : BaseCommandUnitTest<SyncPlexTvSho
     }
 
     [Test]
-    public async Task ShouldReplaceAllTvShows_WhenForceMediaRefreshIsTrue()
+    public async Task ShouldReplaceCacheWithDuplicateRatingKeys_WhenForceMediaRefreshIsTrue()
     {
         // Arrange
         await SetupDatabase(11873, config =>
@@ -636,6 +636,17 @@ public class SyncPlexTvShowsCommandUnitTests : BaseCommandUnitTest<SyncPlexTvSho
             .OrderBy(x => x.Id)
             .ToList();
         var originalIds = shows.Select(x => x.Id).ToList();
+        var seasons = shows.SelectMany(x => x.Seasons).ToArray();
+        var episodes = seasons.SelectMany(x => x.Episodes).ToArray();
+        var expectedSeasonKeys = seasons.Select(x => x.PlexApiRatingKey).Order().ToArray();
+        var expectedEpisodeKeys = episodes.Select(x => x.PlexApiRatingKey).Order().ToArray();
+        using (var db = IDbContext)
+        {
+            (await db.PlexTvShowSeason.Where(x => x.Id == seasons[1].Id)
+                .ExecuteUpdateAsync(x => x.SetProperty(y => y.PlexApiRatingKey, seasons[0].PlexApiRatingKey), CancellationToken)).ShouldBe(1);
+            (await db.PlexTvShowEpisodes.Where(x => x.Id == episodes[1].Id)
+                .ExecuteUpdateAsync(x => x.SetProperty(y => y.PlexApiRatingKey, episodes[0].PlexApiRatingKey), CancellationToken)).ShouldBe(1);
+        }
         SetIds(library, shows);
         library.TvShows.AddRange(shows);
         var command = new SyncPlexTvShowsCommand(
@@ -644,13 +655,16 @@ public class SyncPlexTvShowsCommandUnitTests : BaseCommandUnitTest<SyncPlexTvSho
         );
 
         // Act
-        var result = await Mock.Create<SyncPlexTvShowsCommandHandler>().ExecuteAsync(command, CancellationToken);
+        var result = await TestHandlerExecuteAsync<BulkInsertTvShowsRapport>(command);
 
         // Assert
         result.IsSuccess.ShouldBeTrue(result.Errors.FirstOrDefault()?.Message);
+        result.Errors.ShouldBeEmpty();
         var replacedShows = IDbContext.PlexTvShows.AsNoTracking().OrderBy(x => x.Id).ToList();
         replacedShows.Count.ShouldBe(2);
         replacedShows.Select(x => x.Id).ShouldAllBe(id => !originalIds.Contains(id));
+        IDbContext.PlexTvShowSeason.Select(x => x.PlexApiRatingKey).Order().ToArray().ShouldBe(expectedSeasonKeys);
+        IDbContext.PlexTvShowEpisodes.Select(x => x.PlexApiRatingKey).Order().ToArray().ShouldBe(expectedEpisodeKeys);
     }
 
     [Test]

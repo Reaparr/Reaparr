@@ -1,6 +1,7 @@
 using Autofac;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
+using Quartz;
 using Reaparr.Application;
 using Reaparr.Application.Contracts;
 using Reaparr.FileSystem.Contracts;
@@ -338,6 +339,54 @@ public class BootUnitTests : BaseUnitTest<Boot>
         Mock.Mock<IHostApplicationLifetime>().Verify();
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<IDownloadQueue>().Verify();
+        Mock.Mock<IBackgroundJobsSetup>().Verify();
+    }
+
+    [Test]
+    public async Task ShouldRunShutdownPipelineOnce_WhenHostStopsConcurrently()
+    {
+        // Arrange
+        var lifetime = Mock.Mock<IHostApplicationLifetime>();
+        lifetime.SetupGet(x => x.ApplicationStarted).Returns(CancellationToken.None);
+        lifetime.SetupGet(x => x.ApplicationStopping).Returns(CancellationToken.None);
+        lifetime.SetupGet(x => x.ApplicationStopped).Returns(CancellationToken.None);
+        var standbyStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseStandby = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var scheduler = Mock.Mock<IScheduler>();
+        scheduler
+            .Setup(x => x.Standby(CancellationToken.None))
+            .Returns(() =>
+            {
+                standbyStarted.SetResult();
+                return new ValueTask(releaseStandby.Task);
+            })
+            .Verifiable(Times.Once());
+        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns("boot-shutdown-test");
+        scheduler
+            .Setup(x => x.QueryFireInstances(It.IsAny<FireInstanceQuery>(), CancellationToken.None))
+            .ReturnsAsync(new PagedResult<FireInstance>([], false))
+            .Verifiable(Times.Once());
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x => x.Send(It.IsAny<AutoPauseActiveDownloadsCommand>(), CancellationToken.None))
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
+        Mock.Mock<IBackgroundJobsSetup>()
+            .Setup(x => x.StopAsync(CancellationToken.None))
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
+
+        // Act
+        var boot = Sut;
+        var firstStop = boot.StopAsync(CancellationToken.None);
+        await standbyStarted.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        var secondStop = boot.StopAsync(CancellationToken.None);
+        secondStop.ShouldBeSameAs(firstStop);
+        releaseStandby.SetResult();
+        await Task.WhenAll(firstStop, secondStop);
+
+        // Assert
+        scheduler.Verify();
+        Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<IBackgroundJobsSetup>().Verify();
     }
 }

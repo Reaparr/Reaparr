@@ -36,7 +36,7 @@ public class UpdateScheduledDownloadLimitsJobUnitTests : BaseUnitTest<UpdateSche
             .Verifiable(Times.Once());
 
         // Act
-        await Sut.Execute(context.Object);
+        await Sut.Execute(context.Object, context.Object.CancellationToken);
 
         // Assert
         ((BackgroundJobResult)context.Object.Result!).Status.ShouldBe(expectedStatus);
@@ -77,7 +77,7 @@ public class UpdateScheduledDownloadLimitsJobUnitTests : BaseUnitTest<UpdateSche
             .Verifiable(Times.Once());
 
         // Act
-        await Sut.Execute(context.Object);
+        await Sut.Execute(context.Object, context.Object.CancellationToken);
 
         // Assert
         context.Object.Result.ShouldBeOfType<BackgroundJobResult>().Status.ShouldBe(JobStatus.Completed);
@@ -110,7 +110,7 @@ public class UpdateScheduledDownloadLimitsJobUnitTests : BaseUnitTest<UpdateSche
             .Verifiable(Times.Once());
 
         // Act
-        await Sut.Execute(context.Object);
+        await Sut.Execute(context.Object, context.Object.CancellationToken);
 
         // Assert
         var outcome = context.Object.Result.ShouldBeOfType<BackgroundJobResult>();

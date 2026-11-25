@@ -10,6 +10,7 @@ public class MediaOverviewSnapshotJobUnitTests : BaseUnitTest<MediaOverviewSnaps
     {
         // Arrange
         var context = CreateJobContext();
+        context.SetupProperty(x => x.Result);
         var coordinator = new MediaOverviewRebuildCoordinator();
         SetupDependencies(builder =>
             builder.RegisterInstance(coordinator).As<IMediaOverviewRebuildCoordinator>().SingleInstance()
@@ -17,18 +18,18 @@ public class MediaOverviewSnapshotJobUnitTests : BaseUnitTest<MediaOverviewSnaps
         Mock.SetupCommand(() => new RebuildMediaOverviewCommand()).ReturnsAsync(Result.Ok()).Verifiable(Times.Once());
 
         // Act
-        await Sut.Execute(context.Object);
+        await Sut.Execute(context.Object, context.Object.CancellationToken);
 
         // Assert
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<IScheduler>()
-            .Verify(x => x.TriggerJob(It.IsAny<JobKey>(), It.IsAny<CancellationToken>()), Times.Never());
+            .Verify(x => x.TriggerJob(It.IsAny<JobKey>(), null, It.IsAny<CancellationToken>()), Times.Never());
         Mock.Mock<IScheduler>()
             .Verify(
                 x => x.RescheduleJob(It.IsAny<TriggerKey>(), It.IsAny<ITrigger>(), It.IsAny<CancellationToken>()),
                 Times.Never()
             );
-        context.Verify(x => x.Put(nameof(JobStatus.Completed), It.IsAny<object>()), Times.Never());
+        context.Object.Result.ShouldBeOfType<BackgroundJobResult>().Status.ShouldBe(JobStatus.Completed);
     }
 
     [Test]
@@ -55,12 +56,12 @@ public class MediaOverviewSnapshotJobUnitTests : BaseUnitTest<MediaOverviewSnaps
             .Verifiable(Times.Once());
 
         // Act
-        await Sut.Execute(context.Object);
+        await Sut.Execute(context.Object, context.Object.CancellationToken);
 
         // Assert
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<IScheduler>()
-            .Verify(x => x.TriggerJob(It.IsAny<JobKey>(), It.IsAny<CancellationToken>()), Times.Never());
+            .Verify(x => x.TriggerJob(It.IsAny<JobKey>(), null, It.IsAny<CancellationToken>()), Times.Never());
     }
 
     [Test]
@@ -78,12 +79,12 @@ public class MediaOverviewSnapshotJobUnitTests : BaseUnitTest<MediaOverviewSnaps
             .Verifiable(Times.Once());
 
         // Act
-        await Sut.Execute(context.Object);
+        await Sut.Execute(context.Object, context.Object.CancellationToken);
 
         // Assert
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<IScheduler>()
-            .Verify(x => x.TriggerJob(It.IsAny<JobKey>(), It.IsAny<CancellationToken>()), Times.Never());
+            .Verify(x => x.TriggerJob(It.IsAny<JobKey>(), null, It.IsAny<CancellationToken>()), Times.Never());
         Mock.Mock<IScheduler>()
             .Verify(
                 x => x.RescheduleJob(It.IsAny<TriggerKey>(), It.IsAny<ITrigger>(), It.IsAny<CancellationToken>()),
@@ -106,7 +107,7 @@ public class MediaOverviewSnapshotJobUnitTests : BaseUnitTest<MediaOverviewSnaps
             .Verifiable(Times.Once());
 
         // Act
-        await Sut.Execute(context.Object);
+        await Sut.Execute(context.Object, context.Object.CancellationToken);
         var retryAccepted = coordinator.RequestRebuild(null, DateTimeOffset.UtcNow);
 
         // Assert
@@ -129,7 +130,7 @@ public class MediaOverviewSnapshotJobUnitTests : BaseUnitTest<MediaOverviewSnaps
             .Verifiable(Times.Once());
 
         // Act
-        await Sut.Execute(context.Object);
+        await Sut.Execute(context.Object, context.Object.CancellationToken);
         var retryAccepted = coordinator.RequestRebuild(null, DateTimeOffset.UtcNow);
 
         // Assert
@@ -152,7 +153,7 @@ public class MediaOverviewSnapshotJobUnitTests : BaseUnitTest<MediaOverviewSnaps
             .Verifiable(Times.Once());
 
         // Act
-        await Sut.Execute(context.Object);
+        await Sut.Execute(context.Object, context.Object.CancellationToken);
         var retryAccepted = coordinator.RequestRebuild(null, DateTimeOffset.UtcNow);
 
         // Assert
@@ -188,9 +189,13 @@ public class MediaOverviewSnapshotJobUnitTests : BaseUnitTest<MediaOverviewSnaps
             })
             .Verifiable(Times.Once());
 
+        Mock.Mock<IScheduler>()
+            .Setup(x => x.TriggerJob(MediaOverviewSnapshotJob.GetJobKey(), null, context.Object.CancellationToken))
+            .Returns(ValueTask.CompletedTask)
+            .Verifiable(Times.Once());
         coordinator.RequestRebuild(null, DateTimeOffset.UtcNow).ShouldBeTrue();
         // Act
-        var executeTask = Sut.Execute(context.Object);
+        var executeTask = Sut.Execute(context.Object, context.Object.CancellationToken);
         await rebuildStarted.Task;
         coordinator.RequestRebuild(null, DateTimeOffset.UtcNow).ShouldBeFalse();
         coordinator.RequestRebuild(null, DateTimeOffset.UtcNow).ShouldBeFalse();
@@ -198,9 +203,8 @@ public class MediaOverviewSnapshotJobUnitTests : BaseUnitTest<MediaOverviewSnaps
         await executeTask;
 
         // Assert
+        Mock.Mock<IScheduler>().Verify();
         Mock.Mock<ICommandExecutor>().Verify();
-        Mock.Mock<IScheduler>()
-            .Verify(x => x.TriggerJob(It.IsAny<JobKey>(), It.IsAny<CancellationToken>()), Times.Once());
     }
 
     [Test]
@@ -231,7 +235,7 @@ public class MediaOverviewSnapshotJobUnitTests : BaseUnitTest<MediaOverviewSnaps
             .Verifiable(Times.Once());
 
         // Act
-        await Sut.Execute(context.Object);
+        await Sut.Execute(context.Object, context.Object.CancellationToken);
 
         // Assert
         var terminalResult = context.Object.Result.ShouldBeOfType<BackgroundJobResult>();
@@ -247,7 +251,7 @@ public class MediaOverviewSnapshotJobUnitTests : BaseUnitTest<MediaOverviewSnaps
         Mock.Mock<ICommandExecutor>()
             .Verify(x => x.Send(It.IsAny<RebuildMediaOverviewCommand>(), It.IsAny<CancellationToken>()), Times.Never());
         Mock.Mock<IScheduler>()
-            .Verify(x => x.TriggerJob(It.IsAny<JobKey>(), It.IsAny<CancellationToken>()), Times.Never());
+            .Verify(x => x.TriggerJob(It.IsAny<JobKey>(), null, It.IsAny<CancellationToken>()), Times.Never());
         Mock.Mock<ITelemetry>().Verify();
         telemetryScope.Verify();
     }
@@ -262,7 +266,8 @@ public class MediaOverviewSnapshotJobUnitTests : BaseUnitTest<MediaOverviewSnaps
             );
         context.SetupGet(x => x.FireInstanceId).Returns("test-fire-instance");
         context.SetupGet(x => x.CancellationToken).Returns(CancellationToken.None);
-        context.SetupGet(x => x.MergedJobDataMap).Returns(new JobDataMap());
+        var mergedJobDataMap = new JobDataMap();
+        context.SetupGet(x => x.MergedJobDataMap).Returns(mergedJobDataMap);
         return context;
     }
 }

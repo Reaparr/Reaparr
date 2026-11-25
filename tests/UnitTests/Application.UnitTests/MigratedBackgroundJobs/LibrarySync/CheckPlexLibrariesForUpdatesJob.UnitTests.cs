@@ -335,7 +335,7 @@ public class CheckPlexLibrariesForUpdatesJobUnitTests : BaseUnitTest<CheckPlexLi
             .Verifiable(Times.Once());
         SetupBeginJob();
         // Act
-        await Sut.Execute(context);
+        await Sut.Execute(context, cancellationSource.Token);
 
         // Assert
         context.Result.ShouldBeOfType<BackgroundJobResult>().Status.ShouldBe(JobStatus.Cancelled);

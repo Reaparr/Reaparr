@@ -26,19 +26,18 @@ public record BulkInsertTvShowsRapport
 
     public int UnchangedEpisodes { get; set; }
 
-    public override string ToString() =>
-        $"""
-                    CreatedTvShows: {CreatedTvShows}
-                    UpdatedTvShows: {UpdatedTvShows}
-                    DeletedTvShows: {DeletedTvShows}
-                    UnchangedTvShows: {UnchangedTvShows}
-                    CreatedSeasons: {CreatedSeasons}
-                    UpdatedSeasons: {UpdatedSeasons}
-                    DeletedSeasons: {DeletedSeasons}
-                    UnchangedSeasons: {UnchangedSeasons}
-                    CreatedEpisodes: {CreatedEpisodes}
-                    UpdatedEpisodes: {UpdatedEpisodes}
-                    DeletedEpisodes: {DeletedEpisodes}
-                    UnchangedEpisodes: {UnchangedEpisodes}
-            """;
+    public override string ToString() => $"""
+                CreatedTvShows: {CreatedTvShows}
+                UpdatedTvShows: {UpdatedTvShows}
+                DeletedTvShows: {DeletedTvShows}
+                UnchangedTvShows: {UnchangedTvShows}
+                CreatedSeasons: {CreatedSeasons}
+                UpdatedSeasons: {UpdatedSeasons}
+                DeletedSeasons: {DeletedSeasons}
+                UnchangedSeasons: {UnchangedSeasons}
+                CreatedEpisodes: {CreatedEpisodes}
+                UpdatedEpisodes: {UpdatedEpisodes}
+                DeletedEpisodes: {DeletedEpisodes}
+                UnchangedEpisodes: {UnchangedEpisodes}
+        """;
 }

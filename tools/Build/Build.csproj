@@ -3,22 +3,26 @@
         <OutputType>Exe</OutputType>
         <RootNamespace>Reaparr.Build</RootNamespace>
         <AssemblyName>Reaparr.Build</AssemblyName>
-        <TargetFramework>net10.0</TargetFramework>
+        <TargetFramework>net11.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
     </PropertyGroup>
     <ItemGroup>
         <InternalsVisibleTo Include="Reaparr.AppHost.UnitTests" />
         <InternalsVisibleTo Include="Reaparr.Build.UnitTests" />
-        <PackageReference Include="Autofac" Version="9.1.0" />
-        <PackageReference Include="Autofac.Extensions.DependencyInjection" Version="11.0.0" />
-        <PackageReference Include="CliWrap" Version="3.10.1" />
+        <PackageReference Include="Autofac" Version="9.3.4" />
+        <PackageReference Include="Autofac.Extensions.DependencyInjection" Version="11.0.2" />
+        <PackageReference Include="CliWrap" Version="3.10.5" />
         <PackageReference Include="FastEndpoints" Version="9.0.0" />
         <PackageReference Include="FluentValidation" Version="12.2.0" />
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.13" />
-        <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
-        <PackageReference Include="Spectre.Console.Cli" Version="0.55.0" />
-        <PackageReference Include="System.IO.Abstractions" Version="22.1.1" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="11.0.0" />
+        <PackageReference Include="Serilog.AspNetCore" Version="11.0.0" />
+        <PackageReference Include="Spectre.Console.Cli" Version="0.57.2" />
+        <PackageReference Include="System.IO.Abstractions" Version="23.1.0" />
+        <PackageReference Update="Meziantou.Analyzer" Version="3.0.342">
+          <PrivateAssets>all</PrivateAssets>
+          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
     </ItemGroup>
     <ItemGroup>
         <Using Include="Serilog" />

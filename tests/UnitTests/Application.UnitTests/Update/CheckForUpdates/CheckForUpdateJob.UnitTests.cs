@@ -47,7 +47,7 @@ public class CheckForUpdateJobUnitTests : BaseUnitTest<CheckForUpdateJob>
             .Returns((IDisposable?)null)
             .Verifiable(Times.Once());
         Mock.Mock<ICommandExecutor>()
-            .Setup(x => x.Send(It.IsAny<CheckForUpdatesCommand>(), CancellationToken))
+            .Setup(x => x.Send(It.IsAny<CheckForUpdatesCommand>(), context.CancellationToken))
             .ReturnsAsync(Result.Ok(CreateCheckResult(updateAvailable)))
             .Verifiable(Times.Once());
         Mock.Mock<INotificationHubService>()
@@ -56,7 +56,7 @@ public class CheckForUpdateJobUnitTests : BaseUnitTest<CheckForUpdateJob>
             .Verifiable(Times.Exactly(notificationCount));
 
         // Act
-        await Sut.Execute(context);
+        await Sut.Execute(context, context.CancellationToken);
 
         // Assert
         context.Result.ShouldBeNull();
@@ -85,7 +85,7 @@ public class CheckForUpdateJobUnitTests : BaseUnitTest<CheckForUpdateJob>
             .Returns((IDisposable?)null)
             .Verifiable(Times.Once());
         var commandSetup = Mock.Mock<ICommandExecutor>()
-            .Setup(x => x.Send(It.IsAny<CheckForUpdatesCommand>(), CancellationToken));
+            .Setup(x => x.Send(It.IsAny<CheckForUpdatesCommand>(), context.CancellationToken));
         if (commandThrows)
         {
             commandException = new InvalidOperationException("Update check failed");
@@ -124,7 +124,7 @@ public class CheckForUpdateJobUnitTests : BaseUnitTest<CheckForUpdateJob>
         }
 
         // Act
-        await Sut.Execute(context);
+        await Sut.Execute(context, context.CancellationToken);
 
         // Assert
         var result = context.Result.ShouldBeOfType<BackgroundJobResult>();
@@ -150,7 +150,7 @@ public class CheckForUpdateJobUnitTests : BaseUnitTest<CheckForUpdateJob>
             .Returns((IDisposable?)null)
             .Verifiable(Times.Once());
         Mock.Mock<ICommandExecutor>()
-            .Setup(x => x.Send(It.IsAny<CheckForUpdatesCommand>(), CancellationToken))
+            .Setup(x => x.Send(It.IsAny<CheckForUpdatesCommand>(), context.CancellationToken))
             .ReturnsAsync(Result.Ok(CreateCheckResult(true)))
             .Verifiable(Times.Once());
         Mock.Mock<INotificationHubService>()
@@ -173,7 +173,7 @@ public class CheckForUpdateJobUnitTests : BaseUnitTest<CheckForUpdateJob>
             .Verifiable(Times.Once());
 
         // Act
-        await Sut.Execute(context);
+        await Sut.Execute(context, context.CancellationToken);
 
         // Assert
         var result = context.Result.ShouldBeOfType<BackgroundJobResult>();
@@ -200,7 +200,7 @@ public class CheckForUpdateJobUnitTests : BaseUnitTest<CheckForUpdateJob>
             }
         );
         Mock.Mock<ICommandExecutor>()
-            .Setup(x => x.Send(It.IsAny<CheckForUpdatesCommand>(), CancellationToken))
+            .Setup(x => x.Send(It.IsAny<CheckForUpdatesCommand>(), context.CancellationToken))
             .ReturnsAsync(Result.Ok(CreateCheckResult(false)))
             .Verifiable(Times.Once());
         Mock.Mock<ITelemetry>()
@@ -222,7 +222,7 @@ public class CheckForUpdateJobUnitTests : BaseUnitTest<CheckForUpdateJob>
         using var ambientActivity = new Activity("unrelated").Start();
 
         // Act
-        await Sut.Execute(context);
+        await Sut.Execute(context, context.CancellationToken);
 
         // Assert
         Activity.Current.ShouldBe(ambientActivity);

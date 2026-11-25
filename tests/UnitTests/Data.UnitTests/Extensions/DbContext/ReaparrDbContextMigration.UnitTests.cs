@@ -56,21 +56,25 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
         const string photosPath = "/migration/photos";
         const string controlPath = "/migration/control";
 
-        await SetupDatabase(59305, config =>
-        {
-            config.PlexMovieLibraryCount = 1;
-            config.PlexTvShowLibraryCount = 1;
-            config.PlexMusicLibraryCount = 1;
-            config.PlexPhotoLibraryCount = 1;
-            config.MovieCount = 1;
-            config.TvShowCount = 1;
-            config.TvShowSeasonCount = 1;
-            config.TvShowEpisodeCount = 1;
-            config.MovieDownloadTasksCount = 1;
-            config.TvShowDownloadTasksCount = 1;
-            config.TvShowSeasonDownloadTasksCount = 1;
-            config.TvShowEpisodeDownloadTasksCount = 1;
-        });
+        await SetupDatabase(
+            59305,
+            config =>
+            {
+                config.PlexMovieLibraryCount = 1;
+                config.PlexTvShowLibraryCount = 1;
+                config.PlexMusicLibraryCount = 1;
+                config.PlexPhotoLibraryCount = 1;
+                config.MovieCount = 1;
+                config.TvShowCount = 1;
+                config.TvShowSeasonCount = 1;
+                config.TvShowEpisodeCount = 1;
+                config.MovieDownloadTasksCount = 1;
+                config.TvShowDownloadTasksCount = 1;
+                config.TvShowSeasonDownloadTasksCount = 1;
+                config.TvShowEpisodeDownloadTasksCount = 1;
+            },
+            targetMigration: "20261031153443_AddMusicPhotosAndOtherVideos"
+        );
 
         using var dbContext = IDbContext;
         var database = ((DbContext)dbContext).Database;
@@ -131,7 +135,7 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
         movieLibraryId.ShouldNotBe(tvLibraryId);
 
         // Arrange: replace seeded legacy rows with a deterministic graph in the preceding schema.
-        await database.ExecuteSqlInterpolatedAsync(
+        await database.ExecuteSqlAsync(
             $"""
             DELETE FROM "PlexMovieGenres";
             DELETE FROM "PlexTvShowGenres";
@@ -157,7 +161,7 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
             CancellationToken
         );
 
-        await database.ExecuteSqlInterpolatedAsync(
+        await database.ExecuteSqlAsync(
             $"""
             UPDATE "PlexMovie" SET "Quality" = {movieParentQuality} WHERE "Id" = {movieId};
             UPDATE "PlexTvShows" SET "Quality" = {tvParentQuality} WHERE "Id" = {tvShowId};
@@ -378,7 +382,7 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
             )
         ).ShouldBe(0);
 
-        await database.ExecuteSqlInterpolatedAsync(
+        await database.ExecuteSqlAsync(
             $"""
             UPDATE "PlexLibraries" SET "MusicArtistCount" = {musicCount} WHERE "Id" = {musicLibraryId};
             UPDATE "PlexLibraries" SET "PhotoAlbumCount" = {photoCount} WHERE "Id" = {photosLibraryId};
@@ -677,13 +681,17 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
             CancellationToken
         );
         // The shared database also contains Identity and pre-existing legacy tables.
-        // Compare the full current model, and prove unrelated tables remain unchanged.
-        var modelTables = ensureCreatedSchema.Schema.Tables.ToHashSet(StringComparer.Ordinal);
+        // Compare application tables against the current model, and Quartz against the unchanged preceding schema.
+        var modelTables = ensureCreatedSchema
+            .Schema.Tables.Where(x => !x.StartsWith("QRTZ_", StringComparison.Ordinal))
+            .ToHashSet(StringComparer.Ordinal);
         var unrelatedTables = precedingSchema
             .Tables.Except(modelTables)
             .Except(["PlexGenres", "PlexLibraryGenres"])
             .ToHashSet(StringComparer.Ordinal);
-        migratedSchema.Tables.Where(modelTables.Contains).ShouldBe(ensureCreatedSchema.Schema.Tables);
+        migratedSchema
+            .Tables.Where(modelTables.Contains)
+            .ShouldBe(ensureCreatedSchema.Schema.Tables.Where(modelTables.Contains));
         migratedSchema
             .Tables.Where(x => !modelTables.Contains(x))
             .ShouldBe(unrelatedTables.Order(StringComparer.Ordinal));
@@ -697,7 +705,8 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
             .Columns.Single(x => x.Table == legacyDefault.Table && x.Name == legacyDefault.Name)
             .ShouldBe(legacyDefault);
         var expectedColumns = ensureCreatedSchema
-            .Schema.Columns.Select(x =>
+            .Schema.Columns.Where(x => modelTables.Contains(x.Table))
+            .Select(x =>
             {
                 if (x.Table == legacyDefault.Table && x.Name == legacyDefault.Name)
                     x.DefaultValue = legacyDefault.DefaultValue;
@@ -714,14 +723,16 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
             .Except(ensureCreatedSchema.Schema.Indexes)
             .ShouldBeEmpty("Unexpected migrated index definitions");
         ensureCreatedSchema
-            .Schema.Indexes.Except(migratedSchema.Indexes)
+            .Schema.Indexes.Where(x => modelTables.Contains(x.Table))
+            .Except(migratedSchema.Indexes)
             .ShouldBeEmpty("Missing current-model index definitions");
         migratedSchema
             .ForeignKeys.Where(x => modelTables.Contains(x.Table))
             .Except(ensureCreatedSchema.Schema.ForeignKeys)
             .ShouldBeEmpty("Unexpected migrated foreign keys");
         ensureCreatedSchema
-            .Schema.ForeignKeys.Except(migratedSchema.ForeignKeys)
+            .Schema.ForeignKeys.Where(x => modelTables.Contains(x.Table))
+            .Except(migratedSchema.ForeignKeys)
             .ShouldBeEmpty("Missing current-model foreign keys");
         migratedSchema
             .Columns.Where(x => unrelatedTables.Contains(x.Table))

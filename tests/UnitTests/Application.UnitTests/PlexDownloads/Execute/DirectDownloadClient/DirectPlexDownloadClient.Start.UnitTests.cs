@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Reactive.Concurrency;
 using Downloader;
 using DomainDownloadStatus = Reaparr.Domain.DownloadStatus;
 
@@ -1379,6 +1380,119 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
         allowCompletionPersistence.TrySetResult(true);
         var result = await startTask;
         result.IsSuccess.ShouldBeTrue();
+    }
+
+    [Test]
+    public async Task ShouldIgnoreLateProgressAfterCompletion_AndKeepVerifiedFinalProgress()
+    {
+        // Arrange
+        await SetupDatabase(88892, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
+
+        var downloadTask = await IDbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
+        var serverMachineIdentifier = await IDbContext.GetPlexServerMachineIdentifierById(downloadTask.PlexServerId);
+        SetupSpeedLimitMocks(serverMachineIdentifier);
+        SetupCommandExecutor();
+
+        var progressUpdates = new List<(DownloadTaskProgress Progress, DirectDownloadSnapshot? Snapshot)>();
+        Mock.Mock<IDownloadTaskUpdateDispatcher>()
+            .Setup(x =>
+                x.OnStatusChangedAsync(
+                    It.IsAny<DownloadTaskKey>(),
+                    It.IsAny<DomainDownloadStatus>(),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .Returns(Task.CompletedTask)
+            .Verifiable(Times.Exactly(2));
+        Mock.Mock<IDownloadTaskUpdateDispatcher>()
+            .Setup(x =>
+                x.OnProgressUpdated(
+                    It.IsAny<DownloadTaskKey>(),
+                    It.IsAny<DownloadTaskProgress>(),
+                    It.IsAny<DirectDownloadSnapshot?>()
+                )
+            )
+            .Callback<DownloadTaskKey, DownloadTaskProgress, DirectDownloadSnapshot?>(
+                (_, progress, snapshot) => progressUpdates.Add((progress, snapshot))
+            );
+
+        var completionPackage = MakeDownloadPackage(downloadTask.DataTotal);
+        var stalePackage = MakeDownloadPackage(downloadTask.DataTotal);
+        stalePackage.SaveProgress = 45;
+        var fileMock = new Mock<IFile>();
+        var downloadServiceMock = new Mock<IDownloadService>();
+        downloadServiceMock.Setup(x => x.Clear()).Returns(Task.CompletedTask);
+        downloadServiceMock.Setup(x => x.CancelTaskAsync()).Returns(Task.CompletedTask);
+        downloadServiceMock.Setup(x => x.Package).Returns(stalePackage);
+        var scheduler = new HistoricalScheduler();
+        downloadServiceMock
+            .Setup(x => x.DownloadFileTaskAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns<string, string, CancellationToken>(
+                (_, targetPath, _) =>
+                {
+                    SetupVerifiedFile(fileMock, Mock.Mock<IFileInfoFactory>(), targetPath, downloadTask.DataTotal);
+                    downloadServiceMock.Raise(
+                        x => x.DownloadProgressChanged += null,
+                        downloadServiceMock.Object,
+                        new DownloadProgressChangedEventArgs("Main")
+                        {
+                            TotalBytesToReceive = downloadTask.DataTotal,
+                            ReceivedBytesSize = downloadTask.DataTotal / 2,
+                            BytesPerSecondSpeed = 1024,
+                        }
+                    );
+                    scheduler.AdvanceBy(TimeSpan.FromMilliseconds(300));
+                    downloadServiceMock.Raise(
+                        x => x.DownloadFileCompleted += null,
+                        downloadServiceMock.Object,
+                        new AsyncCompletedEventArgs(null, false, completionPackage)
+                    );
+                    downloadServiceMock.Raise(
+                        x => x.DownloadProgressChanged += null,
+                        downloadServiceMock.Object,
+                        new DownloadProgressChangedEventArgs("Main")
+                        {
+                            TotalBytesToReceive = downloadTask.DataTotal,
+                            ReceivedBytesSize = downloadTask.DataTotal / 4,
+                            BytesPerSecondSpeed = 1024,
+                        }
+                    );
+                    scheduler.AdvanceBy(TimeSpan.FromMilliseconds(300));
+                    return Task.CompletedTask;
+                }
+            );
+
+        var sut = CreateSut(downloadServiceMock, fileMock);
+        sut.ProgressScheduler = scheduler;
+
+        // Act
+        var result = await sut.Start(downloadTask.ToKey(), CancellationToken);
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        progressUpdates
+            .Select(x => x.Progress.DataReceived)
+            .ShouldBe([downloadTask.DataTotal / 2, downloadTask.DataTotal]);
+        progressUpdates[^1].Progress.Percentage.ShouldBe(100);
+        progressUpdates[^1].Progress.TimeRemaining.ShouldBe(0);
+        progressUpdates[^1].Snapshot?.FileName.ShouldBe(completionPackage.FileName);
+        Mock.Mock<IDownloadTaskUpdateDispatcher>().Verify();
+        Mock.Mock<IDownloadTaskUpdateDispatcher>()
+            .Verify(
+                x =>
+                    x.OnStatusChangedAsync(
+                        downloadTask.ToKey(),
+                        DomainDownloadStatus.DownloadFinished,
+                        CancellationToken.None
+                    ),
+                Times.Once()
+            );
     }
 
     [Test]

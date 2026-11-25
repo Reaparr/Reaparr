@@ -26,7 +26,7 @@ runs:
         -   name: Setup .NET SDK
             uses: fast-actions/setup-dotnet@v1
             with:
-                sdk-version: '10.x'
+                sdk-version: '11.x'
 
         -   name: Cache NuGet packages
             if: inputs.restore == 'true'

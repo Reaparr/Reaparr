@@ -29,23 +29,17 @@ export interface AppUpdateDownloadProgressDTO {
   percentage: number;
 }
 
-/** @example {"username":"ReaparrRocks","password":"R€Aℙℙ@rr69","rememberMe":false} */
 export interface AppUserLoginEndpointRequest {
   /**
    * @minLength 1
    * @default "R€Aℙℙ@rr69"
-   * @example "R€Aℙℙ@rr69"
    */
   password: string;
-  /**
-   * @default false
-   * @example false
-   */
+  /** @default false */
   rememberMe: boolean;
   /**
    * @minLength 1
    * @default "ReaparrRocks"
-   * @example "ReaparrRocks"
    */
   username: string;
 }
@@ -171,7 +165,6 @@ export interface CreateDownloadTasksRequest {
 
 export interface CreatePlexAccountEndpointRequest {
   is2Fa: boolean;
-  /** @minLength 5 */
   authenticationToken: string;
   /** @minLength 1 */
   clientId: string;
@@ -182,12 +175,10 @@ export interface CreatePlexAccountEndpointRequest {
   isEnabled: boolean;
   isMain: boolean;
   isValidated: boolean;
-  /** @minLength 5 */
   password: string;
   /** @format int64 */
   plexId: number;
   title: string;
-  /** @minLength 5 */
   username: string;
   /** @minLength 1 */
   uuid: string;
@@ -263,13 +254,13 @@ export interface DebugSettingsDTO {
 
 /** Message sent from the front-end to the back-end in Desktop mode. This is for opening external links etc */
 export interface DesktopMessageDTO {
-  /** The type of the DesktopMessageDTO */
+  /** The various types of Desktop messages that can be sent */
   type: DesktopMessageType;
   /** The value of the DesktopMessageDTO */
   value: string;
 }
 
-/** The type of the DesktopMessageDTO */
+/** The various types of Desktop messages that can be sent */
 export enum DesktopMessageType {
   None = "None",
   ExternalLink = "ExternalLink",
@@ -607,6 +598,7 @@ export interface ErrorDTO {
 
 /** the dto used to send an error response to the client */
 export interface ErrorResponse {
+  /** the collection of errors for the current context */
   errors: Record<string, string[]>;
   /**
    * the message for the error response
@@ -1977,15 +1969,6 @@ export interface ResultDTOOfListOfLibrarySyncJobQueueDTO {
   value?: null | any[];
 }
 
-export interface ResultDTOOfListOfLiveLogEventDTO {
-  errors: IReadOnlyListOfErrorDTO;
-  isSuccess: boolean;
-  /** @format int32 */
-  statusCode: number;
-  successes: IReadOnlyListOfSuccessDTO;
-  value?: null | any[];
-}
-
 export interface ResultDTOOfListOfNotificationDTO {
   errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
@@ -2050,6 +2033,15 @@ export interface ResultDTOOfListOfRefreshPlexAccountAccessRapportDTO {
 }
 
 export interface ResultDTOOfListOfString {
+  errors: IReadOnlyListOfErrorDTO;
+  isSuccess: boolean;
+  /** @format int32 */
+  statusCode: number;
+  successes: IReadOnlyListOfSuccessDTO;
+  value?: null | any[];
+}
+
+export interface ResultDTOOfLiveLogEventDTOArray {
   errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
@@ -2459,17 +2451,8 @@ export interface TestConnectionToSonarrEndpointResponse {
   testedAt: string;
 }
 
-/** @example {"username":"ReaparrRocks","password":"R€Aℙℙ@rr69"} */
 export interface UpdateCredentialsEndpointRequest {
-  /**
-   * @minLength 8
-   * @example "R€Aℙℙ@rr69"
-   */
   password?: null | string;
-  /**
-   * @minLength 8
-   * @example "ReaparrRocks"
-   */
   username?: null | string;
 }
 

@@ -9,12 +9,16 @@ public class VideoGenreMigrationUnitTests : BaseUnitTest
     public async Task ShouldPreserveGenreAndLibraryLink_WhenUpgradingPreviousSchema()
     {
         // Arrange
-        await SetupDatabase(626557, config =>
-        {
-            config.PlexServerCount = 1;
-            config.PlexMovieLibraryCount = 1;
-            config.MovieCount = 1;
-        });
+        await SetupDatabase(
+            626557,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexMovieLibraryCount = 1;
+                config.MovieCount = 1;
+            },
+            targetMigration: "20261031153443_AddMusicPhotosAndOtherVideos"
+        );
         await using var context = (ReaparrDbContext)IDbContext;
         var libraryId = await context
             .PlexLibraries.Where(x => x.Type == PlexMediaType.Movie)
@@ -25,11 +29,11 @@ public class VideoGenreMigrationUnitTests : BaseUnitTest
         const int genreId = 1000000042;
         const string genreName = "Migration sentinel genre";
         const string genreKey = "3eb501d482b8480a9b0e672c079d126f";
-        await context.Database.ExecuteSqlInterpolatedAsync(
+        await context.Database.ExecuteSqlAsync(
             $"INSERT INTO PlexGenres (Id, Name, Key) VALUES ({genreId}, {genreName}, {genreKey})",
             CancellationToken
         );
-        await context.Database.ExecuteSqlInterpolatedAsync(
+        await context.Database.ExecuteSqlAsync(
             $"INSERT INTO PlexLibraryGenres (PlexGenreId, PlexLibraryId) VALUES ({genreId}, {libraryId})",
             CancellationToken
         );

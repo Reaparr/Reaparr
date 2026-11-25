@@ -1,5 +1,4 @@
 using Microsoft.Extensions.DependencyInjection;
-using NuGet.Versioning;
 using Velopack;
 using Velopack.Locators;
 using Velopack.Sources;

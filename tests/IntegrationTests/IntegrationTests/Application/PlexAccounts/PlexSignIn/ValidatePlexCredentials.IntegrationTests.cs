@@ -54,7 +54,8 @@ public class ValidateCredentialsIntegrationTests : BaseIntegrationTests
     {
         // Arrange
         var seed = new Seed(4347564);
-        using var container = await CreateContainer(seed, config => config.HttpClientOptions = (x, _) =>
+        using var container = await CreateContainer(seed, config =>
+            config.HttpClientOptions = (x, _) =>
             {
                 x.SetupRequest(HttpMethod.Post, "https://plex.tv/api/v2/users/signin")
                     .ReturnsAsync(
@@ -63,7 +64,8 @@ public class ValidateCredentialsIntegrationTests : BaseIntegrationTests
                                 .PostUsersSignInDataResponse(HttpStatusCode.Unauthorized, seed, req)
                                 .RawResponse
                     );
-            });
+            }
+        );
 
         var plexAccount = FakeData.GetPlexAccount(4347564).Generate();
         var plexAccountDTO = plexAccount.ToDTO();

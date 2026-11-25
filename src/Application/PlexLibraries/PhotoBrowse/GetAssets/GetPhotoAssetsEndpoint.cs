@@ -1,5 +1,5 @@
+using FlexQuery.NET;
 using FlexQuery.NET.Models;
-using FlexQuery.NET.Parsers;
 
 namespace Reaparr.Application;
 
@@ -70,7 +70,10 @@ public sealed class GetPhotoAssetsEndpoint : Endpoint<GetPhotoAssetsRequest, Pho
 
     public override async Task HandleAsync(GetPhotoAssetsRequest req, CancellationToken ct)
     {
-        var sort = QueryOptionsParser.Parse(new FlexQueryParameters { Sort = req.Sort }).ResolveSort()!.Value;
+        var sort = new FlexQueryParameters { Sort = req.Sort }
+            .ToQueryOptions()
+            .ResolveSort()!
+            .Value;
         var result = await _commandExecutor.Send(
             new GetPhotoAssetsQuery(
                 req.PlexLibraryId,

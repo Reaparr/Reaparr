@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 using FlexQuery.NET;
 using FlexQuery.NET.Models;
+using FlexQuery.NET.Models.Paging;
 
 namespace Reaparr.Data.Contracts;
 

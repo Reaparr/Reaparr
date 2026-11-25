@@ -95,7 +95,7 @@ public static partial class DbContextExtensions
             scope.ServerId,
             scope.LibraryId
         );
-        var folders = await dbContext.PlexPhotoFolders.FromSqlInterpolated(sql).ToListAsync(cancellationToken);
+        var folders = await dbContext.PlexPhotoFolders.FromSql(sql).ToListAsync(cancellationToken);
 
         return folders.OrderBy(x => x.RelativePath.Length).ThenBy(x => x.Id).ToList();
     }
@@ -335,7 +335,7 @@ public static partial class DbContextExtensions
             scope.ServerId,
             scope.LibraryId
         );
-        return await dbContext.PlexPhotoFolders.FromSqlInterpolated(sql).ToListAsync(cancellationToken);
+        return await dbContext.PlexPhotoFolders.FromSql(sql).ToListAsync(cancellationToken);
     }
 
     /// <summary>

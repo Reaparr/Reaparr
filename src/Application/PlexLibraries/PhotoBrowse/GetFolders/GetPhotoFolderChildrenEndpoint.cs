@@ -1,5 +1,5 @@
+using FlexQuery.NET;
 using FlexQuery.NET.Models;
-using FlexQuery.NET.Parsers;
 
 namespace Reaparr.Application;
 
@@ -76,7 +76,10 @@ public sealed class GetPhotoFolderChildrenEndpoint : Endpoint<GetPhotoFolderChil
 
     public override async Task HandleAsync(GetPhotoFolderChildrenRequest req, CancellationToken ct)
     {
-        var sort = QueryOptionsParser.Parse(new FlexQueryParameters { Sort = req.Sort }).ResolveSort()!.Value;
+        var sort = new FlexQueryParameters { Sort = req.Sort }
+            .ToQueryOptions()
+            .ResolveSort()!
+            .Value;
         var result = await _commandExecutor.Send(
             new GetPhotoFolderChildrenQuery(
                 req.PlexLibraryId,

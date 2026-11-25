@@ -20,7 +20,8 @@ public sealed class PlexPhotoFolderConfiguration : IEntityTypeConfiguration<Plex
         });
         builder.HasAlternateKey(x => new { x.PlexLibraryId, x.Id });
 
-        builder.ToTable("PlexPhotoFolders", tableBuilder => tableBuilder.HasCheckConstraint(
+        builder.ToTable("PlexPhotoFolders", tableBuilder =>
+            tableBuilder.HasCheckConstraint(
                 "CK_PlexPhotoFolders_RootShape",
                 """
                 (
@@ -42,7 +43,8 @@ public sealed class PlexPhotoFolderConfiguration : IEntityTypeConfiguration<Plex
                     AND "IsActive" IS NULL
                 )
                 """
-            ));
+            )
+        );
 
         builder
             .HasOne(x => x.PlexLibrary)

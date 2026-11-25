@@ -65,22 +65,12 @@ const { t } = useI18n();
 const backgroundJobStore = useBackgroundJobsStore();
 const dialogStore = useDialogStore();
 const libraryStore = useLibraryStore();
+const isCheckingPlexServerConnections = ref(false);
 
 const hasActiveLibrarySync = computed(() => libraryStore.syncQueues.some((queue) =>
 	queue.status === LibrarySyncJobStatus.Queued || queue.status === LibrarySyncJobStatus.Processing));
 const loading = computed(() => get(activeCount) > 0);
-const activeCount = computed(() => {
-	let count = 0;
-	if (Object.keys(get(checkPlexServerConnections)).length > 0) {
-		count++;
-	}
-
-	if (get(hasActiveLibrarySync)) {
-		count++;
-	}
-
-	return count;
-});
+const activeCount = computed(() => Number(get(isCheckingPlexServerConnections)) + Number(get(hasActiveLibrarySync)));
 const menuItems = computed(() => {
 	const items: {
 		label: string;
@@ -89,7 +79,7 @@ const menuItems = computed(() => {
 		action?: () => void;
 	}[] = [];
 
-	if (get(checkPlexServerConnections) && Object.keys(get(checkPlexServerConnections)).length > 0) {
+	if (get(isCheckingPlexServerConnections)) {
 		items.push({
 			label: t('components.background-activity-toggle-button.checking-plex-server-connections'),
 			icon: 'mdi-server-network',
@@ -120,17 +110,18 @@ const menuItems = computed(() => {
 
 onMounted(() => {
 	useSubscription(
-		backgroundJobStore.getCheckPlexServerConnectionsJobUpdate(JobStatus.Started)
-			.subscribe(({ data }) => {
-				set(checkPlexServerConnections, data.plexServersWithConnectionIds ?? {});
-			}),
-	);
+		backgroundJobStore.getCheckPlexServerConnectionsJobUpdate()
+			.subscribe(({ status, data }) => {
+				if (status === JobStatus.Started) {
+					set(isCheckingPlexServerConnections, true);
+					set(checkPlexServerConnections, data?.plexServersWithConnectionIds ?? {});
+					return;
+				}
 
-	useSubscription(
-		backgroundJobStore.getCheckPlexServerConnectionsJobUpdate(JobStatus.Completed)
-			.subscribe(() => {
-				// Clear
-				set(checkPlexServerConnections, {});
+				if ([JobStatus.Completed, JobStatus.Failed, JobStatus.Cancelled].includes(status)) {
+					set(isCheckingPlexServerConnections, false);
+					set(checkPlexServerConnections, {});
+				}
 			}),
 	);
 });

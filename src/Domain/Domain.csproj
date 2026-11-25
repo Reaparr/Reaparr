@@ -5,17 +5,20 @@
     </PropertyGroup>
     <ItemGroup>
         <PackageReference Include="ByteSize" Version="2.1.2" />
-        <PackageReference Include="CSharpier.MsBuild" Version="1.4.0">
+        <PackageReference Include="CSharpier.MsBuild" Version="1.4.1">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="FastEndpoints" Version="9.0.0" />
         <PackageReference Include="Flurl" Version="4.0.0" />
-        <PackageReference Include="JetBrains.Annotations" Version="2025.2.4" />
+        <PackageReference Include="JetBrains.Annotations" Version="2026.2.0" />
         <PackageReference Include="NaturalSort.Extension" Version="4.4.1" />
-        <PackageReference Include="PasswordGenerator" Version="2.1.0" />
-        <PackageReference Include="System.ComponentModel.Annotations" Version="5.0.0" />
-        <PackageReference Include="System.Reactive" Version="6.1.0" />
+        <PackageReference Include="PasswordGenerator" Version="3.0.0" />
+        <PackageReference Include="System.Reactive" Version="7.0.0" />
+        <PackageReference Update="Meziantou.Analyzer" Version="3.0.342">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="..\FluentResultExtensions\FluentResultExtensions.csproj" />

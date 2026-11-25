@@ -17,7 +17,11 @@ public class ReaparrDbContextManagerMigrationProgressUnitTests : BaseUnitTest
     public async Task ShouldReportOrderedMigrationSteps_WhenApplyingPendingMigrations(int pendingCount)
     {
         // Arrange
-        await SetupDatabase(59307);
+        await SetupDatabase(
+            59307,
+            options: null,
+            targetMigration: pendingCount == 0 ? null : "20261031153443_AddMusicPhotosAndOtherVideos"
+        );
         var dbContext = (ReaparrDbContext)IDbContext;
         var database = dbContext.Database;
         var migrations = database.GetMigrations().ToArray();

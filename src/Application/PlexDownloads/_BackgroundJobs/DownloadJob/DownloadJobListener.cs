@@ -22,13 +22,13 @@ public sealed class DownloadJobListener : IJobListener
 
     public string Name => nameof(DownloadJobListener);
 
-    public Task JobExecutionVetoed(IJobExecutionContext context, CancellationToken cancellationToken = default) =>
-        Task.CompletedTask;
+    public ValueTask JobExecutionVetoed(IJobExecutionContext context, CancellationToken cancellationToken = default) =>
+        ValueTask.CompletedTask;
 
-    public Task JobToBeExecuted(IJobExecutionContext context, CancellationToken cancellationToken = default) =>
-        Task.CompletedTask;
+    public ValueTask JobToBeExecuted(IJobExecutionContext context, CancellationToken cancellationToken = default) =>
+        ValueTask.CompletedTask;
 
-    public async Task JobWasExecuted(
+    public async ValueTask JobWasExecuted(
         IJobExecutionContext context,
         JobExecutionException? jobException,
         CancellationToken cancellationToken = default

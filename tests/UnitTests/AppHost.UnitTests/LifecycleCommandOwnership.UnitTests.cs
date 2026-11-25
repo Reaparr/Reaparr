@@ -1,13 +1,11 @@
 using System.Diagnostics;
 using Autofac;
 using Autofac.Extensions.DependencyInjection;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Quartz;
-using Quartz.Impl.Matchers;
 using Reaparr.Application;
 using Reaparr.Application.Contracts;
 using Reaparr.Data.Contracts;
@@ -35,8 +33,18 @@ public class LifecycleCommandOwnershipUnitTests : BaseUnitTest
         applicationLifetime.SetupGet(x => x.ApplicationStopped).Returns(CancellationToken.None);
         var scheduler = new Mock<IScheduler>(MockBehavior.Strict);
         scheduler
-            .Setup(x => x.GetJobKeys(It.IsAny<GroupMatcher<JobKey>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Array.Empty<JobKey>())
+            .Setup(x =>
+                x.QueryJobs(
+                    It.Is<JobQuery>(query =>
+                        query.Group != null
+                        && query.Group.CompareToValue == nameof(JobTypes.LibrarySyncJob)
+                        && query.Skip == 0
+                        && query.Take == PagedQuery.DefaultTake
+                    ),
+                    CancellationToken.None
+                )
+            )
+            .ReturnsAsync(new PagedResult<JobHeader>([], false))
             .Verifiable(Times.Once());
         var notificationHub = new Mock<INotificationHubService>(MockBehavior.Strict);
         notificationHub
