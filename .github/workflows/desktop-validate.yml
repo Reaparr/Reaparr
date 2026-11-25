@@ -194,16 +194,16 @@ jobs:
                     locked-mode: false
                     runtime: ${{ matrix.rid }}
 
-            -   name: Setup .NET 9 runtime for vpk
+            -   name: Setup .NET 11 SDK for vpk
                 uses: actions/setup-dotnet@v6
                 env:
                     DOTNET_INSTALL_DIR: ${{ env.DOTNET_ROOT }}
                 with:
-                    dotnet-version: 9.0.x
+                    dotnet-version: 11.0.x
 
             -   name: Install Velopack CLI
                 shell: bash
-                run: dotnet tool install -g vpk --version 1.2.161
+                run: dotnet tool install -g vpk --version 1.2.161 --allow-roll-forward
 
             -   name: Derive Velopack channel
                 shell: bash
