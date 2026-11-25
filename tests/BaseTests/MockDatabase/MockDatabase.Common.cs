@@ -1,4 +1,6 @@
 using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.Extensions.Logging;
 
 namespace Reaparr.BaseTests;
@@ -376,7 +378,8 @@ public static partial class MockDatabase
         Seed seed,
         IPathProvider pathProvider,
         IAppRuntimeInfo appRuntimeInfo,
-        Action<FakeDataConfig>? options = null
+        Action<FakeDataConfig>? options = null,
+        string? targetMigration = null
     )
     {
         var config = FakeDataConfig.FromOptions(options);
@@ -385,7 +388,15 @@ public static partial class MockDatabase
         await _setupLock.WaitAsync();
         try
         {
-            await PrepareDatabaseSchemaAsync(reaparrContext, authContext, pathProvider, appRuntimeInfo);
+            if (targetMigration is null)
+                await PrepareDatabaseSchemaAsync(reaparrContext, authContext, pathProvider, appRuntimeInfo);
+            else
+            {
+                await reaparrContext.GetService<IMigrator>().MigrateAsync(targetMigration);
+                authContext.Migrate().IsSuccess.ShouldBeTrue();
+                await reaparrContext.FolderPaths.ExecuteDeleteAsync();
+                ReaparrDBContextSeed.Seed(pathProvider)(reaparrContext, true);
+            }
             reaparrContext = await SeedDatabaseAsync(
                 reaparrContext,
                 seed,

@@ -163,12 +163,16 @@ public class DbContextExtensionsStreamLanguagesUnitTests : BaseUnitTest
     public async Task ShouldPreserveExistingOwnerAndPersistStreams_WhenUpgradingFromPreviousMigration()
     {
         // Arrange
-        await SetupDatabase(59304, config =>
-        {
-            config.PlexServerCount = 1;
-            config.PlexMovieLibraryCount = 1;
-            config.MovieCount = 1;
-        });
+        await SetupDatabase(
+            59304,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexMovieLibraryCount = 1;
+                config.MovieCount = 1;
+            },
+            targetMigration: "20261031153443_AddMusicPhotosAndOtherVideos"
+        );
         using var dbContext = IDbContext;
         var ownerBefore = await dbContext
             .PlexMovieData.Select(x => new

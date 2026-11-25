@@ -9,12 +9,16 @@ public class VideoGenreMigrationUnitTests : BaseUnitTest
     public async Task ShouldPreserveGenreAndLibraryLink_WhenUpgradingPreviousSchema()
     {
         // Arrange
-        await SetupDatabase(626557, config =>
-        {
-            config.PlexServerCount = 1;
-            config.PlexMovieLibraryCount = 1;
-            config.MovieCount = 1;
-        });
+        await SetupDatabase(
+            626557,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexMovieLibraryCount = 1;
+                config.MovieCount = 1;
+            },
+            targetMigration: "20261031153443_AddMusicPhotosAndOtherVideos"
+        );
         await using var context = (ReaparrDbContext)IDbContext;
         var libraryId = await context
             .PlexLibraries.Where(x => x.Type == PlexMediaType.Movie)
