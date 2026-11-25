@@ -62,11 +62,11 @@ public partial class BaseUnitTest : IDisposable
     /// </summary>
     /// <param name="seed"> The fake data seed to use for the database setup.</param>
     /// <param name="options"> The options to use for the fake data setup.</param>
-    protected Task<Seed> SetupDatabase(
-        int seed,
-        Action<FakeDataConfig>? options = null,
-        string? targetMigration = null
-    ) => SetupDatabase(new Seed(seed), options, targetMigration);
+    protected Task<Seed> SetupDatabase(int seed, Action<FakeDataConfig>? options = null) =>
+        SetupDatabase(new Seed(seed), options);
+
+    protected Task<Seed> SetupDatabase(int seed, Action<FakeDataConfig>? options, string? targetMigration) =>
+        SetupDatabase(new Seed(seed), options, targetMigration);
 
     /// <summary>
     /// Creates and maintains a unique in memory database <see cref="ReaparrDbContext"/> for every test.

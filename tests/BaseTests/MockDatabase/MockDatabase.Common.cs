@@ -393,6 +393,7 @@ public static partial class MockDatabase
             else
             {
                 await reaparrContext.GetService<IMigrator>().MigrateAsync(targetMigration);
+                reaparrContext.ChangeTracker.Clear();
                 authContext.Migrate().IsSuccess.ShouldBeTrue();
                 await reaparrContext.FolderPaths.ExecuteDeleteAsync();
                 ReaparrDBContextSeed.Seed(pathProvider)(reaparrContext, true);

@@ -19,6 +19,7 @@ public class ReaparrDbContextManagerMigrationProgressUnitTests : BaseUnitTest
         // Arrange
         await SetupDatabase(
             59307,
+            options: null,
             targetMigration: pendingCount == 0 ? null : "20261031153443_AddMusicPhotosAndOtherVideos"
         );
         var dbContext = (ReaparrDbContext)IDbContext;
