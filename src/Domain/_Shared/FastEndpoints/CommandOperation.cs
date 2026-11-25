@@ -12,19 +12,19 @@ namespace Reaparr.Domain;
 /// </remarks>
 internal sealed class CommandOperation : IDisposable
 {
-    private static readonly AsyncLocal<CommandOperation?> Current = new();
+    private static readonly AsyncLocal<CommandOperation?> _current = new();
     private readonly CommandOperation? _previous;
     private IServiceProvider? _provider;
 
     private CommandOperation(IServiceProvider provider)
     {
-        _previous = Current.Value;
+        _previous = _current.Value;
         _provider = provider;
-        Current.Value = this;
+        _current.Value = this;
     }
 
     internal static IServiceProvider? Provider =>
-        Current.Value is { } operation
+        _current.Value is { } operation
             ? operation._provider ?? throw new ObjectDisposedException(nameof(CommandOperation))
             : null;
 
@@ -34,6 +34,6 @@ internal sealed class CommandOperation : IDisposable
     {
         // Clear the shared holder so inherited continuations fail instead of using a disposed scope or falling back to root.
         _provider = null;
-        Current.Value = _previous;
+        _current.Value = _previous;
     }
 }

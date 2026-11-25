@@ -642,10 +642,22 @@ public class SyncPlexTvShowsCommandUnitTests : BaseCommandUnitTest<SyncPlexTvSho
         var expectedEpisodeKeys = episodes.Select(x => x.PlexApiRatingKey).Order().ToArray();
         using (var db = IDbContext)
         {
-            (await db.PlexTvShowSeason.Where(x => x.Id == seasons[1].Id)
-                .ExecuteUpdateAsync(x => x.SetProperty(y => y.PlexApiRatingKey, seasons[0].PlexApiRatingKey), CancellationToken)).ShouldBe(1);
-            (await db.PlexTvShowEpisodes.Where(x => x.Id == episodes[1].Id)
-                .ExecuteUpdateAsync(x => x.SetProperty(y => y.PlexApiRatingKey, episodes[0].PlexApiRatingKey), CancellationToken)).ShouldBe(1);
+            (
+                await db
+                    .PlexTvShowSeason.Where(x => x.Id == seasons[1].Id)
+                    .ExecuteUpdateAsync(
+                        x => x.SetProperty(y => y.PlexApiRatingKey, seasons[0].PlexApiRatingKey),
+                        CancellationToken
+                    )
+            ).ShouldBe(1);
+            (
+                await db
+                    .PlexTvShowEpisodes.Where(x => x.Id == episodes[1].Id)
+                    .ExecuteUpdateAsync(
+                        x => x.SetProperty(y => y.PlexApiRatingKey, episodes[0].PlexApiRatingKey),
+                        CancellationToken
+                    )
+            ).ShouldBe(1);
         }
         SetIds(library, shows);
         library.TvShows.AddRange(shows);

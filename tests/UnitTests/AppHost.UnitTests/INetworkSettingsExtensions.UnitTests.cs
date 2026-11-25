@@ -4,6 +4,7 @@ using Reaparr.Settings.Contracts;
 
 namespace Reaparr.AppHost.UnitTests;
 
+// ReSharper disable once InconsistentNaming
 public class INetworkSettingsExtensionsUnitTests : BaseUnitTest
 {
     [Test]

@@ -1,5 +1,3 @@
-using System.Net.Http.Json;
-
 namespace Reaparr.IntegrationTests;
 
 public class CredentialUpdatesIntegrationTests : BaseIntegrationTests

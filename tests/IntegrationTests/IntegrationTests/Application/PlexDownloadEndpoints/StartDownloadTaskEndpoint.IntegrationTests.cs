@@ -144,6 +144,7 @@ public class StartDownloadTaskEndpointIntegrationTests : BaseIntegrationTests
         // Arrange
         var payload = Enumerable.Range(0, 1024 * 1024).Select(x => (byte)(x % 251)).ToArray();
         await using var server = new IgnoreResumeRangeServer(payload);
+        var serverUrl = server.Url;
         var seed = new Seed(8934);
         using var container = await CreateContainer(seed, config =>
         {
@@ -165,7 +166,7 @@ public class StartDownloadTaskEndpointIntegrationTests : BaseIntegrationTests
                 builder
                     .Register(_ =>
                         new FakeCommandExecutor().Intercept<GetDirectDownloadUrlCommand, Result<string>>(
-                            (_, _) => Task.FromResult(Result.Ok(server.Url))
+                            (_, _) => Task.FromResult(Result.Ok(serverUrl))
                         )
                     )
                     .As<ICommandExecutor>()

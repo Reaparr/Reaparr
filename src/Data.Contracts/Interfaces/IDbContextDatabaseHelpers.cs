@@ -90,6 +90,7 @@ public interface IDbContextDatabaseHelpers
     ///         See <see href="https://aka.ms/efcore-docs-migrations">Database migrations</see> for more information and examples.
     ///     </para>
     /// </remarks>
+    /// <returns>A result indicating whether the migrations were applied successfully.</returns>
     Result Migrate();
 
     /// <summary>
@@ -104,5 +105,7 @@ public interface IDbContextDatabaseHelpers
     /// <summary>
     /// Optimizes the database by performing maintenance tasks such as vacuuming, reindexing, and analyzing the database.
     /// </summary>
+    /// <param name="cancellationToken">A token that cancels the optimization operation.</param>
+    /// <returns>The result containing the number of maintenance operations performed.</returns>
     Task<Result<int>> Optimize(CancellationToken cancellationToken = default);
 }

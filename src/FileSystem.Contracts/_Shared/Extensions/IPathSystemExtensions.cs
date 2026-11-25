@@ -2,6 +2,7 @@ using System.IO.Abstractions;
 
 namespace Reaparr.FileSystem.Contracts;
 
+// ReSharper disable once InconsistentNaming
 public static class IPathExtensions
 {
     public static Result<long> GetAvailableSpaceByDirectory(this IPath path, string directory)

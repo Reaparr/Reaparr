@@ -7,6 +7,11 @@ namespace Reaparr.Data.UnitTests;
 public class ReaparrDbContextFactoryUnitTests
 {
     [Test]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage(
+        "Usage",
+        "MA0042",
+        Justification = "This test deliberately compares the synchronous and asynchronous factory APIs."
+    )]
     public async Task ShouldCreateIndependentConfiguredContexts_WhenUsingBothCreationMethods()
     {
         // Arrange
@@ -15,9 +20,7 @@ public class ReaparrDbContextFactoryUnitTests
         var pathProvider = container.Resolve<IPathProvider>();
 
         // Act
-#pragma warning disable MA0042 // This test intentionally covers the synchronous factory API.
         using var syncContext = factory.Create();
-#pragma warning restore MA0042
         using var asyncContext = await factory.CreateAsync();
 
         // Assert

@@ -142,13 +142,13 @@ jobs:
             matrix:
                 rid: [win-x64, win-arm64, linux-x64, linux-arm64, osx-x64, osx-arm64]
         steps:
-            -   name: Setup .NET 9 runtime for vpk
+            -   name: Setup .NET 11 SDK for vpk
                 uses: actions/setup-dotnet@v6
                 with:
-                    dotnet-version: 9.0.x
+                    dotnet-version: 11.0.x
 
             -   name: Install Velopack CLI
-                run: dotnet tool install -g vpk --version 1.2.161
+                run: dotnet tool install -g vpk --version 1.2.161 --allow-roll-forward
 
             -   name: Download packaged installer artifact
                 uses: actions/download-artifact@v8

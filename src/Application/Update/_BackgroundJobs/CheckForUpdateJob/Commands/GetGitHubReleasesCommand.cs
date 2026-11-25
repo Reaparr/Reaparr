@@ -1,4 +1,3 @@
-using System.Net.Http.Json;
 using Semver;
 
 namespace Reaparr.Application;

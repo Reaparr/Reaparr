@@ -280,7 +280,6 @@ public interface IReaparrDbContext : IDisposable
     /// <summary>
     /// Removes all tracked entities from the change tracker.
     /// </summary>
-    /// <returns>This method does not return a value.</returns>
     void ClearChangeTracker();
 
     /// <summary>

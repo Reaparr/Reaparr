@@ -111,12 +111,12 @@ public class DownloadTaskUpdateDispatcherCommonUnitTests : BaseUnitTest<Download
         var key = (await dbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken)).ToKey();
         await dbContext.DownloadTaskMovieFile.Where(x => x.Id == key.Id).ExecuteDeleteAsync(CancellationToken);
         var factory = new Mock<IReaparrDbContextFactory>(MockBehavior.Strict);
-        var attempts = 0;
+        var attempts = new int[1];
         factory
             .Setup(x => x.CreateAsync())
             .Returns(() =>
             {
-                if (Interlocked.Increment(ref attempts) == 1)
+                if (Interlocked.Increment(ref attempts[0]) == 1)
                     throw new InvalidOperationException("cleanup unavailable");
                 return Mock.Container.Resolve<IReaparrDbContextFactory>().CreateAsync();
             });
@@ -158,7 +158,7 @@ public class DownloadTaskUpdateDispatcherCommonUnitTests : BaseUnitTest<Download
         try
         {
             await WaitUntilAsync(() => Task.FromResult(!statuses.ContainsKey(key.Id)));
-            Volatile.Read(ref attempts).ShouldBeGreaterThanOrEqualTo(2);
+            Volatile.Read(ref attempts[0]).ShouldBeGreaterThanOrEqualTo(2);
             hub.Verify();
         }
         finally

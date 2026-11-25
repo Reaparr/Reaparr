@@ -1,5 +1,3 @@
-using System.Net.Http.Json;
-
 namespace Reaparr.IntegrationTests;
 
 public class ConnectionOwnershipIntegrationTests : BaseIntegrationTests
@@ -105,6 +103,7 @@ public class ConnectionOwnershipIntegrationTests : BaseIntegrationTests
             Port = 32401,
             Url = "https://127.0.0.42:32401",
             IPv4 = true,
+            IPv6 = false,
         };
         using var client = container.GetApiClient();
         await client.SignIn();
@@ -325,7 +324,9 @@ public class ConnectionOwnershipIntegrationTests : BaseIntegrationTests
         string Url,
         bool Local,
         bool Relay,
+        // ReSharper disable once InconsistentNaming
         bool IPv4,
+        // ReSharper disable once InconsistentNaming
         bool IPv6,
         bool IsCustom,
         int PlexServerId

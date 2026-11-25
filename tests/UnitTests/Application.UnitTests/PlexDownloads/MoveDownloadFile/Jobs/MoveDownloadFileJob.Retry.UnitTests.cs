@@ -65,7 +65,7 @@ public class MoveDownloadFileJobRetryUnitTests : BaseUnitTest<MoveDownloadFileJo
         scheduler
             .Setup(x =>
                 x.ScheduleJob(
-                    It.Is<ITrigger>(trigger => trigger.JobKey.Equals(jobKey)),
+                    It.Is<ITrigger>(trigger => Equals(trigger.JobKey, jobKey)),
                     It.IsAny<ScheduleJobOptions>(),
                     CancellationToken
                 )
@@ -275,7 +275,7 @@ public class MoveDownloadFileJobRetryUnitTests : BaseUnitTest<MoveDownloadFileJo
         scheduler
             .Setup(x =>
                 x.ScheduleJob(
-                    It.Is<ITrigger>(trigger => trigger.JobKey.Equals(jobKey)),
+                    It.Is<ITrigger>(trigger => Equals(trigger.JobKey, jobKey)),
                     It.IsAny<ScheduleJobOptions>(),
                     CancellationToken
                 )

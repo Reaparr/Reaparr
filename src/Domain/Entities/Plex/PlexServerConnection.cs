@@ -31,9 +31,11 @@ public class PlexServerConnection : BaseEntity
     [Column(Order = 6)]
     public required bool Relay { get; init; }
 
+    // ReSharper disable once InconsistentNaming
     [Column(Order = 7)]
     public required bool IPv4 { get; init; }
 
+    // ReSharper disable once InconsistentNaming
     [Column(Order = 8)]
     public required bool IPv6 { get; init; }
 

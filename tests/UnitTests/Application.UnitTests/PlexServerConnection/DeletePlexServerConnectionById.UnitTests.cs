@@ -394,7 +394,9 @@ public class DeletePlexServerConnectionByIdUnitTests
         string Url,
         bool Local,
         bool Relay,
+        // ReSharper disable once InconsistentNaming
         bool IPv4,
+        // ReSharper disable once InconsistentNaming
         bool IPv6,
         bool IsCustom
     );

@@ -4,7 +4,7 @@ namespace Reaparr.Application.UnitTests;
 
 public class QuartzRunningJobUpdatesUnitTests : BaseUnitTest
 {
-    private const string LocalNode = "running-update-local-node";
+    private const string LOCAL_NODE = "running-update-local-node";
 
     [Test]
     [Arguments(JobTypes.DownloadJob)]
@@ -39,12 +39,12 @@ public class QuartzRunningJobUpdatesUnitTests : BaseUnitTest
         data["QRTZ_RECOVERY_DATA"] = "not-payload-recovery";
         var detail = JobBuilder.Create<LibrarySyncJob>().WithIdentity(key).UsingJobData(data).Build();
         var scheduler = new Mock<IScheduler>(MockBehavior.Strict);
-        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(LocalNode).Verifiable(Times.Once());
+        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(LOCAL_NODE).Verifiable(Times.Once());
         scheduler
             .Setup(x =>
                 x.QueryFireInstances(
                     It.Is<FireInstanceQuery>(query =>
-                        query.SchedulerInstanceId == LocalNode
+                        query.SchedulerInstanceId == LOCAL_NODE
                         && query.State == FireInstanceState.Executing
                         && query.Skip == 0
                         && query.Take == PagedQuery.DefaultTake
@@ -145,12 +145,12 @@ public class QuartzRunningJobUpdatesUnitTests : BaseUnitTest
         };
         var detail = JobBuilder.Create<LibrarySyncJob>().WithIdentity(key).UsingJobData(data).Build();
         var scheduler = new Mock<IScheduler>(MockBehavior.Strict);
-        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(LocalNode).Verifiable(Times.Once());
+        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(LOCAL_NODE).Verifiable(Times.Once());
         scheduler
             .Setup(x =>
                 x.QueryFireInstances(
                     It.Is<FireInstanceQuery>(query =>
-                        query.SchedulerInstanceId == LocalNode
+                        query.SchedulerInstanceId == LOCAL_NODE
                         && query.State == FireInstanceState.Executing
                         && query.Skip == 0
                         && query.Take == PagedQuery.DefaultTake
@@ -193,15 +193,15 @@ public class QuartzRunningJobUpdatesUnitTests : BaseUnitTest
         var missingKey = new JobKey("deleted-job", nameof(JobTypes.DownloadJob));
         var firstTime = new DateTimeOffset(2026, 11, 18, 10, 0, 0, TimeSpan.FromHours(-2));
         var secondTime = firstTime.AddSeconds(37);
-        var payload = new LibrarySyncJobPayload(23, 71, false);
+        var payload = new LibrarySyncJobPayload(23, 71);
         var detail = JobBuilder.Create<LibrarySyncJob>().WithIdentity(key).UsingJobData(payload.ToJobDataMap()).Build();
         var scheduler = new Mock<IScheduler>(MockBehavior.Strict);
-        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(LocalNode).Verifiable(Times.Once());
+        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(LOCAL_NODE).Verifiable(Times.Once());
         scheduler
             .Setup(x =>
                 x.QueryFireInstances(
                     It.Is<FireInstanceQuery>(query =>
-                        query.SchedulerInstanceId == LocalNode
+                        query.SchedulerInstanceId == LOCAL_NODE
                         && query.State == FireInstanceState.Executing
                         && query.Skip == 0
                         && query.Take == PagedQuery.DefaultTake
@@ -264,12 +264,12 @@ public class QuartzRunningJobUpdatesUnitTests : BaseUnitTest
     {
         // Arrange
         var scheduler = new Mock<IScheduler>(MockBehavior.Strict);
-        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(LocalNode).Verifiable(Times.Once());
+        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(LOCAL_NODE).Verifiable(Times.Once());
         scheduler
             .Setup(x =>
                 x.QueryFireInstances(
                     It.Is<FireInstanceQuery>(query =>
-                        query.SchedulerInstanceId == LocalNode
+                        query.SchedulerInstanceId == LOCAL_NODE
                         && query.State == FireInstanceState.Executing
                         && query.Skip == 0
                         && query.Take == PagedQuery.DefaultTake
@@ -304,12 +304,12 @@ public class QuartzRunningJobUpdatesUnitTests : BaseUnitTest
         var firedAt = new DateTimeOffset(2026, 11, 18, 12, 0, 0, TimeSpan.Zero);
         var detail = JobBuilder.Create<LibrarySyncJob>().WithIdentity(key).Build();
         var scheduler = new Mock<IScheduler>(MockBehavior.Strict);
-        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(LocalNode).Verifiable(Times.Once());
+        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(LOCAL_NODE).Verifiable(Times.Once());
         scheduler
             .Setup(x =>
                 x.QueryFireInstances(
                     It.Is<FireInstanceQuery>(query =>
-                        query.SchedulerInstanceId == LocalNode
+                        query.SchedulerInstanceId == LOCAL_NODE
                         && query.State == FireInstanceState.Executing
                         && query.Skip == 0
                         && query.Take == PagedQuery.DefaultTake
@@ -358,7 +358,7 @@ public class QuartzRunningJobUpdatesUnitTests : BaseUnitTest
             fireId,
             new TriggerKey($"trigger-{fireId}", "trigger-group"),
             key,
-            LocalNode,
+            LOCAL_NODE,
             FireInstanceState.Executing,
             firedAt,
             firedAt.AddMinutes(-1),

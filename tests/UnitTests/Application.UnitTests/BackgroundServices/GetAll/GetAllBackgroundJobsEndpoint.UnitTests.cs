@@ -14,14 +14,15 @@ public class GetAllBackgroundJobsEndpointUnitTests
 
     private void SetupScheduler(IEnumerable<IJobExecutionContext> executingJobs)
     {
+        var executionContexts = executingJobs.ToList();
         var scheduler = Mock.Mock<IScheduler>();
         scheduler.SetupGet(x => x.SchedulerInstanceId).Returns("test-scheduler");
-        var firingItems = executingJobs
+        var firingItems = executionContexts
             .Select(context =>
             {
                 var key = context.JobDetail.Key;
                 return new FireInstance(
-                    context.FireInstanceId ?? $"fire-{key.Name}",
+                    context.FireInstanceId,
                     new TriggerKey(key.Name, key.Group),
                     key,
                     "test-scheduler",
@@ -45,7 +46,7 @@ public class GetAllBackgroundJobsEndpointUnitTests
                 )
             )
             .Returns(new ValueTask<PagedResult<FireInstance>>(new PagedResult<FireInstance>(firingItems, false)));
-        var details = executingJobs.Select(context => context.JobDetail).ToList();
+        var details = executionContexts.Select(context => context.JobDetail).ToList();
         scheduler
             .Setup(x =>
                 x.GetJobDetails(

@@ -188,9 +188,9 @@ public class QuartzSchedulingExtensionsUnitTests : BaseUnitTest
         var existingKey = LibrarySyncJob.GetJobKey(17, 41);
         var firstKey = LibrarySyncJob.GetJobKey(17, 42);
         var secondKey = LibrarySyncJob.GetJobKey(18, 43);
-        var existingPayload = new LibrarySyncJobPayload(17, 41, false);
+        var existingPayload = new LibrarySyncJobPayload(17, 41);
         var firstPayload = new LibrarySyncJobPayload(17, 42, true);
-        var secondPayload = new LibrarySyncJobPayload(18, 43, false);
+        var secondPayload = new LibrarySyncJobPayload(18, 43);
         var before = DateTimeOffset.UtcNow;
         DateTimeOffset? executeAt = delayed ? before.AddHours(2) : null;
         using var activity = new Activity("schedule-batch").SetIdFormat(ActivityIdFormat.W3C).Start();

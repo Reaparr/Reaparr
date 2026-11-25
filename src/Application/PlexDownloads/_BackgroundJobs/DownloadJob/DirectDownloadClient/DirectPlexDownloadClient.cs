@@ -189,8 +189,8 @@ public class DirectPlexDownloadClient : IPlexDownloadClient
                     if (attempt > 0)
                         await _downloader.Clear();
 
-                    var progressGate = new Lock();
-                    var progressCompleted = false;
+                    var progressState = (Gate: new Lock(), Completed: false);
+                    var progressGate = progressState.Gate;
                     using var progressSubscription = Observable
                         .FromEventPattern<DownloadProgressChangedEventArgs>(
                             h => _downloader.DownloadProgressChanged += h,
@@ -202,7 +202,7 @@ public class DirectPlexDownloadClient : IPlexDownloadClient
                         {
                             lock (progressGate)
                             {
-                                if (progressCompleted)
+                                if (progressState.Completed)
                                     return;
 
                                 var progress = new DownloadTaskProgress
@@ -237,7 +237,7 @@ public class DirectPlexDownloadClient : IPlexDownloadClient
                     void OnDownloadCompleted(object? _, AsyncCompletedEventArgs args)
                     {
                         lock (progressGate)
-                            progressCompleted = true;
+                            progressState.Completed = true;
 
                         completionSource.TrySetResult(args);
                     }
@@ -287,7 +287,7 @@ public class DirectPlexDownloadClient : IPlexDownloadClient
                             token
                         );
                         lock (progressGate)
-                            progressCompleted = true;
+                            progressState.Completed = true;
                         if (downloadResult.IsCancelledOrFailed)
                             return downloadResult;
 

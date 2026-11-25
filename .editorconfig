@@ -45,6 +45,8 @@ resharper_suggest_var_or_type_elsewhere_highlighting = suggestion
 resharper_suggest_var_or_type_simple_types_highlighting = suggestion
 # Preserve explicit anonymous-object property names so source member changes do not rename the projected properties.
 resharper_redundant_anonymous_type_property_name_highlighting = none
+# Keep explicit constructors instead of converting them to primary constructors.
+resharper_convert_to_primary_constructor_highlighting = none
 
 # Keep traditional extension methods instead of C# 14 extension blocks.
 resharper_convert_to_extension_block_highlighting = none
@@ -72,6 +74,8 @@ dotnet_analyzer_diagnostic.category-roslynator.severity = default
 dotnet_diagnostic.MA0004.severity = none
 # MA0006 prefers String.Equals over ==/!=; disable because the repository deliberately uses ==/is for canonical string equality.
 dotnet_diagnostic.MA0006.severity = none
+# MA0169 prefers Equals over equality operators; disabled because == and != are the preferred comparison syntax.
+dotnet_diagnostic.MA0169.severity = none
 # MA0051 flags long methods; disable because method length alone is not evidence that extracting cohesive work improves clarity.
 dotnet_diagnostic.MA0051.severity = none
 # MA0158 requires System.Threading.Lock for lock-only fields; error blocks the old monitor type when behavior is preserved.

@@ -41,7 +41,7 @@ public class DbContextOptimizeUnitTests : BaseUnitTest
     {
         // Arrange
         await SetupDatabase(91238);
-        await using var dbContext = (AuthDbContext)IAuthDbContext;
+        await using var dbContext = (AuthDbContext)AuthDbContext;
 
         // Act
         var result = await dbContext.Optimize(CancellationToken);

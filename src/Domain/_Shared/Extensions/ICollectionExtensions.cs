@@ -1,5 +1,6 @@
 namespace Reaparr.Domain;
 
+// ReSharper disable once InconsistentNaming
 public static class ICollectionExtensions
 {
     public static void AddRange<T>(this ICollection<T> collection, IEnumerable<T> items)

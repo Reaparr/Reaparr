@@ -1,6 +1,4 @@
-﻿using System.Net.Http.Json;
-
-namespace Reaparr.BaseTests;
+﻿namespace Reaparr.BaseTests;
 
 public static class HttpResponseMessageExtensions
 {

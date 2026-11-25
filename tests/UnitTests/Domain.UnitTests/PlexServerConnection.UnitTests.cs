@@ -5,7 +5,7 @@ public class PlexServerConnectionUnitTests : BaseUnitTest
     [Test]
     [Arguments(true, true)]
     [Arguments(false, false)]
-    public void ShouldIncludeIpv4_WhenComparingConnectionValues(bool ipv4, bool expectedEqual)
+    public void ShouldIncludeIPv4_WhenComparingConnectionValues(bool ipv4, bool expectedEqual)
     {
         // Arrange
         var connection = new PlexServerConnection

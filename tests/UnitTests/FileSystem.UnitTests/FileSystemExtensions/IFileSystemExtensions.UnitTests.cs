@@ -5,6 +5,7 @@ using Reaparr.FileSystem.Contracts;
 
 namespace Reaparr.FileSystem.UnitTests;
 
+// ReSharper disable once InconsistentNaming
 public class IFileSystemExtensionsUnitTests : BaseUnitTest
 {
     [Test]
