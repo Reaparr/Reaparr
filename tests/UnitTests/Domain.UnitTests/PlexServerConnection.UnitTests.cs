@@ -5,7 +5,7 @@ public class PlexServerConnectionUnitTests : BaseUnitTest
     [Test]
     [Arguments(true, true)]
     [Arguments(false, false)]
-    public void ShouldIncludeIpv4_WhenComparingConnectionValues(bool ipv4, bool expectedEqual)
+    public void ShouldIncludeIPv4_WhenComparingConnectionValues(bool ipv4, bool expectedEqual)
     {
         // Arrange
         var connection = new PlexServerConnection
@@ -18,8 +18,8 @@ public class PlexServerConnectionUnitTests : BaseUnitTest
             Url = "https://plex.example.test:32400",
             Local = false,
             Relay = false,
-            Ipv4 = true,
-            Ipv6 = false,
+            IPv4 = true,
+            IPv6 = false,
             IsCustom = false,
         };
         var other = new PlexServerConnection
@@ -32,8 +32,8 @@ public class PlexServerConnectionUnitTests : BaseUnitTest
             Url = "https://plex.example.test:32400",
             Local = false,
             Relay = false,
-            Ipv4 = ipv4,
-            Ipv6 = false,
+            IPv4 = ipv4,
+            IPv6 = false,
             IsCustom = false,
         };
 

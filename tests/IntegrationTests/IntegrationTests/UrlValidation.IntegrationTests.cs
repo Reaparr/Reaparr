@@ -58,8 +58,8 @@ public class UrlValidationIntegrationTests : BaseIntegrationTests
                         x.Url,
                         x.Local,
                         x.Relay,
-                        x.Ipv4,
-                        x.Ipv6,
+                        x.IPv4,
+                        x.IPv6,
                         x.IsCustom,
                         x.PlexServerId
                     )
@@ -76,8 +76,8 @@ public class UrlValidationIntegrationTests : BaseIntegrationTests
                                 x.Url,
                                 x.Local,
                                 x.Relay,
-                                x.Ipv4,
-                                x.Ipv6,
+                                x.IPv4,
+                                x.IPv6,
                                 x.IsCustom,
                                 x.PlexServerId
                             )
@@ -282,8 +282,8 @@ public class UrlValidationIntegrationTests : BaseIntegrationTests
             stored.Url,
             stored.Local,
             stored.Relay,
-            stored.Ipv4,
-            stored.Ipv6,
+            stored.IPv4,
+            stored.IPv6,
             stored.IsCustom,
             stored.PlexServerId
         ).ShouldBe(
@@ -460,8 +460,8 @@ public class UrlValidationIntegrationTests : BaseIntegrationTests
                 Url = "http://custom.example.test:32400",
                 Local = false,
                 Relay = false,
-                Ipv4 = false,
-                Ipv6 = false,
+                IPv4 = false,
+                IPv6 = false,
                 IsCustom = true,
                 PlexServerId = 1,
             }
@@ -619,8 +619,8 @@ public class UrlValidationIntegrationTests : BaseIntegrationTests
             x.Url,
             x.Local,
             x.Relay,
-            x.Ipv4,
-            x.Ipv6,
+            x.IPv4,
+            x.IPv6,
             x.IsCustom,
             x.PlexServerId
         );
@@ -702,9 +702,10 @@ public class UrlValidationIntegrationTests : BaseIntegrationTests
         int Port,
         string Url,
         bool Local,
-        bool Relay,
-        bool Ipv4,
-        bool Ipv6,
+        // ReSharper disable once InconsistentNaming
+        bool IPv4,
+        // ReSharper disable once InconsistentNaming
+        bool IPv6,
         bool IsCustom,
         int PlexServerId
     );

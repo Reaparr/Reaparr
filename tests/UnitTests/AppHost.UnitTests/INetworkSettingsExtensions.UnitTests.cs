@@ -4,7 +4,8 @@ using Reaparr.Settings.Contracts;
 
 namespace Reaparr.AppHost.UnitTests;
 
-public class NetworkSettingsExtensionsUnitTests : BaseUnitTest
+// ReSharper disable once InconsistentNaming
+public class INetworkSettingsExtensionsUnitTests : BaseUnitTest
 {
     [Test]
     public void ShouldDisableForwardedHeaders_WhenAllowlistContainsOnlyBlankEntries()

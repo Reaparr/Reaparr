@@ -5,7 +5,8 @@ using Reaparr.FileSystem.Contracts;
 
 namespace Reaparr.FileSystem.UnitTests;
 
-public class FileSystemExtensionsUnitTests : BaseUnitTest
+// ReSharper disable once InconsistentNaming
+public class IFileSystemExtensionsUnitTests : BaseUnitTest
 {
     [Test]
     public void ShouldReturnCorrectAvailableSpace_WhenUsingTheRootPath()

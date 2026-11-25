@@ -867,8 +867,8 @@ public class DbContextExtensionsDownloadTasksUnitTests : BaseUnitTest
             Url = $"https://{conn.Address}:{conn.Port}",
             Local = false,
             Relay = false,
-            Ipv4 = true,
-            Ipv6 = false,
+            IPv4 = true,
+            IPv6 = false,
             IsCustom = false,
             PlexServerId = server.Id,
         };
@@ -931,8 +931,8 @@ public class DbContextExtensionsDownloadTasksUnitTests : BaseUnitTest
             Url = $"http://{conn.Address}:{conn.Port}",
             Local = false,
             Relay = false,
-            Ipv4 = true,
-            Ipv6 = false,
+            IPv4 = true,
+            IPv6 = false,
             IsCustom = false,
             PlexServerId = server.Id,
         };

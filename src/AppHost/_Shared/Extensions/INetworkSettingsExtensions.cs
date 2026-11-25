@@ -7,9 +7,10 @@ namespace Reaparr.AppHost;
 /// <summary>
 ///  Extension methods for INetworkSettings to build ForwardedHeadersOptions for ASP.NET Core middleware.
 /// </summary>
-public static class NetworkSettingsExtensions
+// ReSharper disable once InconsistentNaming
+public static class INetworkSettingsExtensions
 {
-    private static readonly Serilog.ILogger _log = LogFactory.Create(typeof(NetworkSettingsExtensions));
+    private static readonly Serilog.ILogger _log = LogFactory.Create(typeof(INetworkSettingsExtensions));
 
     /// <summary>
     /// Applies forwarded headers middleware based on network settings.

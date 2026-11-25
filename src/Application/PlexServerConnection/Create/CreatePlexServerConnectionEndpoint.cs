@@ -68,8 +68,8 @@ public class CreatePlexServerConnectionEndpoint
             Url = url,
             Local = url.IsLocalUrl(),
             Relay = req.Address.Contains("plex.direct"),
-            Ipv4 = req.Address.IsIpv4(),
-            Ipv6 = req.Address.IsIPv6(),
+            IPv4 = req.Address.IsIpv4(),
+            IPv6 = req.Address.IsIPv6(),
             PlexServerId = req.PlexServerId,
             IsCustom = true,
         };
