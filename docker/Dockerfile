@@ -51,7 +51,7 @@ ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 \
     DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1 \
     NUGET_XMLDOC_MODE=skip
 
-COPY ["Directory.Build.props", "."]
+COPY ["Directory.Build.props", "NuGet.Config", "."]
 COPY --parents src/*/*.csproj src/*/packages.lock.json /src/
 
 ## Restore Projects
