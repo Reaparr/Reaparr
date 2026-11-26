@@ -105,14 +105,26 @@ export function stripUrlMetadata(value: string): string {
 
 function maskStyleUrls(value: string): string {
 	return value.replace(/url\(\s*(['"]?)([^'"\s)]+)\1\s*\)/gi, (_match, quote: string, url: string) => {
+		// rrweb resolves CSS fragment references against the document before this hook runs.
+		if (/^#[a-zA-Z_][\w:.-]*$/.test(url)) return `url(${quote}${url}${quote})`;
+		if (typeof window !== 'undefined' && URL.canParse(url, window.location.href)) {
+			const reference = new URL(url, window.location.href);
+			if (reference.href === `${window.location.href.split('#', 1)[0]}${reference.hash}` && /^#[a-zA-Z_][\w:.-]*$/.test(reference.hash)) {
+				return `url(${quote}${reference.hash}${quote})`;
+			}
+		}
 		return `url(${quote}${stripUrlMetadata(url)}${quote})`;
 	});
 }
 
-/** Native rrweb attribute hook for links, stylesheet/image sources and inline CSS URLs. */
-export function maskReplayAttribute(name: string, value: string): string {
-	if (name.toLowerCase() === 'style') return maskStyleUrls(value);
-	if (replayUrlAttributes[name.toLowerCase()] || looksLikeUrl(value)) return stripUrlMetadata(value);
+/** Keep local SVG references intact; strip private metadata from navigation and resource URLs. */
+export function maskReplayAttribute(name: string, value: string, element?: Element): string {
+	const attribute = name.toLowerCase();
+	if (attribute === 'style') return maskStyleUrls(value);
+	if (element?.namespaceURI === 'http://www.w3.org/2000/svg') {
+		if (/^(?:href|xlink:href)$/.test(attribute) && /^#[a-zA-Z_][\w:.-]*$/.test(value)) return value;
+	}
+	if (replayUrlAttributes[attribute] || attribute === 'xlink:href') return stripUrlMetadata(value);
 	return value;
 }
 
@@ -214,7 +226,9 @@ export default defineNuxtPlugin({
 				recordBody: false,
 				captureJsonLd: false,
 				collectFonts: false,
-				inlineStylesheet: false,
+				inlineStylesheet: true,
+				// Quasar's combined stylesheet exceeds rrweb's default 10,000-rule budget.
+				inlineStylesheetBudgetRules: 20000,
 			},
 		});
 

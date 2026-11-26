@@ -1,3 +1,4 @@
+import { gunzipSync, strFromU8 } from 'fflate';
 import { route } from '@fixtures';
 import { AuthenticationPaths, DebugPaths, TelemetryPaths } from '@api-urls';
 import { TelemetryDiagnosticOrigin, type BrowserTelemetryBootstrapDTO, type UserClaimsDTO } from '@dto';
@@ -20,9 +21,7 @@ async function decodePartialSnapshotJson(value: string): Promise<unknown> {
 		? binaryBytes
 		: Uint8Array.from(atob(value.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - value.length % 4) % 4)), (character) => character.charCodeAt(0));
 	const bytes = encoded;
-	const text = bytes[0] === 0x1F && bytes[1] === 0x8B
-		? await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).text()
-		: new TextDecoder().decode(bytes);
+	const text = strFromU8(bytes[0] === 0x1F && bytes[1] === 0x8B ? gunzipSync(bytes) : bytes);
 	return JSON.parse(text);
 }
 
@@ -113,9 +112,7 @@ async function decodeNativeCaptures(body: unknown): Promise<NativeCapture[]> {
 		}
 	}
 	if (bytes) {
-		const text = bytes[0] === 0x1F && bytes[1] === 0x8B
-			? await new Response(new Blob([Uint8Array.from(bytes)]).stream().pipeThrough(new DecompressionStream('gzip'))).text()
-			: new TextDecoder().decode(bytes);
+		const text = strFromU8(bytes[0] === 0x1F && bytes[1] === 0x8B ? gunzipSync(bytes) : bytes);
 		value = JSON.parse(text);
 	}
 	let captures: NativeCapture[];
@@ -288,6 +285,74 @@ describe('Telemetry diagnostics', () => {
 		}
 	});
 
+	(isolatedNativeBuild ? it : it.skip)('Should embed the loaded Quasar stylesheet in native replay snapshots', () => {
+		cy.intercept('GET', TelemetryPaths.getBrowserTelemetryBootstrapEndpoint(), {
+			body: generateResultDTO<BrowserTelemetryBootstrapDTO>({
+				apiHost: 'https://posthog.isolated.test', projectToken: 'phc_cypress',
+				distinctId: 'c8b4b3fa-a606-477a-9079-79833ea61558', release: 'isolated-test',
+				environment: 'test', runtimeMode: 'docker', runtimeIdentifier: 'browser', platform: 'browser',
+			}),
+		});
+		cy.visit(route('/'));
+		cy.getCy('account-selector-btn').should('be.visible');
+		cy.getCy('account-selector-btn').click();
+		cy.document().should((document) => {
+			expect([...document.styleSheets].some((sheet) => [...sheet.cssRules].some((rule) => rule.cssText.includes('.q-layout'))), 'Quasar stylesheet loaded and readable').to.equal(true);
+		});
+		cy.wrap(null, { timeout: 30000 }).should(() => {
+			const nodes: Array<Record<string, unknown>> = [];
+			for (const capture of nativeCaptures) {
+				if (capture.event === '$snapshot') collectSnapshotNodes(capture.properties.$snapshot_data, nodes);
+			}
+			expect(nodes.some((node) => {
+				const css = asRecord(node.attributes)?._cssText;
+				return typeof css === 'string' && css.includes('.q-layout');
+			}), 'Quasar layout CSS embedded in emitted full snapshot').to.equal(true);
+		});
+	});
+
+	(isolatedNativeBuild ? it : it.skip)('Should capture a dead click after the native observation window', () => {
+		cy.intercept('GET', TelemetryPaths.getBrowserTelemetryBootstrapEndpoint(), {
+			body: generateResultDTO<BrowserTelemetryBootstrapDTO>({
+				apiHost: 'https://posthog.isolated.test', projectToken: 'phc_cypress',
+				distinctId: 'c8b4b3fa-a606-477a-9079-79833ea61558', release: 'isolated-test',
+				environment: 'test', runtimeMode: 'docker', runtimeIdentifier: 'browser', platform: 'browser',
+			}),
+		});
+		cy.visit(route('/'));
+		cy.getCy('account-selector-btn').should('be.visible');
+		cy.wait('@native-dead-clicks-autocapture');
+		cy.document().then((document) => {
+			const probe = document.createElement('button');
+			probe.type = 'button';
+			probe.textContent = 'Dead click probe';
+			probe.style.cssText = 'position:fixed;top:80px;left:20px;z-index:10000;user-select:none';
+			probe.dataset.cy = 'native-dead-click-probe';
+			document.body.append(probe);
+		});
+		cy.getCy('account-selector-btn').click();
+		cy.wrap(null, { timeout: 30000 }).should(() => {
+			expect(nativeCaptures.some((event) => event.event === '$autocapture'), 'native collectors are active').to.equal(true);
+		});
+		cy.getCy('native-dead-click-probe').then((probe) => {
+			const element = probe[0];
+			if (!element) throw new Error('native dead click probe was not found');
+			cy.clock(Date.now(), ['Date', 'setTimeout', 'clearTimeout']).then((clock) => {
+				for (const type of ['mousedown', 'mouseup', 'click']) {
+					element.dispatchEvent(new MouseEvent(type, { bubbles: true, button: 0, detail: 1 }));
+				}
+				// Keep the native observation window free of unrelated asynchronous page mutations.
+				clock.tick(6000);
+				clock.restore();
+			});
+		});
+		cy.wrap(null, { timeout: 15000 }).should(() => {
+			const event = nativeCaptures.find((capture) => capture.event === '$dead_click');
+			expect(event?.properties.distinct_id, 'native dead click identity').to.equal('c8b4b3fa-a606-477a-9079-79833ea61558');
+			expect(event?.properties.$session_id, 'native dead click session').to.be.a('string').and.not.equal('');
+		});
+	});
+
 	(isolatedNativeBuild ? it : it.skip)('Should collect masked native signals from public bootstrap before login and across logout', () => {
 		let authenticated = false;
 		const expectedExceptionMessage = 'isolated-native-exception-secret';
@@ -358,7 +423,7 @@ describe('Telemetry diagnostics', () => {
 			probe.dataset.probeSecret = 'native-attribute-secret';
 			probe.setAttribute('role', 'button');
 			probe.textContent = 'native-rendered-text-secret';
-			probe.style.cssText = 'position:fixed;top:80px;left:20px;z-index:10000;cursor:pointer';
+			probe.style.cssText = 'position:fixed;top:80px;left:20px;z-index:10000;cursor:pointer;user-select:none';
 			const rageProbe = document.createElement('button');
 			rageProbe.type = 'button';
 			rageProbe.dataset.cy = 'native-rage-probe';
@@ -369,15 +434,6 @@ describe('Telemetry diagnostics', () => {
 		cy.getCy('native-rage-probe').should('be.visible').click().click().click();
 		cy.wrap(null, { timeout: 15000 }).should(() => {
 			expect(nativeCaptures.some((event) => event.event === '$rageclick'), 'rage interaction completed before dead-click probe').to.equal(true);
-		});
-		cy.getCy('native-interaction-probe').should('be.visible').then((probe) => {
-			const element = probe[0];
-			if (!element) throw new Error('native interaction probe was not found');
-			for (let click = 1; click <= 3; click++) {
-				element.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0, detail: click }));
-				element.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, button: 0, detail: click }));
-				element.dispatchEvent(new MouseEvent('click', { bubbles: true, button: 0, detail: click }));
-			}
 		});
 		cy.wrap(null, { timeout: 30000 }).should(() => {
 			const interactions = nativeCaptures.filter((event) => event.event === '$autocapture');
@@ -415,9 +471,8 @@ describe('Telemetry diagnostics', () => {
 					&& list.some((exception) => asRecord(exception)?.value === expectedExceptionMessage);
 			}), 'native original exception').to.equal(true);
 			expect(nativeCaptures.some((event) => event.event === '$rageclick'), 'native rageclick').to.equal(true);
-			expect(nativeCaptures.some((event) => event.event === '$dead_click'), 'native dead click').to.equal(true);
 			expect(nativeCaptures.some((event) => event.event === '$$heatmap'), 'native heatmap').to.equal(true);
-			const vitals = nativeCaptures.find((event) => event.event === '$web_vitals');
+			const vitals = nativeCaptures.find((event) => event.event === '$web_vitals' && typeof event.properties.$web_vitals_FCP_value === 'number');
 			expect(vitals?.properties.$web_vitals_FCP_value, 'native web vitals FCP').to.be.a('number').and.greaterThan(0);
 		});
 		let pageviewsBeforeReload = 0;

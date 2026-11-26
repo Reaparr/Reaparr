@@ -173,6 +173,22 @@ describe('PostHog browser plugin', () => {
 		}]);
 	});
 
+	test('Should preserve SVG paint and local references without retaining remote URL credentials', () => {
+		// Arrange
+		const style = 'fill:url(#gradient);background:url("https://user:password@example.test/image.png?token=secret#private")';
+		const svgUse = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+
+		// Act / Assert
+		expect(maskReplayAttribute('fill', '#fff')).toBe('#fff');
+		expect(maskReplayAttribute('stroke', '#123456')).toBe('#123456');
+		expect(maskReplayAttribute('href', '#logo', svgUse)).toBe('#logo');
+		expect(maskReplayAttribute('xlink:href', '#gradient', svgUse)).toBe('#gradient');
+		expect(maskReplayAttribute('href', '#private')).not.toContain('#private');
+		expect(maskReplayAttribute('style', style)).toBe('fill:url(#gradient);background:url("https://example.test/image.png")');
+		expect(maskReplayAttribute('style', `filter:url(${window.location.href.split('#', 1)[0]}#gradient)`)).toBe('filter:url(#gradient)');
+		expect(maskReplayAttribute('xlink:href', 'https://user:password@example.test/icons.svg?token=secret#logo')).toBe('https://example.test/icons.svg');
+	});
+
 	test('Should initialize from public bootstrap before login and continue through logout', async () => {
 		// Arrange
 		const globalStore = useGlobalStore();
