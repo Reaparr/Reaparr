@@ -161,7 +161,7 @@ public class TelemetryProxyUnitTests : BaseUnitTest
         var runtime = new MockAppRuntimeInfo();
 
         // Act
-        var euContext = CreateContext(HttpMethods.Get, "/static/app.js");
+        var euContext = CreateContext(HttpMethods.Get, "/static/1.447.12/lazy-recorder.js");
         euContext.Request.Headers[HeaderNames.Accept] = "application/javascript";
         euContext.Request.Headers[HeaderNames.AcceptEncoding] = "gzip";
 
@@ -189,7 +189,9 @@ public class TelemetryProxyUnitTests : BaseUnitTest
         ).InvokeAsync(customContext);
 
         // Assert
-        euHandler.Request!.RequestUri!.AbsoluteUri.ShouldBe("https://eu-assets.i.posthog.com/static/app.js");
+        euHandler.Request!.RequestUri!.AbsoluteUri.ShouldBe(
+            "https://eu-assets.i.posthog.com/static/1.447.12/lazy-recorder.js"
+        );
         euHandler.Request.Headers.GetValues(HeaderNames.Accept).Single().ShouldBe("application/javascript");
         euHandler.Request.Headers.GetValues(HeaderNames.AcceptEncoding).Single().ShouldBe("gzip");
         usHandler.Request!.RequestUri!.AbsoluteUri.ShouldBe("https://us-assets.i.posthog.com/array/config.js");
