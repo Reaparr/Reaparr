@@ -30,6 +30,7 @@
 		</div>
 		<DownloadScheduleGrid
 			:limits="limits"
+			:change-points="policy.days"
 			:selection="selection"
 			:preview-limit="previewLimit"
 			:days="dayLabels"
