@@ -16,6 +16,7 @@ import { plexLibraryApi } from '@api';
 import { RefreshDataType, SortDirection } from '@dto';
 import { LibrarySyncWaitingReason } from '@enums';
 import {
+	useAlertStore,
 	useBackgroundJobsStore,
 	useMediaOverviewStore,
 	useServerConnectionStore,
@@ -171,8 +172,15 @@ export const useLibraryStore = defineStore(StoreNames.LibraryStore, () => {
 		},
 		setLibraryEnabled(libraryId: number, isEnabled: boolean): Observable<PlexLibraryDTO | null> {
 			telemetry.libraryEnabledChanged(libraryId, isEnabled);
-			return plexLibraryApi.setLibraryEnabledEndpoint(libraryId, { isEnabled }).pipe(
+			return plexLibraryApi.setLibraryEnabledEndpoint(libraryId, { isEnabled }, { handleErrorsLocally: true }).pipe(
 				switchMap((response) => {
+					if (!response.isSuccess) {
+						useAlertStore().showAlert({
+							id: 0,
+							title: 'Unable to change library availability',
+							text: response.errors.map((error) => error.message).join('\n'),
+						});
+					}
 					if (response.isSuccess && response.value) {
 						const mediaOverviewStore = useMediaOverviewStore();
 						actions.updateLibrary(response.value);
