@@ -4,6 +4,78 @@ public class SetServerEnabledEndpointUnitTests
     : BaseEndpointUnitTest<SetServerEnabledEndpoint, SetServerEnabledRequest, ResultDTO<PlexServerDTO>>
 {
     [Test]
+    [Arguments(DownloadStatus.Queued)]
+    [Arguments(DownloadStatus.Downloading)]
+    [Arguments(DownloadStatus.Paused)]
+    [Arguments(DownloadStatus.Error)]
+    [Arguments(DownloadStatus.DownloadFinished)]
+    [Arguments(DownloadStatus.Moving)]
+    public async Task ShouldRejectDisablingWithoutSideEffects_WhenDownloadsAreUnfinished(DownloadStatus status)
+    {
+        // Arrange
+        await SetupDatabase(91220, config => config.MovieDownloadTasksCount = 1);
+        var dbContext = IDbContext;
+        var file = await dbContext.DownloadTaskMovieFile.SingleAsync(CancellationToken);
+        await dbContext.DownloadTaskMovieFile.ExecuteUpdateAsync(
+            x => x.SetProperty(p => p.DownloadStatus, status),
+            CancellationToken
+        );
+
+        // Act
+        var result = await TestEndpointHandleAsync(
+            new SetServerEnabledRequest { PlexServerId = file.PlexServerId, IsEnabled = false }
+        );
+
+        // Assert
+        result.StatusCode.ShouldBe(409);
+        result.Response.ShouldNotBeNull();
+        result.Response.IsSuccess.ShouldBeFalse();
+        result.Response.Errors.Count.ShouldBe(1);
+        (await dbContext.PlexServers.IgnoreIsEnabledFilter().SingleAsync(CancellationToken)).IsEnabled.ShouldBeTrue();
+        (await dbContext.DownloadTaskMovieFile.Select(x => x.DownloadStatus).SingleAsync(CancellationToken)).ShouldBe(
+            status
+        );
+        Mock.Mock<ICommandExecutor>()
+            .Verify(x => x.Send(It.IsAny<CancelLibrarySyncJobCommand>(), It.IsAny<CancellationToken>()), Times.Never());
+        Mock.Mock<ICommandExecutor>()
+            .Verify(
+                x => x.Send(It.IsAny<QueueMediaOverviewRebuildCommand>(), It.IsAny<CancellationToken>()),
+                Times.Never()
+            );
+    }
+
+    [Test]
+    public async Task ShouldAllowDisabling_WhenDownloadsAreCompleted()
+    {
+        // Arrange
+        await SetupDatabase(91221, config => config.MovieDownloadTasksCount = 1);
+        var dbContext = IDbContext;
+        var file = await dbContext.DownloadTaskMovieFile.SingleAsync(CancellationToken);
+        await dbContext.DownloadTaskMovieFile.ExecuteUpdateAsync(
+            x => x.SetProperty(p => p.DownloadStatus, DownloadStatus.Completed),
+            CancellationToken
+        );
+        Mock.SetupCommand(() => new CancelLibrarySyncJobCommand(file.PlexLibraryId))
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
+
+        // Act
+        var result = await TestEndpointHandleAsync(
+            new SetServerEnabledRequest { PlexServerId = file.PlexServerId, IsEnabled = false }
+        );
+
+        // Assert
+        result.StatusCode.ShouldBe(200);
+        result.Response.ShouldNotBeNull().IsSuccess.ShouldBeTrue();
+        result.Response.Errors.Count.ShouldBe(0);
+        (await dbContext.PlexServers.IgnoreIsEnabledFilter().SingleAsync(CancellationToken)).IsEnabled.ShouldBeFalse();
+        Mock.Mock<ICommandExecutor>().Verify();
+    }
+
+    [Test]
     public async Task ShouldEnableServer_WhenServerIsDisabled()
     {
         // Arrange

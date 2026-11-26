@@ -3,6 +3,59 @@ namespace Reaparr.Data.Contracts;
 // TODO Look for performance improvements in these extensions and or to clean it up. There are a lot of queries that could be optimized and reduced in number, especially when retrieving download tasks by server or getting download task keys.
 public static partial class DbContextExtensions
 {
+    public static Task<bool> HasUnfinishedDownloadsAsync(
+        this IReaparrDbContext dbContext,
+        int plexServerId,
+        int plexLibraryId = 0,
+        CancellationToken cancellationToken = default
+    ) =>
+        dbContext
+            .DownloadTaskMovieFile.Select(x => new
+            {
+                x.PlexServerId,
+                x.PlexLibraryId,
+                x.DownloadStatus,
+            })
+            .Concat(
+                dbContext.DownloadTaskTvShowEpisodeFile.Select(x => new
+                {
+                    x.PlexServerId,
+                    x.PlexLibraryId,
+                    x.DownloadStatus,
+                })
+            )
+            .Concat(
+                dbContext.DownloadTaskMusicTrackFiles.Select(x => new
+                {
+                    x.PlexServerId,
+                    x.PlexLibraryId,
+                    x.DownloadStatus,
+                })
+            )
+            .Concat(
+                dbContext.DownloadTaskPhotoImageFiles.Select(x => new
+                {
+                    x.PlexServerId,
+                    x.PlexLibraryId,
+                    x.DownloadStatus,
+                })
+            )
+            .Concat(
+                dbContext.DownloadTaskOtherVideoFiles.Select(x => new
+                {
+                    x.PlexServerId,
+                    x.PlexLibraryId,
+                    x.DownloadStatus,
+                })
+            )
+            .AnyAsync(
+                x =>
+                    x.PlexServerId == plexServerId
+                    && (plexLibraryId == 0 || x.PlexLibraryId == plexLibraryId)
+                    && x.DownloadStatus != DownloadStatus.Completed,
+                cancellationToken
+            );
+
     public static async Task<Result<string>> GetDownloadUrl(
         this IReaparrDbContext dbContext,
         int plexServerId,

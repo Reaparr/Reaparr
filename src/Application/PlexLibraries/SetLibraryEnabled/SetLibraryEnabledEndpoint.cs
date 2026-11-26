@@ -45,6 +45,7 @@ public class SetLibraryEnabledEndpoint : Endpoint<SetLibraryEnabledRequest, Resu
 
         Description(x =>
             x.Accepts<SetLibraryEnabledRequest>()
+                .Produces(StatusCodes.Status409Conflict, typeof(BaseResultDTO))
                 .Produces(StatusCodes.Status200OK, typeof(ResultDTO<PlexLibraryDTO>))
                 .Produces(StatusCodes.Status404NotFound, typeof(BaseResultDTO))
                 .Produces(StatusCodes.Status500InternalServerError, typeof(BaseResultDTO))
@@ -65,6 +66,21 @@ public class SetLibraryEnabledEndpoint : Endpoint<SetLibraryEnabledRequest, Resu
             return;
         }
 
+        if (
+            !req.IsEnabled && await _dbContext.HasUnfinishedDownloadsAsync(plexLibrary.PlexServerId, plexLibrary.Id, ct)
+        )
+        {
+            await Send.FluentResult(
+                Result.Fail(
+                    new Error("Complete or remove all downloads before disabling this library.").WithMetadata(
+                        ResultExtensions.StatusCodeName,
+                        StatusCodes.Status409Conflict
+                    )
+                ),
+                ct
+            );
+            return;
+        }
         var changed = plexLibrary.IsEnabled != req.IsEnabled;
         var operationResult = req.IsEnabled
             ? await EnableLibraryAsync(plexLibrary, ct, changed)
