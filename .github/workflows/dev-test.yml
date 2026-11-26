@@ -74,8 +74,13 @@ jobs:
 
     InspectCode:
         name: InspectCode
-        needs: [ Check-PR-Status ]
-        if: always() && (github.event.pull_request.head.repo.full_name == github.repository || github.event_name == 'workflow_dispatch')
+        needs: [ Check-PR-Status, Check-Backend-Changes ]
+        if: >-
+            !cancelled() &&
+            needs.Check-Backend-Changes.result == 'success' &&
+            needs.Check-Backend-Changes.outputs.should_run == 'true' &&
+            (github.event_name == 'workflow_dispatch' ||
+            (needs.Check-PR-Status.result == 'success' && github.event.pull_request.head.repo.full_name == github.repository))
         runs-on: ubuntu-latest
         timeout-minutes: 60
         env:
@@ -112,7 +117,7 @@ jobs:
                     output: inspectcode.sarif
                     format: Sarif
                     sEverity: WARNING
-                    jobs: 1
+                    jobs: 4
                     no-swea: true
                     build: false
                     upload-sarif: false
@@ -218,9 +223,13 @@ jobs:
                     predicate-quantifier: 'some-with-excludes'
                     filters: |
                         backend:
-                            - '{src/**,tests/**}'
+                            - '{src,tests,tools}/**'
                             - '!src/AppHost/ClientApp/**'
-                            - '{Directory.Build.props,global.json,docker/Dockerfile,.github/actions/dotnet-setup/action.yml}'
+                            - '**/{*.sln,*.slnx,*.csproj,*.props,*.targets,packages.lock.json,global.json,[Nn]u[Gg]et.[Cc]onfig}'
+                            - '**/{.editorconfig,*.globalconfig,*.ruleset,*.DotSettings,dotnet-tools.json}'
+                            - 'docker/Dockerfile'
+                            - '.github/workflows/dev-test.yml'
+                            - '.github/actions/dotnet-setup/**'
 
             -   name: Discover backend test projects
                 id: discover_tests
