@@ -56,6 +56,6 @@ export default {
 	preset: reaparrTheme,
 	options: {
 		ripple: true,
-		darkModeSelector: '.dark',
+		darkModeSelector: ':root',
 	},
 };
