@@ -6,6 +6,7 @@ namespace Reaparr.Domain;
 /// </summary>
 public static class TelemetryProfileProperty
 {
+    public const string Name = "name";
     public const string SettingsPrefix = "settings.";
     public const string HeaderAuthentication = SettingsPrefix + "authenticationSettings.headerAuthentication";
 }

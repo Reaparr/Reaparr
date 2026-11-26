@@ -12,6 +12,7 @@ namespace Reaparr.Application.UnitTests;
 public class TelemetryUnitTests : BaseUnitTest
 {
     private const string IDENTITY = "5e2c5c48-aa0f-4f21-8c65-94e72b2bd389";
+    private const string IDENTITY_NAME = "Amber Meadow Marill · 5e2c5c48";
     private const string HOST = "https://telemetry.example.test";
 
     [Test]
@@ -96,6 +97,8 @@ public class TelemetryUnitTests : BaseUnitTest
         properties[TelemetryProperty.Platform].ShouldBe("Linux");
         properties[TelemetryProperty.RuntimeIdentifier].ShouldBe("linux-x64");
         properties[TelemetryProtocol.ProcessPersonProfile].ShouldBe(true);
+        properties[TelemetryProperty.TelemetryName].ShouldBe(IDENTITY_NAME);
+        request.GetTagItem(TelemetryProperty.TelemetryName).ShouldBe(IDENTITY_NAME);
         properties.ShouldNotContainKey("$geoip_disable");
         properties[TelemetryProtocol.TraceId].ShouldBe(request.TraceId.ToHexString());
         properties[TelemetryProtocol.SpanId].ShouldBe(request.SpanId.ToHexString());
@@ -109,7 +112,30 @@ public class TelemetryUnitTests : BaseUnitTest
     }
 
     [Test]
-    public async Task ShouldReturnBrowserBootstrap_WhenTelemetryIsConfiguredAndStartupIdentityIsCached()
+    public void ShouldProvideCompleteOfflineSpeciesVocabulary()
+    {
+        // Arrange / Act
+        var names = TelemetrySpecies.Names.Value;
+        var ordered = TelemetryNicknameDataset.OrderedSpecies.Value;
+        // Assert
+        names.Count.ShouldBe(1313);
+        names.ShouldContain("Bulbasaur");
+        names.ShouldContain("Pecharunt");
+        names.ShouldContain("Lamball");
+        names.ShouldContain("Chillet");
+        names.ShouldContain("Depresso");
+        names.ShouldNotContain("Eye of Cthulhu");
+        ordered.ShouldBe(names.Order(StringComparer.Ordinal).ToArray());
+    }
+
+    [Test]
+    [Arguments(IDENTITY, IDENTITY_NAME)]
+    [Arguments("5E2C5C48-AA0F-4F21-8C65-94E72B2BD389", IDENTITY_NAME)]
+    [Arguments("5e2c5c48-aa0f-4f21-8c65-94e72b2bd388", "Swift Cloud Goomy · 5e2c5c48")]
+    public async Task ShouldReturnBrowserBootstrap_WhenTelemetryIsConfiguredAndStartupIdentityIsCached(
+        string identity,
+        string expectedName
+    )
     {
         // Arrange
         SetAppBuildInfo(build =>
@@ -122,15 +148,17 @@ public class TelemetryUnitTests : BaseUnitTest
             build.CurrentOS = OperatingSystemPlatform.Linux;
         });
         var user = new Mock<IUserService>(MockBehavior.Strict);
-        user.Setup(x => x.GetTelemetryId()).ReturnsAsync(IDENTITY).Verifiable(Times.Once());
+        user.Setup(x => x.GetTelemetryId()).ReturnsAsync(identity).Verifiable(Times.Once());
         using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
         var client = new Mock<IPostHogClient>(MockBehavior.Strict);
         client
             .Setup(x =>
                 x.Capture(
-                    IDENTITY,
+                    identity,
                     TelemetryProtocol.ProfileEvent,
-                    It.IsAny<Dictionary<string, object>>(),
+                    It.Is<Dictionary<string, object>>(properties =>
+                        (string)properties[TelemetryProfileProperty.Name] == expectedName
+                    ),
                     null,
                     null,
                     null
@@ -154,7 +182,7 @@ public class TelemetryUnitTests : BaseUnitTest
         bootstrap.ShouldNotBeNull();
         bootstrap.ApiHost.ShouldBe(HOST);
         bootstrap.ProjectToken.ShouldBe("phc_test");
-        bootstrap.DistinctId.ShouldBe(IDENTITY);
+        bootstrap.DistinctId.ShouldBe(identity);
         bootstrap.Release.ShouldBe("0.40.0-dev.1");
         bootstrap.Environment.ShouldBe(TelemetryProtocol.DevelopmentEnvironment);
         bootstrap.RuntimeMode.ShouldBe("desktop");
@@ -717,9 +745,10 @@ public class TelemetryUnitTests : BaseUnitTest
             .GetProperty("10:00")
             .GetInt32()
             .ShouldBe(456);
+        firstProfile[TelemetryProfileProperty.Name].ShouldBe(IDENTITY_NAME);
         firstProfile
-            .Keys.All(key => key.StartsWith(TelemetryProfileProperty.SettingsPrefix, StringComparison.Ordinal))
-            .ShouldBeTrue();
+            .Keys.Where(key => key != TelemetryProfileProperty.Name)
+            .ShouldAllBe(key => key.StartsWith(TelemetryProfileProperty.SettingsPrefix, StringComparison.Ordinal));
         changes.Count.ShouldBe(countAtDisposal);
         user.Verify();
         client.Verify();
@@ -790,6 +819,7 @@ public class TelemetryUnitTests : BaseUnitTest
             if (hasParent)
                 worker.TraceId.ShouldBe(parent.TraceId);
             worker.GetTagItem(TelemetryProtocol.DistinctIdTag).ShouldBe(IDENTITY);
+            worker.GetTagItem(TelemetryProperty.TelemetryName).ShouldBe(IDENTITY_NAME);
             worker.GetTagItem(TelemetryProtocol.SessionIdTag).ShouldBe(session);
             worker.GetTagItem(TelemetryProperty.JobName).ShouldBe("sync.17.42");
             worker.GetTagItem(TelemetryProperty.FireInstanceId).ShouldBe("fire-1");
@@ -934,6 +964,10 @@ public class TelemetryUnitTests : BaseUnitTest
         ambient.Status.ShouldBe(ActivityStatusCode.Unset);
         var terminalLog = logs.Single(x => x.MessageTemplate.Text == capturedLogMessage);
         terminalLog.Properties[TelemetryProtocol.DistinctIdTag].ShouldBeOfType<ScalarValue>().Value.ShouldBe(IDENTITY);
+        terminalLog
+            .Properties[TelemetryProperty.TelemetryName]
+            .ShouldBeOfType<ScalarValue>()
+            .Value.ShouldBe(IDENTITY_NAME);
         terminalLog.Properties[TelemetryProtocol.SessionIdTag].ShouldBeOfType<ScalarValue>().Value.ShouldBe(session);
         terminalLog
             .Properties[TelemetryProperty.JobName]
@@ -947,6 +981,7 @@ public class TelemetryUnitTests : BaseUnitTest
         restoredLog.Properties[TelemetryProperty.JobName].ShouldBeOfType<ScalarValue>().Value.ShouldBe("scheduler");
         restoredLog.Properties.ContainsKey(TelemetryProtocol.SessionIdTag).ShouldBeFalse();
         restoredLog.Properties.ContainsKey(TelemetryProtocol.DistinctIdTag).ShouldBeFalse();
+        restoredLog.Properties.ContainsKey(TelemetryProperty.TelemetryName).ShouldBeFalse();
         user.Verify();
         client.Verify();
         executor.Verify();

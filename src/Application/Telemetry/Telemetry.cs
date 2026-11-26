@@ -20,6 +20,7 @@ public sealed partial class Telemetry : ITelemetry, IDisposable
     private readonly ActivitySource _activitySource;
     private readonly IUserSettings _settings;
     private string _telemetryId = string.Empty;
+    private string _telemetryName = string.Empty;
     private IDisposable? _settingsSubscription;
     private bool IsAdmitted => _appBuildInfo.HasValidTelemetry && !string.IsNullOrEmpty(_telemetryId);
 
@@ -57,6 +58,7 @@ public sealed partial class Telemetry : ITelemetry, IDisposable
             if (!IsAdmitted)
                 return;
 
+            _telemetryName = TelemetryNicknameGenerator.Generate(_telemetryId);
             PublishSettings(changed: false);
             _settingsSubscription = _settings.SettingsUpdated.Subscribe(_ => PublishSettings(changed: true));
         });
@@ -160,9 +162,11 @@ public sealed partial class Telemetry : ITelemetry, IDisposable
             return null;
 
         Activity.Current?.SetTag(TelemetryProtocol.DistinctIdTag, _telemetryId);
+        Activity.Current?.SetTag(TelemetryProperty.TelemetryName, _telemetryName);
         Activity.Current?.SetTag(TelemetryProtocol.SessionIdTag, sessionId);
         return LogContext.Push(
             new PropertyEnricher(TelemetryProtocol.DistinctIdTag, _telemetryId),
+            new PropertyEnricher(TelemetryProperty.TelemetryName, _telemetryName),
             new PropertyEnricher(TelemetryProtocol.SessionIdTag, sessionId)
         );
     }
@@ -196,6 +200,7 @@ public sealed partial class Telemetry : ITelemetry, IDisposable
         );
         var logContext = LogContext.Push(
             new PropertyEnricher(TelemetryProtocol.DistinctIdTag, _telemetryId),
+            new PropertyEnricher(TelemetryProperty.TelemetryName, _telemetryName),
             new PropertyEnricher(TelemetryProtocol.SessionIdTag, context.SessionId),
             new PropertyEnricher(TelemetryProperty.JobName, context.JobKey),
             new PropertyEnricher(TelemetryProperty.FireInstanceId, context.FireInstanceId)
@@ -225,6 +230,7 @@ public sealed partial class Telemetry : ITelemetry, IDisposable
 
         var activity = _activitySource.StartActivity(operation.ToString(), kind, parentContext, tags);
         activity?.SetTag(TelemetryProtocol.DistinctIdTag, _telemetryId);
+        activity?.SetTag(TelemetryProperty.TelemetryName, _telemetryName);
         if (GetActivityTag(activity?.Parent, TelemetryProtocol.SessionIdTag) is { } sessionId)
             activity?.SetTag(TelemetryProtocol.SessionIdTag, sessionId);
         return activity;
@@ -272,6 +278,7 @@ public sealed partial class Telemetry : ITelemetry, IDisposable
         var captureResult = Result.Try(() =>
         {
             properties[TelemetryProtocol.ProcessPersonProfile] = true;
+            properties[TelemetryProperty.TelemetryName] = _telemetryName;
             properties.TryAdd(TelemetryProperty.Origin, TelemetryProtocol.BackendOrigin);
             properties[TelemetryProperty.Environment] = _appBuildInfo.IsDevRelease
                 ? TelemetryProtocol.DevelopmentEnvironment
@@ -320,7 +327,7 @@ public sealed partial class Telemetry : ITelemetry, IDisposable
         var settingsResult = Result.Try(() =>
         {
             var settings = JsonSerializer.SerializeToElement(_settings.ToDTO(), _settingsJsonOptions);
-            var properties = new Dictionary<string, object>();
+            var properties = new Dictionary<string, object> { [TelemetryProfileProperty.Name] = _telemetryName };
             foreach (var module in settings.EnumerateObject())
             foreach (var property in module.Value.EnumerateObject())
                 properties[$"{TelemetryProfileProperty.SettingsPrefix}{module.Name}.{property.Name}"] = property.Value;
