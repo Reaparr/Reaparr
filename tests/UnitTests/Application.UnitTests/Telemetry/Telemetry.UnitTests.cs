@@ -1440,6 +1440,7 @@ public class TelemetryUnitTests : BaseUnitTest
         };
         var photoRequest = new PhotoSearchTelemetryDTO
         {
+            Search = "  \"Café au lait\"   café  résumé 😀 ",
             Page = 3,
             PageSize = 40,
             Sort = SortType.Title,
@@ -1467,11 +1468,7 @@ public class TelemetryUnitTests : BaseUnitTest
 
         // Act
         telemetry.MediaQueryFinished(mediaRequest, "owned", Result.Fail<PlexMediaStatisticsDTO>("media query failed"));
-        telemetry.PhotoSearchFinished(
-            photoRequest,
-            ["cafe", "sunset"],
-            Result.Fail<PhotoAssetPageDTO>("photo search failed")
-        );
+        telemetry.PhotoSearchFinished(photoRequest, Result.Fail<PhotoAssetPageDTO>("photo search failed"));
         telemetry.LibraryRefreshRequested(
             new LibraryRefreshTelemetryDTO
             {
@@ -1506,8 +1503,10 @@ public class TelemetryUnitTests : BaseUnitTest
         );
         telemetry.LibrarySyncCancellationProcessed(42, Result.Ok(), interrupted: false, noOp: true);
         telemetry.PhotoSearchFinished(
-            photoRequest,
-            [],
+            photoRequest with
+            {
+                Search = " \"quoted phrase\"  repeated   spaces résumé 😀 ",
+            },
             ResultExtensions
                 .Create400BadRequestResult("Search requires an effective title term")
                 .ToResult<PhotoAssetPageDTO>()
@@ -1528,16 +1527,15 @@ public class TelemetryUnitTests : BaseUnitTest
             ]);
         var media = events[0].Properties;
         media[TelemetryProperty.MediaType].ShouldBe(nameof(PlexMediaType.Movie));
-        media[TelemetryProperty.Libraries.Search].ShouldBe("alpha beta");
         media[TelemetryProperty.Libraries.Filter].ShouldBe("owned");
         media[TelemetryProperty.Page].ShouldBe(2);
         media[TelemetryProperty.PageSize].ShouldBe(30);
-        media[TelemetryProperty.Outcome].ShouldBe(nameof(TelemetryOutcome.Rejected));
+        media[TelemetryProperty.Libraries.Search].ShouldBe("  alpha   beta ");
         media.ContainsKey(TelemetryProperty.TotalCount).ShouldBeFalse();
         media.ContainsKey(TelemetryProperty.Libraries.MediaCount).ShouldBeFalse();
         media.ContainsKey(TelemetryProperty.Libraries.TotalMediaSize).ShouldBeFalse();
         var photo = events[1].Properties;
-        photo[TelemetryProperty.Query].ShouldBe("cafe sunset");
+        photo[TelemetryProperty.Query].ShouldBe("  \"Café au lait\"   café  résumé 😀 ");
         photo[TelemetryProperty.Page].ShouldBe(3);
         photo[TelemetryProperty.PageSize].ShouldBe(40);
         photo[TelemetryProperty.Libraries.Sort].ShouldBe(nameof(SortType.Title));
@@ -1580,7 +1578,7 @@ public class TelemetryUnitTests : BaseUnitTest
         cancellation[TelemetryProperty.Outcome].ShouldBe(nameof(TelemetryOutcome.NoOp));
         cancellation.ContainsKey(TelemetryProperty.CreatedAt).ShouldBeFalse();
         var rejectedPhoto = events[7].Properties;
-        rejectedPhoto[TelemetryProperty.Query].ShouldBe(string.Empty);
+        rejectedPhoto[TelemetryProperty.Query].ShouldBe(" \"quoted phrase\"  repeated   spaces résumé 😀 ");
         rejectedPhoto[TelemetryProperty.Outcome].ShouldBe(nameof(TelemetryOutcome.Rejected));
         rejectedPhoto.ContainsKey(TelemetryProperty.ReturnedItemCount).ShouldBeFalse();
         user.Verify();

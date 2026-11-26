@@ -44,21 +44,42 @@ describe('Business telemetry facade', () => {
 		]);
 	});
 
-	test('Should report search metadata without query text and preserve selection intent independently of remaining count', () => {
+	test.each([
+		PlexMediaType.Movie, PlexMediaType.TvShow, PlexMediaType.Season, PlexMediaType.Episode,
+		PlexMediaType.MusicArtist, PlexMediaType.MusicAlbum, PlexMediaType.MusicTrack,
+		PlexMediaType.PhotoAlbum, PlexMediaType.PhotoImage, PlexMediaType.OtherVideos,
+	])('Should preserve exact submitted search and media identity for %s', (mediaType) => {
+		// Arrange
+		const capture = vi.fn();
+		const telemetry = createTelemetry({ capture });
+		const search = '  "星際  旅行" café  ';
+		// Act
+		telemetry.mediaSearchChanged(search, 17, mediaType);
+		// Assert
+		expect(capture.mock.calls).toEqual([[Event.FrontendMediaInteraction, {
+			action: Action.Search, library_id: 17, media_type: mediaType, search, has_query: true, query_length: search.length,
+		}]]);
+	});
+
+	test('Should retain exact submitted search text and preserve selection intent', () => {
 		// Arrange
 		const capture = vi.fn();
 		const telemetry = createTelemetry({ capture });
 		const media = { id: 1, type: PlexMediaType.MusicAlbum, plexLibraryId: 2, plexServerId: 3 };
 
 		// Act
-		telemetry.mediaSearchChanged(' secret ', 2, PlexMediaType.MusicAlbum);
+		telemetry.mediaSearchChanged('  "星際  旅行" café  ', 2, PlexMediaType.MusicAlbum);
 		telemetry.mediaSearchChanged('   ', 2, PlexMediaType.MusicAlbum);
+		telemetry.photoSearchChanged('  "夏の  写真" café  ', 2);
+		telemetry.photoSearchChanged('', 2);
 		telemetry.mediaComparisonSelectionChanged(media, 2, false);
 
 		// Assert
 		expect(capture.mock.calls).toEqual([
-			[Event.FrontendMediaInteraction, { action: Action.Search, library_id: 2, media_type: PlexMediaType.MusicAlbum, has_query: true, query_length: 6 }],
-			[Event.FrontendMediaInteraction, { action: Action.ClearSearch, library_id: 2, media_type: PlexMediaType.MusicAlbum, has_query: false, query_length: 0 }],
+			[Event.FrontendMediaInteraction, { action: Action.Search, library_id: 2, media_type: PlexMediaType.MusicAlbum, search: '  "星際  旅行" café  ', has_query: true, query_length: '  "星際  旅行" café  '.length }],
+			[Event.FrontendMediaInteraction, { action: Action.ClearSearch, library_id: 2, media_type: PlexMediaType.MusicAlbum, search: '   ', has_query: false, query_length: 3 }],
+			[Event.FrontendPhotoInteraction, { action: Action.Search, library_id: 2, query: '  "夏の  写真" café  ', has_query: true, query_length: '  "夏の  写真" café  '.length }],
+			[Event.FrontendPhotoInteraction, { action: Action.ClearSearch, library_id: 2, query: '', has_query: false, query_length: 0 }],
 			[Event.FrontendMediaInteraction, { action: Action.ClearSelection, media_id: 1, media_type: PlexMediaType.MusicAlbum, library_id: 2, server_id: 3, selection_count: 2 }],
 		]);
 	});

@@ -342,7 +342,7 @@ function changeSearch(value: string): void {
 	const query = value.trim();
 	const context = get(parsedRoute);
 	const resetSort = !query && context?.view === 'folders' && context.sort.field !== SortType.Title;
-	telemetry.photoSearchChanged(query, props.libraryId);
+	telemetry.photoSearchChanged(value, props.libraryId);
 	updateQuery({ q: query || null, ...(resetSort ? { sort: null } : {}) }, true);
 }
 function changeSort(sort: IMediaOverviewSort): void {

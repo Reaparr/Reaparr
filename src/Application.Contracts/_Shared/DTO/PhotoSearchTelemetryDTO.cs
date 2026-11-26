@@ -3,9 +3,12 @@ namespace Reaparr.Application.Contracts;
 /// <summary>
 /// Pagination and ordering projected by the photo-search slice for telemetry.
 /// </summary>
-/// <remarks>Normalized search terms and the operation result are passed separately to <see cref="ITelemetry"/>.</remarks>
+/// <remarks>The original submitted search text is preserved for telemetry; query parsing remains owned by the search operation.</remarks>
 public sealed record PhotoSearchTelemetryDTO
 {
+    /// <summary>The original submitted search text.</summary>
+    public required string Search { get; init; }
+
     /// <summary>The one-based page number used by the photo search.</summary>
     public required int Page { get; init; }
 

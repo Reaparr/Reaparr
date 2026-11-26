@@ -18,7 +18,7 @@ public sealed partial class Telemetry
         var properties = new Dictionary<string, object>
         {
             [TelemetryProperty.MediaType] = request.MediaType.ToString(),
-            [TelemetryProperty.Libraries.Search] = string.Join(' ', searchTerms),
+            [TelemetryProperty.Libraries.Search] = request.Search!,
             [TelemetryProperty.Page] = request.Page.GetValueOrDefault(1),
             [TelemetryProperty.PageSize] = request.PageSize.GetValueOrDefault(MediaQueryFilter.MaximumPageSize),
             [TelemetryProperty.Outcome] = Outcome(result),
@@ -41,15 +41,11 @@ public sealed partial class Telemetry
     }
 
     /// <inheritdoc/>
-    public void PhotoSearchFinished(
-        PhotoSearchTelemetryDTO query,
-        IReadOnlyList<string> searchTerms,
-        Result<PhotoAssetPageDTO> result
-    )
+    public void PhotoSearchFinished(PhotoSearchTelemetryDTO query, Result<PhotoAssetPageDTO> result)
     {
         var properties = new Dictionary<string, object>
         {
-            [TelemetryProperty.Query] = string.Join(' ', searchTerms),
+            [TelemetryProperty.Query] = query.Search,
             [TelemetryProperty.Page] = query.Page,
             [TelemetryProperty.PageSize] = query.PageSize,
             [TelemetryProperty.Libraries.Sort] = query.Sort.ToString(),

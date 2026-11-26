@@ -154,7 +154,7 @@ export function createTelemetry(client?: Pick<PostHog, 'capture'>): ITelemetry {
 		mediaSortReset(libraryId: number, mediaType: PlexMediaType) { capture(Event.FrontendMediaInteraction, { action: Action.ResetSort, library_id: libraryId, media_type: mediaType }); },
 		mediaSearchChanged(query: string, libraryId: number, mediaType: PlexMediaType) {
 			const normalized = query.trim();
-			capture(Event.FrontendMediaInteraction, { action: normalized ? Action.Search : Action.ClearSearch, library_id: libraryId, media_type: mediaType, has_query: normalized.length > 0, query_length: normalized.length });
+			capture(Event.FrontendMediaInteraction, { action: normalized ? Action.Search : Action.ClearSearch, library_id: libraryId, media_type: mediaType, search: query, has_query: normalized.length > 0, query_length: query.length });
 		},
 		mediaSortChanged(sort: IMediaOverviewSort, libraryId: number, mediaType: PlexMediaType) { capture(Event.FrontendMediaInteraction, { action: Action.Sort, library_id: libraryId, media_type: mediaType, sort_field: sort.field, sort_direction: sort.sort }); },
 		mediaViewChanged(view: { mode: string; photo?: boolean }, libraryId: number, mediaType: PlexMediaType) { capture(Event.FrontendMediaInteraction, { action: Action.ChangeView, library_id: libraryId, media_type: mediaType, view_mode: view.mode, photo_mode: view.photo }); },
@@ -165,7 +165,7 @@ export function createTelemetry(client?: Pick<PostHog, 'capture'>): ITelemetry {
 		photoDetailsClosed(asset: PhotoIdentity) { capture(Event.FrontendPhotoInteraction, { action: Action.CloseDetails, ...photoIdentity(asset) }); },
 		photoInspectionRetryRequested(asset: PhotoIdentity) { capture(Event.FrontendPhotoInteraction, { action: Action.Retry, ...photoIdentity(asset), inspection: true }); },
 		photoImageRetryRequested(asset: PhotoIdentity) { capture(Event.FrontendPhotoInteraction, { action: Action.Retry, ...photoIdentity(asset), inspection: false }); },
-		photoSearchChanged(query: string, libraryId: number) { capture(Event.FrontendPhotoInteraction, { action: query ? Action.Search : Action.ClearSearch, library_id: libraryId, has_query: query.length > 0, query_length: query.length }); },
+		photoSearchChanged(query: string, libraryId: number) { capture(Event.FrontendPhotoInteraction, { action: query.trim() ? Action.Search : Action.ClearSearch, library_id: libraryId, query, has_query: query.trim().length > 0, query_length: query.length }); },
 		photoSortChanged(sort: IMediaOverviewSort, libraryId: number, isDefault: boolean) { capture(Event.FrontendPhotoInteraction, { action: isDefault ? Action.ResetSort : Action.Sort, library_id: libraryId, sort_field: sort.field, sort_direction: sort.sort }); },
 		photoFolderOpened(folderId: number, libraryId: number, serverId?: number) { capture(Event.FrontendPhotoInteraction, { action: Action.Open, item_kind: PhotoItemKind.Folder, item_id: folderId, library_id: libraryId, server_id: serverId }); },
 		photoAlbumOpened(album: PhotoIdentity) { capture(Event.FrontendPhotoInteraction, { action: Action.Open, item_kind: PhotoItemKind.Album, item_id: album.id, library_id: album.plexLibraryId, server_id: album.plexServerId }); },
