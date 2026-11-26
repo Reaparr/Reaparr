@@ -29,6 +29,7 @@ const posthogMock = vi.hoisted(() => {
 		opt_out_capturing: vi.fn(),
 		register: vi.fn(),
 		reset: vi.fn(),
+		unregister: vi.fn(),
 		set_config: vi.fn<(config: Partial<PostHogConfig>) => void>(),
 		startExceptionAutocapture: vi.fn(),
 		stopExceptionAutocapture: vi.fn(),
@@ -50,8 +51,9 @@ const bootstrap: BrowserTelemetryBootstrapDTO = {
 	apiHost: 'https://telemetry.example.test',
 	projectToken: 'phc_test',
 	distinctId: '5e2c5c48-aa0f-4f21-8c65-94e72b2bd389',
-	release: '0.41.0-test',
-	environment: 'test',
+	releaseVersion: '0.41.0-test',
+	releaseChannel: 'dev',
+	runtimeEnvironment: 'Production',
 	runtimeMode: 'docker',
 	runtimeIdentifier: 'linux-x64',
 	platform: 'Linux',
@@ -213,6 +215,9 @@ describe('PostHog browser plugin', () => {
 		expect(posthogMock.client.opt_out_capturing).toHaveBeenCalledTimes(1);
 		expect(posthogMock.client.opt_in_capturing).toHaveBeenCalledExactlyOnceWith({ captureEventName: false });
 		expect(posthogMock.client.startSessionRecording).toHaveBeenCalledOnce();
+		expect(posthogMock.client.unregister).toHaveBeenCalledWith('environment');
+		expect(posthogMock.client.unregister).toHaveBeenCalledWith('release');
+		expect(posthogMock.client.register).toHaveBeenCalledWith(expect.objectContaining({ release_channel: 'dev', runtime_environment: 'Production', release_version: bootstrap.releaseVersion }));
 		expect(posthogMock.client.startExceptionAutocapture).toHaveBeenCalledOnce();
 		expect(posthogMock.client.reset).not.toHaveBeenCalled();
 		expect(posthogMock.client.stopSessionRecording).not.toHaveBeenCalled();

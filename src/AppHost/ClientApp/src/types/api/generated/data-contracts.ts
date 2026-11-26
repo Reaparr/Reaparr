@@ -124,10 +124,11 @@ export interface BaseResultDTO {
 export interface BrowserTelemetryBootstrapDTO {
   apiHost: string;
   distinctId: string;
-  environment: string;
   platform: string;
   projectToken: string;
-  release: string;
+  releaseChannel: string;
+  releaseVersion: string;
+  runtimeEnvironment: string;
   runtimeIdentifier: string;
   runtimeMode: string;
 }
@@ -682,7 +683,7 @@ export interface GeneratePlexTokenResponse {
 }
 
 export interface IError {
-  message: null | string;
+  message: string;
   metadata: DictionaryOfStringAndObject;
   reasons: ListOfIError;
 }
@@ -695,6 +696,21 @@ export type IReadOnlyListOfInt32 = number[];
 
 export type IReadOnlyListOfLibrarySyncProgressItemDTO =
   LibrarySyncProgressItemDTO[];
+
+export type IReadOnlyListOfPlexGenreDTO = PlexGenreDTO[];
+
+export type IReadOnlyListOfPlexLibraryAccessCurrentStateDTO =
+  PlexLibraryAccessCurrentStateDTO[];
+
+export type IReadOnlyListOfPlexLibraryAccessCurrentStateLibraryDTO =
+  PlexLibraryAccessCurrentStateLibraryDTO[];
+
+export type IReadOnlyListOfPlexLibraryAccessTimelineEventDTO =
+  PlexLibraryAccessTimelineEventDTO[];
+
+export type IReadOnlyListOfPlexMediaDTO = PlexMediaDTO[];
+
+export type IReadOnlyListOfPlexMediaDataDTO = PlexMediaDataDTO[];
 
 export type IReadOnlyListOfReleaseNoteDTO = ReleaseNoteDTO[];
 
@@ -913,23 +929,10 @@ export type ListOfPlexCountryDTO = PlexCountryDTO[];
 
 export type ListOfPlexGenreDTO = PlexGenreDTO[];
 
-export type ListOfPlexLibraryAccessCurrentStateDTO =
-  PlexLibraryAccessCurrentStateDTO[];
-
-export type ListOfPlexLibraryAccessCurrentStateLibraryDTO =
-  PlexLibraryAccessCurrentStateLibraryDTO[];
-
 export type ListOfPlexLibraryAccessRapportDTO = PlexLibraryAccessRapportDTO[];
-
-export type ListOfPlexLibraryAccessTimelineEventDTO =
-  PlexLibraryAccessTimelineEventDTO[];
 
 export type ListOfPlexMediaComparisonDetailsRowDTO =
   PlexMediaComparisonDetailsRowDTO[];
-
-export type ListOfPlexMediaDTO = PlexMediaDTO[];
-
-export type ListOfPlexMediaDataDTO = PlexMediaDataDTO[];
 
 export type ListOfPlexMediaQualityDTO = PlexMediaQualityDTO[];
 
@@ -1303,7 +1306,7 @@ export interface PlexGenreDTO {
 }
 
 export interface PlexLibraryAccessCurrentStateDTO {
-  libraries: ListOfPlexLibraryAccessCurrentStateLibraryDTO;
+  libraries: IReadOnlyListOfPlexLibraryAccessCurrentStateLibraryDTO;
   /** @format int32 */
   plexServerId?: null | number;
   plexServerName?: null | string;
@@ -1335,8 +1338,8 @@ export interface PlexLibraryAccessRapportDTO {
 }
 
 export interface PlexLibraryAccessTimelineDTO {
-  currentState: ListOfPlexLibraryAccessCurrentStateDTO;
-  events: ListOfPlexLibraryAccessTimelineEventDTO;
+  currentState: IReadOnlyListOfPlexLibraryAccessCurrentStateDTO;
+  events: IReadOnlyListOfPlexLibraryAccessTimelineEventDTO;
 }
 
 export interface PlexLibraryAccessTimelineEventDTO {
@@ -1449,7 +1452,7 @@ export interface PlexMediaDTO {
   addedAt: string;
   /** @format int32 */
   childCount: number;
-  children: ListOfPlexMediaDTO;
+  children: IReadOnlyListOfPlexMediaDTO;
   /** @format int32 */
   comparisonId: number;
   contentRating?: null | string;
@@ -1457,7 +1460,7 @@ export interface PlexMediaDTO {
   discNumber?: null | number;
   /** @format int32 */
   duration: number;
-  genres: ListOfPlexGenreDTO;
+  genres: IReadOnlyListOfPlexGenreDTO;
   /** @format int32 */
   grandChildCount: number;
   hasArt: boolean;
@@ -1465,7 +1468,7 @@ export interface PlexMediaDTO {
   hasThumb: boolean;
   /** @format int32 */
   id: number;
-  mediaData: ListOfPlexMediaDataDTO;
+  mediaData: IReadOnlyListOfPlexMediaDataDTO;
   /** @format int64 */
   mediaSize: number;
   /** @format date-time */

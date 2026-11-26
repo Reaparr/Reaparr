@@ -349,6 +349,7 @@ public class RefreshPlexAccountAccessCommandUnitTests : BaseCommandUnitTest<Refr
                 .Register(ctx => new Telemetry(
                     client.Object,
                     ctx.Resolve<IAppBuildInfo>(),
+                    ctx.Resolve<IAppRuntimeInfo>(),
                     user.Object,
                     ctx.Resolve<ActivitySource>(),
                     new UserSettings()

@@ -66,6 +66,7 @@ public class RefreshPlexAccountAccessEndpointUnitTests
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             new UserSettings()

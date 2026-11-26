@@ -16,6 +16,7 @@ public sealed partial class Telemetry : ITelemetry, IDisposable
 
     private readonly IPostHogClient _client;
     private readonly IAppBuildInfo _appBuildInfo;
+    private readonly IAppRuntimeInfo _appRuntimeInfo;
     private readonly IUserService _userService;
     private readonly ActivitySource _activitySource;
     private readonly IUserSettings _settings;
@@ -30,6 +31,7 @@ public sealed partial class Telemetry : ITelemetry, IDisposable
     public Telemetry(
         IPostHogClient client,
         IAppBuildInfo appBuildInfo,
+        IAppRuntimeInfo appRuntimeInfo,
         IUserService userService,
         ActivitySource activitySource,
         IUserSettings settings
@@ -37,6 +39,7 @@ public sealed partial class Telemetry : ITelemetry, IDisposable
     {
         _client = client;
         _appBuildInfo = appBuildInfo;
+        _appRuntimeInfo = appRuntimeInfo;
         _userService = userService;
         _activitySource = activitySource;
         _settings = settings;
@@ -78,10 +81,11 @@ public sealed partial class Telemetry : ITelemetry, IDisposable
             ApiHost = _appBuildInfo.TelemetryHost,
             ProjectToken = _appBuildInfo.TelemetryProjectToken,
             DistinctId = _telemetryId,
-            Release = _appBuildInfo.InformationalVersion,
-            Environment = _appBuildInfo.IsDevRelease
+            ReleaseVersion = _appBuildInfo.InformationalVersion,
+            ReleaseChannel = _appBuildInfo.IsDevRelease
                 ? TelemetryProtocol.DevelopmentEnvironment
                 : TelemetryProtocol.StableEnvironment,
+            RuntimeEnvironment = _appRuntimeInfo.DotnetEnvironment,
             RuntimeMode = _appBuildInfo.RuntimeMode,
             RuntimeIdentifier = _appBuildInfo.RuntimeIdentifier,
             Platform = _appBuildInfo.CurrentOS.ToString(),
@@ -280,10 +284,11 @@ public sealed partial class Telemetry : ITelemetry, IDisposable
             properties[TelemetryProtocol.ProcessPersonProfile] = true;
             properties[TelemetryProperty.TelemetryName] = _telemetryName;
             properties.TryAdd(TelemetryProperty.Origin, TelemetryProtocol.BackendOrigin);
-            properties[TelemetryProperty.Environment] = _appBuildInfo.IsDevRelease
+            properties[TelemetryProtocol.ReleaseChannel] = _appBuildInfo.IsDevRelease
                 ? TelemetryProtocol.DevelopmentEnvironment
                 : TelemetryProtocol.StableEnvironment;
-            properties[TelemetryProperty.Release] = _appBuildInfo.InformationalVersion;
+            properties[TelemetryProtocol.RuntimeEnvironment] = _appRuntimeInfo.DotnetEnvironment;
+            properties[TelemetryProperty.ReleaseVersion] = _appBuildInfo.InformationalVersion;
             properties[TelemetryProperty.RuntimeMode] = _appBuildInfo.RuntimeMode;
             properties[TelemetryProperty.Platform] = _appBuildInfo.CurrentOS.ToString();
             properties[TelemetryProperty.RuntimeIdentifier] = _appBuildInfo.RuntimeIdentifier;

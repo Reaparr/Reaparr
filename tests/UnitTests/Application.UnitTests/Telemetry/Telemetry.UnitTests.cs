@@ -69,6 +69,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             new UserSettings()
@@ -91,8 +92,12 @@ public class TelemetryUnitTests : BaseUnitTest
         diagnostic.Successes.Single().Message.ShouldBe("Diagnostic event accepted for sending");
         var properties = events.Single(x => x.Name == TelemetryProtocol.DiagnosticEvent).Properties;
         properties[TelemetryProperty.Origin].ShouldBe(expectedOrigin);
-        properties[TelemetryProperty.Environment].ShouldBe(TelemetryProtocol.DevelopmentEnvironment);
-        properties[TelemetryProperty.Release].ShouldBe("0.40.0-dev.1");
+        properties[TelemetryProtocol.ReleaseChannel].ShouldBe(TelemetryProtocol.DevelopmentEnvironment);
+        properties[TelemetryProtocol.RuntimeEnvironment]
+            .ShouldBe(Mock.Container.Resolve<IAppRuntimeInfo>().DotnetEnvironment);
+        properties.ShouldNotContainKey("environment");
+        properties.ShouldNotContainKey("$internal_or_test_user");
+        properties[TelemetryProperty.ReleaseVersion].ShouldBe("0.40.0-dev.1");
         properties[TelemetryProperty.RuntimeMode].ShouldBe("docker");
         properties[TelemetryProperty.Platform].ShouldBe("Linux");
         properties[TelemetryProperty.RuntimeIdentifier].ShouldBe("linux-x64");
@@ -169,6 +174,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             new UserSettings()
@@ -183,8 +189,9 @@ public class TelemetryUnitTests : BaseUnitTest
         bootstrap.ApiHost.ShouldBe(HOST);
         bootstrap.ProjectToken.ShouldBe("phc_test");
         bootstrap.DistinctId.ShouldBe(identity);
-        bootstrap.Release.ShouldBe("0.40.0-dev.1");
-        bootstrap.Environment.ShouldBe(TelemetryProtocol.DevelopmentEnvironment);
+        bootstrap.ReleaseVersion.ShouldBe("0.40.0-dev.1");
+        bootstrap.ReleaseChannel.ShouldBe(TelemetryProtocol.DevelopmentEnvironment);
+        bootstrap.RuntimeEnvironment.ShouldBe(Mock.Container.Resolve<IAppRuntimeInfo>().DotnetEnvironment);
         bootstrap.RuntimeMode.ShouldBe("desktop");
         bootstrap.RuntimeIdentifier.ShouldBe("linux-x64");
         bootstrap.Platform.ShouldBe(nameof(OperatingSystemPlatform.Linux));
@@ -242,6 +249,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             new UserSettings()
@@ -394,6 +402,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             new UserSettings()
@@ -440,6 +449,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             new UserSettings()
@@ -567,6 +577,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             settings
@@ -702,6 +713,7 @@ public class TelemetryUnitTests : BaseUnitTest
         var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             settings
@@ -787,6 +799,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             new UserSettings()
@@ -892,6 +905,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             new UserSettings()
@@ -1021,6 +1035,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             new UserSettings()
@@ -1105,6 +1120,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             new UserSettings()
@@ -1194,6 +1210,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             new UserSettings()
@@ -1285,6 +1302,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             new UserSettings()
@@ -1385,6 +1403,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             new UserSettings()
@@ -1494,6 +1513,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             new UserSettings()
@@ -1647,6 +1667,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             new UserSettings()
@@ -1741,6 +1762,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             new UserSettings()
@@ -1803,6 +1825,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             new UserSettings()
@@ -1940,6 +1963,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             new UserSettings()
@@ -2044,6 +2068,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             new UserSettings()
@@ -2110,6 +2135,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             new UserSettings()
@@ -2180,6 +2206,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             new UserSettings()
@@ -2247,6 +2274,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             new UserSettings()
@@ -2328,6 +2356,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             new UserSettings()
@@ -2407,6 +2436,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             new UserSettings()
@@ -2515,6 +2545,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             new UserSettings()

@@ -252,12 +252,14 @@ export default defineNuxtPlugin({
 
 		function enableCapture(bootstrap: BrowserTelemetryBootstrapDTO): void {
 			if (client.get_distinct_id() !== bootstrap.distinctId) client.reset();
+			client.unregister('environment');
+			client.unregister('release');
 			client.register({
-				environment: bootstrap.environment,
-				release: bootstrap.release,
+				release_version: bootstrap.releaseVersion,
 				runtime_mode: bootstrap.runtimeMode,
 				runtime_identifier: bootstrap.runtimeIdentifier,
-				platform: bootstrap.platform,
+				release_channel: bootstrap.releaseChannel,
+				runtime_environment: bootstrap.runtimeEnvironment,
 				$process_person_profile: true,
 				$geoip_disable: false,
 			});

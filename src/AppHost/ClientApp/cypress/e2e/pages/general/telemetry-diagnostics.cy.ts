@@ -289,8 +289,8 @@ describe('Telemetry diagnostics', () => {
 		cy.intercept('GET', TelemetryPaths.getBrowserTelemetryBootstrapEndpoint(), {
 			body: generateResultDTO<BrowserTelemetryBootstrapDTO>({
 				apiHost: 'https://posthog.isolated.test', projectToken: 'phc_cypress',
-				distinctId: 'c8b4b3fa-a606-477a-9079-79833ea61558', release: 'isolated-test',
-				environment: 'test', runtimeMode: 'docker', runtimeIdentifier: 'browser', platform: 'browser',
+				distinctId: 'c8b4b3fa-a606-477a-9079-79833ea61558', releaseVersion: 'isolated-test',
+				releaseChannel: 'dev', runtimeEnvironment: 'Production', runtimeMode: 'docker', runtimeIdentifier: 'browser', platform: 'browser',
 			}),
 		});
 		cy.visit(route('/'));
@@ -313,7 +313,7 @@ describe('Telemetry diagnostics', () => {
 
 	(isolatedNativeBuild ? it : it.skip)('Should retain native network debug data without credential values', () => {
 		cy.intercept('GET', TelemetryPaths.getBrowserTelemetryBootstrapEndpoint(), {
-			body: generateResultDTO<BrowserTelemetryBootstrapDTO>({ apiHost: 'https://posthog.isolated.test', projectToken: 'phc_cypress', distinctId: 'c8b4b3fa-a606-477a-9079-79833ea61558', release: 'isolated-test', environment: 'test', runtimeMode: 'docker', runtimeIdentifier: 'browser', platform: 'browser' }),
+			body: generateResultDTO<BrowserTelemetryBootstrapDTO>({ apiHost: 'https://posthog.isolated.test', projectToken: 'phc_cypress', distinctId: 'c8b4b3fa-a606-477a-9079-79833ea61558', releaseVersion: 'isolated-test', releaseChannel: 'dev', runtimeEnvironment: 'Production', runtimeMode: 'docker', runtimeIdentifier: 'browser', platform: 'browser' }),
 		});
 		cy.intercept('POST', '**/debug-network?*', {
 			body: { result: 'debug-result', accessToken: 'network-credential-sentinel' },
@@ -350,6 +350,12 @@ describe('Telemetry diagnostics', () => {
 			const pageview = nativeCaptures.find((capture) => capture.event === '$pageview');
 			expect(pageview?.properties.$current_url).to.contain('/');
 			expect(pageview?.properties.$geoip_disable).to.equal(false);
+			expect(pageview?.properties.release_channel).to.equal('dev');
+			expect(pageview?.properties.runtime_environment).to.equal('Production');
+			expect(pageview?.properties.release_version).to.equal('isolated-test');
+			expect(pageview?.properties).not.to.have.property('release');
+			expect(pageview?.properties).not.to.have.property('environment');
+			expect(pageview?.properties).not.to.have.property('$internal_or_test_user');
 		});
 	});
 
@@ -357,8 +363,8 @@ describe('Telemetry diagnostics', () => {
 		cy.intercept('GET', TelemetryPaths.getBrowserTelemetryBootstrapEndpoint(), {
 			body: generateResultDTO<BrowserTelemetryBootstrapDTO>({
 				apiHost: 'https://posthog.isolated.test', projectToken: 'phc_cypress',
-				distinctId: 'c8b4b3fa-a606-477a-9079-79833ea61558', release: 'isolated-test',
-				environment: 'test', runtimeMode: 'docker', runtimeIdentifier: 'browser', platform: 'browser',
+				distinctId: 'c8b4b3fa-a606-477a-9079-79833ea61558', releaseVersion: 'isolated-test',
+				releaseChannel: 'dev', runtimeEnvironment: 'Production', runtimeMode: 'docker', runtimeIdentifier: 'browser', platform: 'browser',
 			}),
 		});
 		cy.visit(route('/'));
@@ -397,7 +403,7 @@ describe('Telemetry diagnostics', () => {
 	(isolatedNativeBuild ? it : it.skip)('Should preserve native identity and session across an authenticated reload', () => {
 		const identity = 'c8b4b3fa-a606-477a-9079-79833ea61558';
 		cy.intercept('GET', TelemetryPaths.getBrowserTelemetryBootstrapEndpoint(), {
-			body: generateResultDTO<BrowserTelemetryBootstrapDTO>({ apiHost: 'https://posthog.isolated.test', projectToken: 'phc_cypress', distinctId: identity, release: 'isolated-test', environment: 'test', runtimeMode: 'docker', runtimeIdentifier: 'browser', platform: 'browser' }),
+			body: generateResultDTO<BrowserTelemetryBootstrapDTO>({ apiHost: 'https://posthog.isolated.test', projectToken: 'phc_cypress', distinctId: identity, releaseVersion: 'isolated-test', releaseChannel: 'dev', runtimeEnvironment: 'Production', runtimeMode: 'docker', runtimeIdentifier: 'browser', platform: 'browser' }),
 			headers: { 'cache-control': 'no-store' },
 		}).as('reloadBootstrap');
 		cy.visit(route('/'));
@@ -428,7 +434,7 @@ describe('Telemetry diagnostics', () => {
 	(isolatedNativeBuild ? it : it.skip)('Should preserve identity and masked replay input after logout', () => {
 		const identity = 'c8b4b3fa-a606-477a-9079-79833ea61558';
 		cy.intercept('GET', TelemetryPaths.getBrowserTelemetryBootstrapEndpoint(), {
-			body: generateResultDTO<BrowserTelemetryBootstrapDTO>({ apiHost: 'https://posthog.isolated.test', projectToken: 'phc_cypress', distinctId: identity, release: 'isolated-test', environment: 'test', runtimeMode: 'docker', runtimeIdentifier: 'browser', platform: 'browser' }),
+			body: generateResultDTO<BrowserTelemetryBootstrapDTO>({ apiHost: 'https://posthog.isolated.test', projectToken: 'phc_cypress', distinctId: identity, releaseVersion: 'isolated-test', releaseChannel: 'dev', runtimeEnvironment: 'Production', runtimeMode: 'docker', runtimeIdentifier: 'browser', platform: 'browser' }),
 		});
 		let authenticated = true;
 		cy.intercept('GET', AuthenticationPaths.authenticationStatusEndpoint(), (request) => request.reply({
@@ -471,8 +477,9 @@ describe('Telemetry diagnostics', () => {
 			apiHost: 'https://posthog.isolated.test',
 			projectToken: 'phc_cypress',
 			distinctId: 'c8b4b3fa-a606-477a-9079-79833ea61558',
-			release: 'isolated-test',
-			environment: 'test',
+			releaseVersion: 'isolated-test',
+			releaseChannel: 'dev',
+			runtimeEnvironment: 'Production',
 			runtimeMode: 'docker',
 			runtimeIdentifier: 'browser',
 			platform: 'browser',
