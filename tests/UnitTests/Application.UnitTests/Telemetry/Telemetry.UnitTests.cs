@@ -96,7 +96,7 @@ public class TelemetryUnitTests : BaseUnitTest
         properties[TelemetryProperty.Platform].ShouldBe("Linux");
         properties[TelemetryProperty.RuntimeIdentifier].ShouldBe("linux-x64");
         properties[TelemetryProtocol.ProcessPersonProfile].ShouldBe(true);
-        properties[TelemetryProtocol.DisableGeoIp].ShouldBe(true);
+        properties.ShouldNotContainKey("$geoip_disable");
         properties[TelemetryProtocol.TraceId].ShouldBe(request.TraceId.ToHexString());
         properties[TelemetryProtocol.SpanId].ShouldBe(request.SpanId.ToHexString());
         properties[TelemetryProtocol.SessionId].ShouldBe(session);

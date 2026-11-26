@@ -272,7 +272,6 @@ public sealed partial class Telemetry : ITelemetry, IDisposable
         var captureResult = Result.Try(() =>
         {
             properties[TelemetryProtocol.ProcessPersonProfile] = true;
-            properties[TelemetryProtocol.DisableGeoIp] = true;
             properties.TryAdd(TelemetryProperty.Origin, TelemetryProtocol.BackendOrigin);
             properties[TelemetryProperty.Environment] = _appBuildInfo.IsDevRelease
                 ? TelemetryProtocol.DevelopmentEnvironment

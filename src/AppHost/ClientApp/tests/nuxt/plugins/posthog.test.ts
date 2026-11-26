@@ -14,7 +14,7 @@ import posthogPlugin, {
 	maskReplayAttribute,
 	maskReplayNetworkRequest,
 	sanitizeCapture,
-	stripUrlMetadata,
+	redactUrlCredentials,
 } from '@/plugins/2.posthog.client';
 import type { ITelemetry } from '@composables/telemetry/ITelemetry';
 
@@ -88,68 +88,37 @@ describe('PostHog browser plugin', () => {
 		posthogMock.client.get_distinct_id.mockReturnValue(bootstrap.distinctId);
 	});
 
-	test('Should keep replay URL and payload metadata private in native hooks', () => {
-		expect(stripUrlMetadata('https://user:password@example.test/path?token=secret#fragment'))
-			.toBe('https://example.test/path');
-		expect(maskReplayAttribute('href', 'https://user:password@example.test/path?q=secret#fragment'))
-			.toBe('https://example.test/path');
-		expect(maskReplayAttribute('style', 'background:url("https://example.test/image.png?q=secret#fragment")'))
-			.toBe('background:url("https://example.test/image.png")');
-
+	test('Should retain diagnostic URLs and payloads while redacting credentials', () => {
+		// Arrange / Act
+		const url = redactUrlCredentials('https://user:password@example.test/path?q=movie&token=secret#details');
+		expect(url).toBe('https://example.test/path?q=movie&token=%5Bredacted%5D#details');
+		expect(maskReplayAttribute('href', 'https://user:password@example.test/path?q=movie#fragment')).toBe('https://example.test/path?q=movie#fragment');
 		const maskedNetwork = maskReplayNetworkRequest({
-			name: 'https://user:password@example.test/api?q=secret#fragment',
-			entryType: 'resource',
-			startTime: 0,
-			duration: 0,
-			requestHeaders: { Authorization: 'Bearer secret' },
-			responseHeaders: { 'Set-Cookie': 'secret' },
-			requestBody: 'secret',
-			responseBody: 'secret',
+			name: 'https://user:password@example.test/api?q=movie#fragment', entryType: 'resource', startTime: 0, duration: 12,
+			requestHeaders: { Authorization: 'Bearer secret', 'Content-Type': 'application/json' },
+			responseHeaders: { 'Set-Cookie': 'secret', 'X-Request-ID': 'request-123' },
+			requestBody: JSON.stringify({ search: 'exact search', password: 'secret', nested: { apiKey: 'secret', page: 2 } }),
+			responseBody: JSON.stringify({ result: 'found', accessToken: 'secret' }),
 		} satisfies CapturedNetworkRequest);
-		expect(maskedNetwork.name).toBe('https://example.test/api');
-		expect(maskedNetwork).not.toHaveProperty('requestHeaders');
-		expect(maskedNetwork).not.toHaveProperty('responseHeaders');
-		expect(maskedNetwork).not.toHaveProperty('requestBody');
-		expect(maskedNetwork).not.toHaveProperty('responseBody');
-
-		const exception = sanitizeCapture({
-			uuid: '00000000-0000-4000-8000-000000000001',
-			event: '$exception',
-			properties: {
-				token: bootstrap.projectToken,
-				$exception_list: [{
-					type: 'Error',
-					value: 'browser token should remain for diagnosis',
-					stacktrace: { frames: [{ filename: 'app.ts', lineno: 1, colno: 1 }] },
-				}],
-				$exception_level: 'error',
-				request: { body: 'raw API response' },
-				response: { headers: { Authorization: 'Bearer secret' } },
-				$current_url: 'https://user:password@example.test/page?q=secret#fragment',
-				$referrer: 'https://referrer-user:password@example.test/from?q=secret#fragment',
-			},
-			$set_once: {
-				$initial_referrer: 'https://user:password@example.test/initial?q=secret#fragment',
-				$initial_current_url: 'https://user:password@example.test/start?q=secret#fragment',
-			},
-		} satisfies CaptureResult);
-		expect(exception.properties).toMatchObject({
-			token: bootstrap.projectToken,
-			$exception_list: [{
-				type: 'Error',
-				value: 'browser token should remain for diagnosis',
-				stacktrace: { frames: [{ filename: 'app.ts', lineno: 1, colno: 1 }] },
-			}],
-			$exception_level: 'error',
-			$current_url: 'https://example.test/page',
-			$referrer: 'https://example.test/from',
+		// Assert
+		expect(maskedNetwork).toMatchObject({ name: 'https://example.test/api?q=movie#fragment', duration: 12,
+			requestHeaders: { Authorization: '[redacted]', 'Content-Type': 'application/json' },
+			responseHeaders: { 'Set-Cookie': '[redacted]', 'X-Request-ID': 'request-123' },
 		});
-		expect(exception.properties).not.toHaveProperty('request');
-		expect(exception.properties).not.toHaveProperty('response');
-		expect(exception.$set_once).toMatchObject({
-			$initial_referrer: 'https://example.test/initial',
-			$initial_current_url: 'https://example.test/start',
+		expect(JSON.parse(maskedNetwork!.requestBody!)).toEqual({ search: 'exact search', password: '[redacted]', nested: { apiKey: '[redacted]', page: 2 } });
+		expect(JSON.parse(maskedNetwork!.responseBody!)).toEqual({ result: 'found', accessToken: '[redacted]' });
+		expect(JSON.stringify(maskedNetwork)).not.toContain('secret');
+		const exception = sanitizeCapture({ uuid: '00000000-0000-4000-8000-000000000001', event: '$exception', properties: {
+			token: bootstrap.projectToken, request: { body: { search: 'movie', password: 'secret' } },
+			response: { headers: { Authorization: 'Bearer secret', 'Content-Type': 'application/json' }, data: { found: true } },
+			$current_url: 'https://user:password@example.test/page?q=movie#fragment',
+		}, $set_once: { $initial_current_url: 'https://example.test/start?q=movie#details' } } satisfies CaptureResult);
+		expect(exception.properties).toMatchObject({ token: bootstrap.projectToken,
+			request: { body: { search: 'movie', password: '[redacted]' } },
+			response: { headers: { Authorization: '[redacted]' }, data: { found: true } },
+			$current_url: 'https://example.test/page?q=movie#fragment',
 		});
+		expect(exception.$set_once).toEqual({ $initial_current_url: 'https://example.test/start?q=movie#details' });
 
 		const snapshot = sanitizeCapture({
 			uuid: '00000000-0000-4000-8000-000000000002',
@@ -183,10 +152,27 @@ describe('PostHog browser plugin', () => {
 		expect(maskReplayAttribute('stroke', '#123456')).toBe('#123456');
 		expect(maskReplayAttribute('href', '#logo', svgUse)).toBe('#logo');
 		expect(maskReplayAttribute('xlink:href', '#gradient', svgUse)).toBe('#gradient');
-		expect(maskReplayAttribute('href', '#private')).not.toContain('#private');
-		expect(maskReplayAttribute('style', style)).toBe('fill:url(#gradient);background:url("https://example.test/image.png")');
+		expect(maskReplayAttribute('href', '#private')).toContain('#private');
+		expect(maskReplayAttribute('style', style)).toBe('fill:url(#gradient);background:url("https://example.test/image.png?token=%5Bredacted%5D#private")');
 		expect(maskReplayAttribute('style', `filter:url(${window.location.href.split('#', 1)[0]}#gradient)`)).toBe('filter:url(#gradient)');
-		expect(maskReplayAttribute('xlink:href', 'https://user:password@example.test/icons.svg?token=secret#logo')).toBe('https://example.test/icons.svg');
+		expect(maskReplayAttribute('xlink:href', 'https://user:password@example.test/icons.svg?token=secret#logo')).toBe('https://example.test/icons.svg?token=%5Bredacted%5D#logo');
+	});
+
+	test('Should exclude telemetry traffic and preserve safe encoded URL parameters', () => {
+		// Arrange
+		const request = { name: '/base/e/s/', entryType: 'resource', startTime: 0, duration: 1 } satisfies CapturedNetworkRequest;
+		// Act / Assert
+		expect(maskReplayNetworkRequest(request)).toBeNull();
+		const url = new URL(redactUrlCredentials('https://example.test/?q=one&q=two&redirect=https%3A%2F%2Fexample.test%2F%3Ftoken%3Dsecret#token=secret&tab=details'));
+		expect(url.searchParams.getAll('q')).toEqual(['one', 'two']);
+		expect(url.searchParams.get('redirect')).toBe('https://example.test/?token=%5Bredacted%5D');
+		expect(new URLSearchParams(url.hash.slice(1)).get('token')).toBe('[redacted]');
+		expect(new URLSearchParams(url.hash.slice(1)).get('tab')).toBe('details');
+		expect(url.href).not.toContain('secret');
+		const formRequest = maskReplayNetworkRequest({ ...request, name: '/api/debug', requestBody: 'search=movie&password=secret' });
+		expect(formRequest?.requestBody).toBe('search=movie&password=%5Bredacted%5D');
+		const textResponse = maskReplayNetworkRequest({ ...request, name: '/api/debug', responseBody: 'ordinary failure details' });
+		expect(textResponse?.responseBody).toBe('ordinary failure details');
 	});
 
 	test('Should initialize from public bootstrap before login and continue through logout', async () => {
@@ -244,6 +230,8 @@ describe('PostHog browser plugin', () => {
 			capture_dead_clicks: true,
 			capture_heatmaps: true,
 		}));
+		expect(posthogMock.client.register).toHaveBeenCalledWith(expect.objectContaining({ $geoip_disable: false }));
+		expect(posthogMock.client.set_config).toHaveBeenCalledWith(expect.objectContaining({ session_recording: expect.objectContaining({ recordBody: true, recordHeaders: true }) }));
 		expect(posthogMock.client.set_config).toHaveBeenCalledWith({
 			tracing_headers: [new URL(appConfig.baseUrl).hostname],
 		});

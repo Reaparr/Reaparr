@@ -197,7 +197,8 @@ export default defineNuxtConfig({
 			opt_out_capturing_by_default: true, // Start opted out; plugin opts in when the UUID arrives, not when the user logs in.
 			person_profiles: 'identified_only', // Create profiles for the existing account UUID, not SDK-generated anonymous IDs.
 			tracing_headers: [], // Plugin enables native correlation headers for the backend hostname only after bootstrap.
-			disable_capture_url_hashes: true, // URL fragments can contain sensitive/transient state; URL privacy hooks also strip them.
+			disable_capture_url_hashes: false, // Preserve diagnostic fragments; the replay hooks redact credential values.
+			ip: true, // Allow native GeoIP enrichment using the trusted proxy source address.
 		},
 		serverConfig: {
 			disabled: true, // .NET owns backend telemetry; do not run a second SDK in Nuxt/Nitro.

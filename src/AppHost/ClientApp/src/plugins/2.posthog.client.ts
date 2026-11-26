@@ -48,28 +48,10 @@ const replayUrlPropertyNames: Record<string, true> = {
 	stylesheeturl: true,
 	imageurl: true,
 };
-const rawPayloadPropertyNames: Record<string, true> = {
-	authorization: true,
-	apikey: true,
-	body: true,
-	config: true,
-	cookie: true,
-	cookies: true,
-	credential: true,
-	credentials: true,
-	data: true,
-	error: true,
-	headers: true,
-	password: true,
-	payload: true,
-	request: true,
-	requestbody: true,
-	requestheaders: true,
-	response: true,
-	responsebody: true,
-	responseheaders: true,
-	secret: true,
-	token: true,
+const credentialPropertyNames: Record<string, true> = {
+	authorization: true, proxyauthorization: true, apikey: true, password: true, confirmpassword: true, currentpassword: true, newpassword: true,
+	cookie: true, cookies: true, setcookie: true, credential: true, credentials: true, secret: true, token: true, accesstoken: true, refreshtoken: true,
+	authtoken: true, authenticationtoken: true, plexauthtoken: true, xplextoken: true, xapikey: true, sid: true, sessiontoken: true,
 };
 
 function normalizedPropertyName(name: string): string {
@@ -84,8 +66,22 @@ function looksLikeUrl(value: string): boolean {
 		|| trimmed.startsWith('#');
 }
 
-/** Strip credentials, query strings and fragments while retaining the URL origin/path. */
-export function stripUrlMetadata(value: string): string {
+/** Redact credential parameters without dropping repeated diagnostic values or nested URLs. */
+function redactParameters(parameters: URLSearchParams): void {
+	for (const key of [...parameters.keys()]) {
+		if (credentialPropertyNames[normalizedPropertyName(key)]) {
+			parameters.set(key, '[redacted]');
+			continue;
+		}
+		const values = parameters.getAll(key);
+		if (!values.some(looksLikeUrl)) continue;
+		parameters.delete(key);
+		for (const value of values) parameters.append(key, looksLikeUrl(value) ? redactUrlCredentials(value) : value);
+	}
+}
+
+/** Retain diagnostic URL metadata while removing userinfo and credential parameter values. */
+export function redactUrlCredentials(value: string): string {
 	const trimmed = value.trim();
 	if (!trimmed || !looksLikeUrl(trimmed)) return value;
 
@@ -95,9 +91,13 @@ export function stripUrlMetadata(value: string): string {
 		if (!['http:', 'https:'].includes(url.protocol)) return value;
 		url.username = '';
 		url.password = '';
-		url.search = '';
-		url.hash = '';
-		return url.origin + url.pathname;
+		redactParameters(url.searchParams);
+		if (url.hash.includes('=')) {
+			const fragment = new URLSearchParams(url.hash.slice(1));
+			redactParameters(fragment);
+			url.hash = fragment.toString();
+		}
+		return url.href;
 	} catch {
 		return value.split(/[?#]/, 1)[0] ?? value;
 	}
@@ -113,7 +113,7 @@ function maskStyleUrls(value: string): string {
 				return `url(${quote}${reference.hash}${quote})`;
 			}
 		}
-		return `url(${quote}${stripUrlMetadata(url)}${quote})`;
+		return `url(${quote}${redactUrlCredentials(url)}${quote})`;
 	});
 }
 
@@ -124,18 +124,33 @@ export function maskReplayAttribute(name: string, value: string, element?: Eleme
 	if (element?.namespaceURI === 'http://www.w3.org/2000/svg') {
 		if (/^(?:href|xlink:href)$/.test(attribute) && /^#[a-zA-Z_][\w:.-]*$/.test(value)) return value;
 	}
-	if (replayUrlAttributes[attribute] || attribute === 'xlink:href') return stripUrlMetadata(value);
+	if (replayUrlAttributes[attribute] || attribute === 'xlink:href') return redactUrlCredentials(value);
 	return value;
 }
 
-/** Native replay network hook; network bodies and headers are never retained. */
-export function maskReplayNetworkRequest(data: CapturedNetworkRequest): CapturedNetworkRequest {
-	const masked = { ...data };
-	delete masked.requestHeaders;
-	delete masked.responseHeaders;
-	delete masked.requestBody;
-	delete masked.responseBody;
-	masked.name = stripUrlMetadata(masked.name);
+/** Keep native debugging content; credentials are redacted before replay leaves the browser. */
+export function maskReplayNetworkRequest(data: CapturedNetworkRequest): CapturedNetworkRequest | null {
+	const url = new URL(data.name, window.location.href);
+	if (/\/e\/(?:i|s|e|batch|capture|flags|decide|array|static)(?:\/|$)/.test(url.pathname)) return null;
+	const masked = { ...data, name: redactUrlCredentials(data.name) };
+	for (const key of ['requestHeaders', 'responseHeaders'] as const) {
+		if (masked[key]) masked[key] = sanitizeValue(masked[key], '') as CapturedNetworkRequest[typeof key];
+	}
+	for (const key of ['requestBody', 'responseBody'] as const) {
+		const body = masked[key];
+		if (!body) continue;
+		try {
+			masked[key] = JSON.stringify(sanitizeValue(JSON.parse(body), ''));
+		} catch {
+			// Opaque authentication payloads cannot safely be projected field by field.
+			if (/authentication|login|token/i.test(url.pathname)) masked[key] = '[redacted]';
+			else if (body.includes('=')) {
+				const form = new URLSearchParams(body);
+				redactParameters(form);
+				masked[key] = form.toString();
+			}
+		}
+	}
 	return masked;
 }
 
@@ -143,7 +158,7 @@ function sanitizeValue(value: unknown, propertyName: string): unknown {
 	if (typeof value === 'string') {
 		const normalizedName = normalizedPropertyName(propertyName);
 		return replayUrlPropertyNames[normalizedName] || normalizedName.endsWith('url') || normalizedName.endsWith('referrer')
-			? stripUrlMetadata(value)
+			? redactUrlCredentials(value)
 			: value;
 	}
 	if (Array.isArray(value)) return value.map((item) => sanitizeValue(item, propertyName));
@@ -154,13 +169,16 @@ function sanitizeValue(value: unknown, propertyName: string): unknown {
 
 	const sanitized: Record<string, unknown> = {};
 	for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
-		if (rawPayloadPropertyNames[normalizedPropertyName(key)]) continue;
+		if (credentialPropertyNames[normalizedPropertyName(key)]) {
+			sanitized[key] = '[redacted]';
+			continue;
+		}
 		sanitized[key] = sanitizeValue(child, key);
 	}
 	return sanitized;
 }
 
-/** Native analytics hook that keeps original exception text/stack but drops raw payload fields. */
+/** Retain diagnostic properties and original exception context while redacting credential fields. */
 export function sanitizeCapture(result: CaptureResult): CaptureResult {
 	return {
 		...result,
@@ -184,9 +202,9 @@ function getBackendHostname(baseUrl: string): string | undefined {
 
 function capturePageview(client: PostHog): void {
 	const properties: Record<string, string> = {
-		$current_url: stripUrlMetadata(window.location.href),
+		$current_url: redactUrlCredentials(window.location.href),
 	};
-	if (document.referrer) properties.$referrer = stripUrlMetadata(document.referrer);
+	if (document.referrer) properties.$referrer = redactUrlCredentials(document.referrer);
 	client.capture('$pageview', properties);
 }
 
@@ -222,8 +240,8 @@ export default defineNuxtPlugin({
 				maskAllInputs: true,
 				maskCapturedNetworkRequestFn: maskReplayNetworkRequest,
 				maskAttributeFn: maskReplayAttribute,
-				recordHeaders: false,
-				recordBody: false,
+				recordHeaders: true,
+				recordBody: true,
 				captureJsonLd: false,
 				collectFonts: false,
 				inlineStylesheet: true,
@@ -241,7 +259,7 @@ export default defineNuxtPlugin({
 				runtime_identifier: bootstrap.runtimeIdentifier,
 				platform: bootstrap.platform,
 				$process_person_profile: true,
-				$geoip_disable: true,
+				$geoip_disable: false,
 			});
 			client.opt_in_capturing({ captureEventName: false });
 			client.identify(bootstrap.distinctId);
