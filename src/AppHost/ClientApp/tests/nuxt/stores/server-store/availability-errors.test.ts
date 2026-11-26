@@ -24,7 +24,9 @@ describe('Availability change rejection feedback', () => {
 		await subscribeSpyTo(library.setup()).onComplete();
 
 		// Act
-		const result = subscribeSpyTo(owner === 'server' ? server.setServerEnabled(7, false) : library.setLibraryEnabled(7, false));
+		const result = owner === 'server'
+			? subscribeSpyTo(server.setServerEnabled(7, false))
+			: subscribeSpyTo(library.setLibraryEnabled(7, false));
 		await result.onComplete();
 
 		// Assert
