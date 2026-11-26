@@ -52,7 +52,7 @@ public class TelemetryUnitTests : BaseUnitTest
                 (_, name, properties, _, _, _) => events.Enqueue((name, properties!))
             )
             .Returns(true)
-            .Verifiable(Times.Exactly(2));
+            .Verifiable(Times.Exactly(3));
         client
             .Setup(x =>
                 x.Capture(
@@ -106,10 +106,20 @@ public class TelemetryUnitTests : BaseUnitTest
         request.GetTagItem(TelemetryProperty.TelemetryName).ShouldBe(IDENTITY_NAME);
         properties.ShouldNotContainKey("$geoip_disable");
         properties[TelemetryProtocol.TraceId].ShouldBe(request.TraceId.ToHexString());
+
         properties[TelemetryProtocol.SpanId].ShouldBe(request.SpanId.ToHexString());
         properties[TelemetryProtocol.SessionId].ShouldBe(session);
         var businessEvent = events.Single(x => x.Name == nameof(TelemetryEvent.NotificationsCleared));
         businessEvent.Properties[TelemetryProperty.DeletedCount].ShouldBe(3);
+        // Completed request scopes must not attribute later background work to the browser session.
+        requestContext?.Dispose();
+        request.GetTagItem(TelemetryProtocol.DistinctIdTag).ShouldBeNull();
+        request.GetTagItem(TelemetryProperty.TelemetryName).ShouldBeNull();
+        request.GetTagItem(TelemetryProtocol.SessionIdTag).ShouldBeNull();
+        events.Clear();
+        telemetry.NotificationsCleared(1);
+        events.Single().Properties.ShouldNotContainKey(TelemetryProtocol.SessionId);
+        new { Queue = "scheduled" }.ToJobDataMap().ContainsKey(TelemetryProtocol.SessionIdMetadata).ShouldBeFalse();
         user.Verify();
         client.Verify();
         client.Verify(x => x.FlushAsync(), Times.Never());

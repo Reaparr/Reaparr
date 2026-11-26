@@ -165,14 +165,19 @@ public sealed partial class Telemetry : ITelemetry, IDisposable
         if (!IsAdmitted)
             return null;
 
+        var activity = Activity.Current;
+        var previousIdentity = activity?.GetTagItem(TelemetryProtocol.DistinctIdTag);
+        var previousName = activity?.GetTagItem(TelemetryProperty.TelemetryName);
+        var previousSession = activity?.GetTagItem(TelemetryProtocol.SessionIdTag);
         Activity.Current?.SetTag(TelemetryProtocol.DistinctIdTag, _telemetryId);
         Activity.Current?.SetTag(TelemetryProperty.TelemetryName, _telemetryName);
         Activity.Current?.SetTag(TelemetryProtocol.SessionIdTag, sessionId);
-        return LogContext.Push(
+        var logContext = LogContext.Push(
             new PropertyEnricher(TelemetryProtocol.DistinctIdTag, _telemetryId),
             new PropertyEnricher(TelemetryProperty.TelemetryName, _telemetryName),
             new PropertyEnricher(TelemetryProtocol.SessionIdTag, sessionId)
         );
+        return new RequestTelemetryScope(activity, previousIdentity, previousName, previousSession, logContext);
     }
 
     /// <summary>
@@ -372,6 +377,23 @@ public sealed partial class Telemetry : ITelemetry, IDisposable
 
     /// <summary>Stops observing settings changes without taking ownership of the injected native SDK.</summary>
     public void Dispose() => _settingsSubscription?.Dispose();
+
+    private sealed class RequestTelemetryScope(
+        Activity? activity,
+        object? previousIdentity,
+        object? previousName,
+        object? previousSession,
+        IDisposable logContext
+    ) : IDisposable
+    {
+        public void Dispose()
+        {
+            logContext.Dispose();
+            activity?.SetTag(TelemetryProtocol.DistinctIdTag, previousIdentity);
+            activity?.SetTag(TelemetryProperty.TelemetryName, previousName);
+            activity?.SetTag(TelemetryProtocol.SessionIdTag, previousSession);
+        }
+    }
 
     private sealed class JobTelemetryScope : IDisposable
     {
