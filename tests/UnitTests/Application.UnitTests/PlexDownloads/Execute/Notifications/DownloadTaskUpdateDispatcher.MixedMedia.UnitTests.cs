@@ -16,6 +16,18 @@ public class DownloadTaskUpdateDispatcherMixedMediaUnitTests : BaseUnitTest<Down
         using var arrangeContext = IDbContext;
         var movie = await arrangeContext.DownloadTaskMovieFile.SingleAsync(CancellationToken);
         var episode = await arrangeContext.DownloadTaskTvShowEpisodeFile.SingleAsync(CancellationToken);
+        await arrangeContext
+            .DownloadTaskMovieFile.Where(x => x.Id == movie.Id)
+            .ExecuteUpdateAsync(
+                x => x.SetProperty(y => y.DownloadStatus, DownloadStatus.Downloading),
+                CancellationToken
+            );
+        await arrangeContext
+            .DownloadTaskTvShowEpisodeFile.Where(x => x.Id == episode.Id)
+            .ExecuteUpdateAsync(
+                x => x.SetProperty(y => y.DownloadStatus, DownloadStatus.Downloading),
+                CancellationToken
+            );
         (await arrangeContext.DownloadTaskMovieFileLogs.ToListAsync(CancellationToken)).ShouldBeEmpty();
         (await arrangeContext.DownloadTaskTvShowEpisodeFileLogs.ToListAsync(CancellationToken)).ShouldBeEmpty();
         Mock.Mock<IDownloadHubService>()
