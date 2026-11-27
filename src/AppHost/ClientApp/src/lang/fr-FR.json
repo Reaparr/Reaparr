@@ -569,8 +569,7 @@
                 "queued-waiting": "En attente du démarrage.",
                 "processing": "En cours",
                 "completed": "Terminée",
-                "failed": "Échouée",
-                "cancelled": "Annulée"
+                "failed": "Échouée"
             }
         },
         "authentication-overview": {

@@ -568,8 +568,7 @@
                 "queued-waiting": "Vorgemerkt — warten auf den Start.",
                 "processing": "In Bearbeitung",
                 "completed": "Abgeschlossen",
-                "failed": "Fehlgeschlagen",
-                "cancelled": "Abgebrochen"
+                "failed": "Fehlgeschlagen"
             }
         },
         "authentication-overview": {

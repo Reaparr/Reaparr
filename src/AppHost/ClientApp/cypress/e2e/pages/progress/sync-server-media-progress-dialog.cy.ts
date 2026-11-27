@@ -148,7 +148,9 @@ describe('SyncServerMediaDialog', () => {
 				status: LibrarySyncJobStatus.Queued,
 			}));
 			let releaseSnapshot!: () => void;
-			const waitForRemoval = new Cypress.Promise<void>((resolve) => { releaseSnapshot = resolve; });
+			const waitForRemoval = new Cypress.Promise<void>((resolve) => {
+				releaseSnapshot = resolve;
+			});
 			let cancelled = false;
 			cy.intercept('GET', PlexLibraryPaths.getLibrarySyncStatusEndpoint(), (request) => {
 				if (cancelled) {

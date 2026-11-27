@@ -568,8 +568,7 @@
                 "queued-waiting": "W kolejce — oczekiwanie na rozpoczęcie.",
                 "processing": "W toku",
                 "completed": "Ukończona",
-                "failed": "Nieudana",
-                "cancelled": "Anulowana"
+                "failed": "Nieudana"
             }
         },
         "authentication-overview": {
