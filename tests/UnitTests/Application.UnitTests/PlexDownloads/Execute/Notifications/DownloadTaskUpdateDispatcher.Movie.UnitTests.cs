@@ -259,6 +259,84 @@ public class DownloadTaskUpdateDispatcherMovieUnitTests : BaseUnitTest<DownloadT
     }
 
     [Test]
+    [Arguments(false)]
+    [Arguments(true)]
+    public async Task ShouldLogOnlyCurrentLifecycleProgress_WhenHubSendIsBlocked(bool pauseAndResume)
+    {
+        // Arrange
+        await SetupDatabase(84350, config => config.MovieDownloadTasksCount = 1);
+        var file = await IDbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
+        var key = file.ToKey();
+        var hubEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseHub = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        Mock.Mock<IDownloadTaskScheduler>().Setup(x => x.IsServerDownloading(file.PlexServerId)).ReturnsAsync(true);
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x => x.Send(It.IsAny<UpdateScheduledDownloadLimitsCommand>(), CancellationToken.None))
+            .ReturnsAsync(Result.Ok());
+        var hub = Mock.Mock<IDownloadHubService>();
+        hub.Setup(x =>
+                x.SendDownloadPatchAsync(
+                    file.PlexServerId,
+                    It.IsAny<long>(),
+                    It.Is<IReadOnlyCollection<DownloadPatchDTO>>(patch =>
+                        patch.Any(node => node.Id == file.Id && node.DataReceived == 500)
+                    ),
+                    It.IsAny<IReadOnlyCollection<Guid>?>(),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .Returns(() =>
+            {
+                hubEntered.TrySetResult();
+                return releaseHub.Task;
+            })
+            .Verifiable(Times.Once());
+        var sut = Sut;
+        await sut.OnStatusChangedAsync(key, DownloadStatus.Downloading, CancellationToken);
+        sut.OnProgressUpdated(
+            key,
+            new DownloadTaskProgress
+            {
+                DataTotal = 1_000,
+                DataReceived = 500,
+                Percentage = 50,
+            }
+        );
+
+        // Act: run one flush and hold the hub send after progress has been persisted.
+        var flush = (Task)
+            typeof(DownloadTaskUpdateDispatcher)
+                .GetMethod(
+                    "FlushProgressAsync",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic
+                )!
+                .Invoke(sut, [CancellationToken])!;
+        try
+        {
+            await hubEntered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            if (pauseAndResume)
+            {
+                await sut.OnStatusChangedAsync(key, DownloadStatus.Paused, CancellationToken);
+                await sut.OnStatusChangedAsync(key, DownloadStatus.Downloading, CancellationToken);
+            }
+        }
+        finally
+        {
+            releaseHub.TrySetResult();
+            await flush.WaitAsync(TimeSpan.FromSeconds(5));
+        }
+
+        // Assert: resuming does not make the old progress eligible for a new journey log.
+        (await IDbContext.GetDownloadStatusAsync(key)).ShouldBe(DownloadStatus.Downloading);
+        var logs = await IDbContext.DownloadTaskMovieFileLogs.CountAsync(
+            x => x.DownloadTaskFileId == file.Id && x.Message.StartsWith("[DownloadTaskProgress "),
+            CancellationToken
+        );
+        logs.ShouldBe(pauseAndResume ? 0 : 1);
+        hub.Verify();
+    }
+
+    [Test]
     public async Task ShouldKeepAcceptingProgress_WhenPauseIsCancelledBeforeGateAcquisition()
     {
         await SetupDatabase(84345, config => config.MovieDownloadTasksCount = 1);
@@ -499,7 +577,11 @@ public class DownloadTaskUpdateDispatcherMovieUnitTests : BaseUnitTest<DownloadT
     [Test]
     [Arguments(DownloadStatus.Paused, 750, 75)]
     [Arguments(DownloadStatus.DownloadFinished, 1000, 100)]
-    public async Task ShouldPersistBufferedProgressBeforeStatusChanges(DownloadStatus status, long received, int percentage)
+    public async Task ShouldPersistBufferedProgressBeforeStatusChanges(
+        DownloadStatus status,
+        long received,
+        int percentage
+    )
     {
         await SetupDatabase(84327, config => config.MovieDownloadTasksCount = 1);
         var movieFile = await IDbContext.DownloadTaskMovieFile.AsNoTracking().FirstAsync(CancellationToken);

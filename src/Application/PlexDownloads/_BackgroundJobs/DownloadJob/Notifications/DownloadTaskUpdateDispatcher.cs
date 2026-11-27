@@ -26,9 +26,19 @@ public class DownloadTaskUpdateDispatcher : BackgroundService, IDownloadTaskUpda
     private readonly ConcurrentDictionary<Guid, ProgressScopeKey> _scopeByNodeId;
     private readonly ConcurrentDictionary<Guid, DownloadStatus> _statusByNodeId;
     private readonly ConcurrentDictionary<Guid, DownloadTaskProgress> _lastProgressLogByNodeId;
+    private readonly ConcurrentDictionary<Guid, long> _lifecycleRevisionByNodeId;
     private const long PROGRESS_LOG_DATA_THRESHOLD_BYTES = 1024 * 1024;
     private const decimal PROGRESS_LOG_PERCENTAGE_THRESHOLD = 1m;
     private int _retirementPending;
+
+    private void AdvanceLifecycleRevision(Guid nodeId) =>
+        _lifecycleRevisionByNodeId.AddOrUpdate(nodeId, 1, (_, revision) => revision + 1);
+
+    private readonly record struct PersistedProgressLog(
+        DownloadTaskKey Key,
+        DownloadTaskProgress Progress,
+        long LifecycleRevision
+    );
 
     /// <summary>
     /// Creates a new dispatcher instance.
@@ -60,6 +70,7 @@ public class DownloadTaskUpdateDispatcher : BackgroundService, IDownloadTaskUpda
         _scopeByNodeId = new ConcurrentDictionary<Guid, ProgressScopeKey>();
         _statusByNodeId = new ConcurrentDictionary<Guid, DownloadStatus>();
         _lastProgressLogByNodeId = new ConcurrentDictionary<Guid, DownloadTaskProgress>();
+        _lifecycleRevisionByNodeId = new ConcurrentDictionary<Guid, long>();
     }
 
     /// <inheritdoc />
@@ -125,7 +136,12 @@ public class DownloadTaskUpdateDispatcher : BackgroundService, IDownloadTaskUpda
                 {
                     try
                     {
-                        if (newStatus is DownloadStatus.Paused or DownloadStatus.AutoPaused or DownloadStatus.DownloadFinished)
+                        if (
+                            newStatus
+                            is DownloadStatus.Paused
+                                or DownloadStatus.AutoPaused
+                                or DownloadStatus.DownloadFinished
+                        )
                             await PersistBufferedProgressAsync(dbContext, key, cancellationToken);
 
                         await dbContext.SetDownloadStatus(key, newStatus);
@@ -135,6 +151,7 @@ public class DownloadTaskUpdateDispatcher : BackgroundService, IDownloadTaskUpda
                         _statusByNodeId[key.Id] = currentStatus.Value;
                         throw;
                     }
+                    AdvanceLifecycleRevision(key.Id);
                     await LogStatusChangeAsync(dbContext, key, newStatus, cancellationToken);
                     ResetProgressJourneyTrackingIfNeeded(key.Id, newStatus);
 
@@ -386,7 +403,7 @@ public class DownloadTaskUpdateDispatcher : BackgroundService, IDownloadTaskUpda
 
         var changedNodeIdsByScope = new Dictionary<ProgressScopeKey, HashSet<Guid>>();
         var persistedUpdates = new List<BufferedProgressUpdate>(nodeSnapshot.Count);
-
+        var persistedLogs = new List<PersistedProgressLog>(nodeSnapshot.Count);
         using var dbContext = await _dbContextFactory.CreateAsync();
         foreach (var bufferedProgress in nodeSnapshot)
         {
@@ -395,6 +412,7 @@ public class DownloadTaskUpdateDispatcher : BackgroundService, IDownloadTaskUpda
                 bufferedProgress,
                 changedNodeIdsByScope,
                 persistedUpdates,
+                persistedLogs,
                 cancellationToken
             );
 
@@ -421,18 +439,30 @@ public class DownloadTaskUpdateDispatcher : BackgroundService, IDownloadTaskUpda
         }
 
         // Journey logging must not delay the patches for this batch.
-        foreach (var update in persistedUpdates)
+        foreach (var update in persistedLogs)
         {
-            if (update.Progress is not { } progress || !ShouldPersistProgressDebug(update.NodeId, progress))
-                continue;
-
-            var result = await Result.Try(async Task () =>
+            var gate = GetProgressGate(update.Key.Id);
+            await gate.WaitAsync(cancellationToken);
+            try
             {
-                // Log tables generate IDs independently, so log inserts cannot share a tracker.
-                using var logContext = await _dbContextFactory.CreateAsync();
-                await WriteProgressJourneyLogAsync(logContext, update.Key, progress, cancellationToken);
-            });
-            result.LogIfFailed();
+                if (_lifecycleRevisionByNodeId.GetValueOrDefault(update.Key.Id) != update.LifecycleRevision)
+                    continue;
+                var result = await Result.Try(async Task () =>
+                {
+                    // Log tables generate IDs independently, so log inserts cannot share a tracker.
+                    using var logContext = await _dbContextFactory.CreateAsync();
+                    if (
+                        await logContext.GetDownloadStatusAsync(update.Key) == DownloadStatus.Downloading
+                        && ShouldPersistProgressDebug(update.Key.Id, update.Progress)
+                    )
+                        await WriteProgressJourneyLogAsync(logContext, update.Key, update.Progress, cancellationToken);
+                });
+                result.LogIfFailed();
+            }
+            finally
+            {
+                gate.Release();
+            }
         }
     }
 
@@ -441,6 +471,7 @@ public class DownloadTaskUpdateDispatcher : BackgroundService, IDownloadTaskUpda
         BufferedProgressUpdate bufferedProgress,
         Dictionary<ProgressScopeKey, HashSet<Guid>> changedNodeIdsByScope,
         List<BufferedProgressUpdate> persistedUpdates,
+        List<PersistedProgressLog> persistedLogs,
         CancellationToken cancellationToken
     )
     {
@@ -496,6 +527,14 @@ public class DownloadTaskUpdateDispatcher : BackgroundService, IDownloadTaskUpda
                 changedNodeIds.Add(bufferedProgress.NodeId);
 
                 persistedUpdates.Add(bufferedProgress);
+                if (bufferedProgress.Progress is { } persistedProgress)
+                    persistedLogs.Add(
+                        new PersistedProgressLog(
+                            bufferedProgress.Key,
+                            persistedProgress,
+                            _lifecycleRevisionByNodeId.GetValueOrDefault(bufferedProgress.NodeId)
+                        )
+                    );
             });
             if (result.IsFailed && claimedProgress is not null)
             {
@@ -551,6 +590,7 @@ public class DownloadTaskUpdateDispatcher : BackgroundService, IDownloadTaskUpda
         _statusByNodeId.TryRemove(nodeId, out _);
         _finalizedProgressNodes.TryRemove(nodeId, out _);
         _lastProgressLogByNodeId.TryRemove(nodeId, out _);
+        _lifecycleRevisionByNodeId.TryRemove(nodeId, out _);
     }
 
     private async Task PublishDeletionPatchAsync(DownloadTaskKey key, CancellationToken cancellationToken)
