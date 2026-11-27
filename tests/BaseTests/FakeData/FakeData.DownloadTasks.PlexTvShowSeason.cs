@@ -35,10 +35,10 @@ public static partial class FakeData
     public static Faker<DownloadTaskTvShowSeason> GetDownloadTaskTvShowSeason(
         Seed seed,
         Action<FakeDataConfig>? options = null
-    )
-    {
-        var config = FakeDataConfig.FromOptions(options);
+    ) => GetDownloadTaskTvShowSeason(seed, FakeDataConfig.FromOptions(options));
 
+    private static Faker<DownloadTaskTvShowSeason> GetDownloadTaskTvShowSeason(Seed seed, FakeDataConfig config)
+    {
         return _downloadTaskTvShowSeasonFaker
             .RuleFor(
                 x => x.DataTotal,
@@ -51,7 +51,7 @@ public static partial class FakeData
                 x => x.Children,
                 _ =>
                 {
-                    var f = GetDownloadTaskTvShowEpisode(seed, options);
+                    var f = GetDownloadTaskTvShowEpisode(seed, config);
                     if (config.TvShowEpisodeDownloadTasksCount > 0)
                         return f.Generate(config.TvShowEpisodeDownloadTasksCount);
 

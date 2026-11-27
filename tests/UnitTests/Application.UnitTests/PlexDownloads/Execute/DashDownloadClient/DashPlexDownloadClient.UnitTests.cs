@@ -1047,7 +1047,7 @@ public class DashPlexDownloadClientUnitTests : BaseUnitTest<DashPlexDownloadClie
         dashWrapperMock.Setup(x => x.DownloadCompleted).Returns(Observable.Empty<DashDownloadCompletedEventArgs>());
         dashWrapperMock
             .Setup(x => x.StartAsync(It.IsAny<DashMpdCliOptions>()))
-            .Returns(async () =>
+            .Returns(() =>
             {
                 progressSubject.OnNext(
                     new DashDownloadProgress
@@ -1061,9 +1061,7 @@ public class DashPlexDownloadClientUnitTests : BaseUnitTest<DashPlexDownloadClie
                     }
                 );
 
-                // Allow the Rx Sample(500ms) window to elapse and the handler to persist progress
-                await Task.Delay(700, CancellationToken);
-                return Result.Ok();
+                return Task.FromResult(Result.Ok());
             });
         dashWrapperMock.Setup(x => x.StopAsync()).ReturnsAsync(Result.Ok());
         dashWrapperMock.Setup(x => x.DisposeAsync()).Returns(ValueTask.CompletedTask);
@@ -1138,7 +1136,7 @@ public class DashPlexDownloadClientUnitTests : BaseUnitTest<DashPlexDownloadClie
         dashWrapperMock.Setup(x => x.DownloadCompleted).Returns(Observable.Empty<DashDownloadCompletedEventArgs>());
         dashWrapperMock
             .Setup(x => x.StartAsync(It.IsAny<DashMpdCliOptions>()))
-            .Returns(async () =>
+            .Returns(() =>
             {
                 progressSubject.OnNext(
                     new DashDownloadProgress
@@ -1152,8 +1150,7 @@ public class DashPlexDownloadClientUnitTests : BaseUnitTest<DashPlexDownloadClie
                     }
                 );
 
-                await Task.Delay(700, CancellationToken);
-                return Result.Ok();
+                return Task.FromResult(Result.Ok());
             });
         dashWrapperMock.Setup(x => x.StopAsync()).ReturnsAsync(Result.Ok());
         dashWrapperMock.Setup(x => x.DisposeAsync()).Returns(ValueTask.CompletedTask);
@@ -1228,7 +1225,7 @@ public class DashPlexDownloadClientUnitTests : BaseUnitTest<DashPlexDownloadClie
         dashWrapperMock.Setup(x => x.DownloadCompleted).Returns(Observable.Empty<DashDownloadCompletedEventArgs>());
         dashWrapperMock
             .Setup(x => x.StartAsync(It.IsAny<DashMpdCliOptions>()))
-            .Returns(async () =>
+            .Returns(() =>
             {
                 progressSubject.OnNext(
                     new DashDownloadProgress
@@ -1242,8 +1239,7 @@ public class DashPlexDownloadClientUnitTests : BaseUnitTest<DashPlexDownloadClie
                     }
                 );
 
-                await Task.Delay(700, CancellationToken);
-                return Result.Ok();
+                return Task.FromResult(Result.Ok());
             });
         dashWrapperMock.Setup(x => x.StopAsync()).ReturnsAsync(Result.Ok());
         dashWrapperMock.Setup(x => x.DisposeAsync()).Returns(ValueTask.CompletedTask);

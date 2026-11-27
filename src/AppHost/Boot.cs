@@ -20,6 +20,7 @@ public class Boot : IHostedService
     private readonly IMoveDownloadFileQueue _moveDownloadFileQueue;
     private readonly ITelemetry _telemetry;
     private readonly Lock _stopGate = new();
+    private Task? _postStartupTask;
     private Task? _stopTask;
 
     #endregion
@@ -50,7 +51,14 @@ public class Boot : IHostedService
         _downloadQueue = downloadQueue;
         _moveDownloadFileQueue = moveDownloadFileQueue;
         _telemetry = telemetry;
-        appLifetime.ApplicationStarted.Register(() => _ = OnStartedAsync());
+        appLifetime.ApplicationStarted.Register(() =>
+        {
+            lock (_stopGate)
+            {
+                if (_stopTask is null)
+                    _postStartupTask = OnStartedAsync();
+            }
+        });
         appLifetime.ApplicationStopping.Register(OnStopping);
         appLifetime.ApplicationStopped.Register(OnStopped);
     }
@@ -138,6 +146,12 @@ public class Boot : IHostedService
     private async Task StopCoreAsync(CancellationToken cancellationToken)
     {
         _log.Here().Information("Shutting down the container");
+
+        // Post-start commands observe ApplicationStopping but can still be unwinding.
+        if (_postStartupTask is not null)
+            await _postStartupTask.WaitAsync(cancellationToken);
+
+        await _downloadQueue.WaitForShutdownAsync(cancellationToken);
 
         await _scheduler.Standby(cancellationToken);
         var activeMoveJobs = (await _scheduler.GetLocalExecutingFireInstances(cancellationToken))

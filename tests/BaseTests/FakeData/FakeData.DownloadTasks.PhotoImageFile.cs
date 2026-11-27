@@ -6,9 +6,14 @@ public static partial class FakeData
         Seed seed,
         Action<FakeDataConfig>? options = null,
         bool isClip = false
+    ) => GetDownloadTaskPhotoImageFile(seed, FakeDataConfig.FromOptions(options), isClip);
+
+    private static Faker<DownloadTaskPhotoImageFile> GetDownloadTaskPhotoImageFile(
+        Seed seed,
+        FakeDataConfig config,
+        bool isClip = false
     )
     {
-        var config = FakeDataConfig.FromOptions(options);
         return new Faker<DownloadTaskPhotoImageFile>()
             .ApplyDownloadTaskFileBase(DownloadTaskType.PhotoImage)
             .UseSeed(seed.Next())

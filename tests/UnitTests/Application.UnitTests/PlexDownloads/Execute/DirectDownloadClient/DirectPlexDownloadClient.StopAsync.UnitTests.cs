@@ -39,31 +39,25 @@ public class DirectPlexDownloadClientStopAsyncUnitTests : BaseUnitTest<DirectPle
             .Returns(Observable.Return(checked((long)speedLimit * 1024)));
     }
 
-    /// <summary>
-    /// Builds a download service mock that simulates an in-progress download.
-    /// Calling CancelTaskAsync() on the mock cancels the internal CTS, which unblocks
-    /// the infinite Task.Delay in DownloadFileTaskAsync and raises DownloadFileCompleted(cancelled=true).
-    /// </summary>
-    private static Mock<IDownloadService> BuildInProgressDownloadServiceMock()
+    private static (Mock<IDownloadService> Mock, Task Entered) BuildInProgressDownloadServiceMock()
     {
-        var cts = new CancellationTokenSource();
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var stopped = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var mock = new Mock<IDownloadService>();
         mock.Setup(x => x.Clear()).Returns(Task.CompletedTask);
         mock.Setup(x => x.CancelTaskAsync())
-            .Returns(async () =>
+            .Returns(() =>
             {
-                await cts.CancelAsync();
+                stopped.TrySetResult();
+                return Task.CompletedTask;
             });
 
         mock.Setup(x => x.DownloadFileTaskAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .Returns<string, string, CancellationToken>(
-                async (_, _, _) =>
+                async (_, _, cancellationToken) =>
                 {
-                    try
-                    {
-                        await Task.Delay(Timeout.InfiniteTimeSpan, cts.Token);
-                    }
-                    catch (OperationCanceledException) { }
+                    entered.TrySetResult();
+                    await stopped.Task.WaitAsync(cancellationToken);
 
                     mock.Raise(
                         x => x.DownloadFileCompleted += null,
@@ -73,7 +67,7 @@ public class DirectPlexDownloadClientStopAsyncUnitTests : BaseUnitTest<DirectPle
                 }
             );
 
-        return mock;
+        return (mock, entered.Task);
     }
 
     // -------------------------------------------------------------------------
@@ -120,13 +114,13 @@ public class DirectPlexDownloadClientStopAsyncUnitTests : BaseUnitTest<DirectPle
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
 
-        var downloadServiceMock = BuildInProgressDownloadServiceMock();
+        var (downloadServiceMock, entered) = BuildInProgressDownloadServiceMock();
 
         // Act
         var sut = CreateSut(downloadServiceMock);
         var startTask = sut.Start(downloadTask.ToKey(), CancellationToken);
 
-        await Task.Delay(200, CancellationToken);
+        await entered.WaitAsync(TimeSpan.FromSeconds(5), CancellationToken);
         var stopResult = await sut.StopAsync();
         var startResult = await startTask;
 
@@ -204,13 +198,13 @@ public class DirectPlexDownloadClientStopAsyncUnitTests : BaseUnitTest<DirectPle
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
 
-        var downloadServiceMock = BuildInProgressDownloadServiceMock();
+        var (downloadServiceMock, entered) = BuildInProgressDownloadServiceMock();
 
         // Act
         var sut = CreateSut(downloadServiceMock);
         var startTask = sut.Start(downloadTask.ToKey(), CancellationToken);
 
-        await Task.Delay(200, CancellationToken);
+        await entered.WaitAsync(TimeSpan.FromSeconds(5), CancellationToken);
         await sut.StopAsync();
         await startTask;
 
@@ -286,11 +280,11 @@ public class DirectPlexDownloadClientStopAsyncUnitTests : BaseUnitTest<DirectPle
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
 
-        var downloadServiceMock = BuildInProgressDownloadServiceMock();
+        var (downloadServiceMock, entered) = BuildInProgressDownloadServiceMock();
 
         var sut = CreateSut(downloadServiceMock);
         var startTask = sut.Start(downloadTask.ToKey(), CancellationToken);
-        await Task.Delay(200, CancellationToken);
+        await entered.WaitAsync(TimeSpan.FromSeconds(5), CancellationToken);
 
         // Act — stop twice
         var firstStop = await sut.StopAsync();
@@ -371,59 +365,17 @@ public class DirectPlexDownloadClientStopAsyncUnitTests : BaseUnitTest<DirectPle
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
 
-        var downloadServiceMock = BuildInProgressDownloadServiceMock();
-
-        // Re-setup CancelTaskAsync with Verifiable after BuildInProgressDownloadServiceMock wires it
-        var cancelCallCount = 0;
-        downloadServiceMock
-            .Setup(x => x.CancelTaskAsync())
-            .Returns(() =>
-            {
-                cancelCallCount++;
-
-                // Still need to unblock the infinite delay — grab the internal CTS via closure
-                return Task.CompletedTask;
-            });
-
-        // Use a fresh, self-contained approach with a local CTS
-        var localCts = new CancellationTokenSource();
-        downloadServiceMock
-            .Setup(x => x.CancelTaskAsync())
-            .Returns(async () =>
-            {
-                cancelCallCount++;
-                await localCts.CancelAsync();
-            });
-
-        downloadServiceMock
-            .Setup(x => x.DownloadFileTaskAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .Returns<string, string, CancellationToken>(
-                async (_, _, _) =>
-                {
-                    try
-                    {
-                        await Task.Delay(Timeout.InfiniteTimeSpan, localCts.Token);
-                    }
-                    catch (OperationCanceledException) { }
-
-                    downloadServiceMock.Raise(
-                        x => x.DownloadFileCompleted += null,
-                        downloadServiceMock.Object,
-                        new AsyncCompletedEventArgs(null, true, null)
-                    );
-                }
-            );
+        var (downloadServiceMock, entered) = BuildInProgressDownloadServiceMock();
 
         var sut = CreateSut(downloadServiceMock);
         var startTask = sut.Start(downloadTask.ToKey(), CancellationToken);
-        await Task.Delay(200, CancellationToken);
+        await entered.WaitAsync(TimeSpan.FromSeconds(5), CancellationToken);
 
         // Act
         await sut.StopAsync();
         await startTask;
 
-        // Assert — CancelTaskAsync must have been invoked exactly once on the underlying service
-        cancelCallCount.ShouldBe(1);
+        downloadServiceMock.Verify(x => x.CancelTaskAsync(), Times.Once());
         Mock.Mock<IDownloadTaskUpdateDispatcher>()
             .Verify(
                 x =>

@@ -25,10 +25,10 @@ public static partial class FakeData
     public static Faker<DownloadTaskTvShowEpisode> GetDownloadTaskTvShowEpisode(
         Seed seed,
         Action<FakeDataConfig>? options = null
-    )
-    {
-        var config = FakeDataConfig.FromOptions(options);
+    ) => GetDownloadTaskTvShowEpisode(seed, FakeDataConfig.FromOptions(options));
 
+    private static Faker<DownloadTaskTvShowEpisode> GetDownloadTaskTvShowEpisode(Seed seed, FakeDataConfig config)
+    {
         return _downloadTaskTvShowEpisodeFaker
             .UseSeed(seed.Next())
             .RuleFor(
@@ -40,7 +40,7 @@ public static partial class FakeData
             )
             .RuleFor(
                 x => x.Children,
-                _ => GetDownloadTaskTvShowEpisodeFile(seed, options).Generate(config.IncludeMultiPartEpisodes ? 2 : 1)
+                _ => GetDownloadTaskTvShowEpisodeFile(seed, config).Generate(config.IncludeMultiPartEpisodes ? 2 : 1)
             );
     }
 
@@ -54,10 +54,10 @@ public static partial class FakeData
     public static Faker<DownloadTaskTvShowEpisodeFile> GetDownloadTaskTvShowEpisodeFile(
         Seed seed,
         Action<FakeDataConfig>? options = null
-    )
-    {
-        var config = FakeDataConfig.FromOptions(options);
+    ) => GetDownloadTaskTvShowEpisodeFile(seed, FakeDataConfig.FromOptions(options));
 
+    private static Faker<DownloadTaskTvShowEpisodeFile> GetDownloadTaskTvShowEpisodeFile(Seed seed, FakeDataConfig config)
+    {
         return _downloadTaskTvShowEpisodeFileFaker
             .RuleFor(
                 x => x.DataTotal,

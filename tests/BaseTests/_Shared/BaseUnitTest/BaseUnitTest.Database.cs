@@ -11,7 +11,7 @@ public partial class BaseUnitTest : IDisposable
     protected bool IsDatabaseSetup;
 
     /// <summary>
-    /// Gets a new instance of <see cref="ReaparrDbContext"/> for every time it is called.
+    /// Gets a fresh context owned by the fixture. Callers may also dispose it earlier.
     /// </summary>
     // ReSharper disable once InconsistentNaming
     protected IReaparrDbContext IDbContext
@@ -20,12 +20,15 @@ public partial class BaseUnitTest : IDisposable
         {
             DataBaseSetupGuard();
 
-            return MockDatabase.GetMemoryReaparrDbContext(
-                Mock.Container.Resolve<ILogger>(),
-                Mock.Container.Resolve<IPathProvider>(),
-                Mock.Container.Resolve<IAppRuntimeInfo>(),
+            var scope = Mock.Container;
+            var context = MockDatabase.GetMemoryReaparrDbContext(
+                scope.Resolve<ILogger>(),
+                scope.Resolve<IPathProvider>(),
+                scope.Resolve<IAppRuntimeInfo>(),
                 _databaseName
             );
+            scope.Disposer.AddInstanceForDisposal(context);
+            return context;
         }
     }
 
@@ -46,12 +49,15 @@ public partial class BaseUnitTest : IDisposable
         {
             DataBaseSetupGuard();
 
-            return MockDatabase.GetMemoryAuthDbContext(
-                Mock.Container.Resolve<ILogger>(),
-                Mock.Container.Resolve<IPathProvider>(),
-                Mock.Container.Resolve<IAppRuntimeInfo>(),
+            var scope = Mock.Container;
+            var context = MockDatabase.GetMemoryAuthDbContext(
+                scope.Resolve<ILogger>(),
+                scope.Resolve<IPathProvider>(),
+                scope.Resolve<IAppRuntimeInfo>(),
                 _databaseName
             );
+            scope.Disposer.AddInstanceForDisposal(context);
+            return context;
         }
     }
 

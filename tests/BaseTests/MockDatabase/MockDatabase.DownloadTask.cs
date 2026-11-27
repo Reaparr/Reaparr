@@ -143,19 +143,15 @@ public static partial class MockDatabase
         Seed seed,
         IPathProvider pathProvider,
         IAppRuntimeInfo appRuntimeInfo,
-        Action<FakeDataConfig>? options = null
+        FakeDataConfig config
     )
     {
-        var config = FakeDataConfig.FromOptions(options);
-        var downloadTasks = FakeData.GetMovieDownloadTask(seed, options).Generate(config.MovieDownloadTasksCount);
+        var downloadTasks = FakeData.GetMovieDownloadTask(seed, config).Generate(config.MovieDownloadTasksCount);
 
         var plexLibrary = context.PlexLibraries.FirstOrDefault(x => x.Type == PlexMediaType.Movie);
         plexLibrary.ShouldNotBeNull(
             "No PlexLibrary available with type Movie, consider setting config.DisableForeignKeyCheck = true"
         );
-
-        var plexServer = context.PlexServers.IncludeConnections().FirstOrDefault(x => x.Id == plexLibrary.PlexServerId);
-        plexServer.ShouldNotBeNull();
 
         downloadTasks.SetRelationshipIds(plexLibrary.PlexServerId, plexLibrary.Id);
 
@@ -182,19 +178,15 @@ public static partial class MockDatabase
         Seed seed,
         IPathProvider pathProvider,
         IAppRuntimeInfo appRuntimeInfo,
-        Action<FakeDataConfig>? options = null
+        FakeDataConfig config
     )
     {
-        var config = FakeDataConfig.FromOptions(options);
-        var downloadTasks = FakeData.GetDownloadTaskTvShow(seed, options).Generate(config.TvShowDownloadTasksCount);
+        var downloadTasks = FakeData.GetDownloadTaskTvShow(seed, config).Generate(config.TvShowDownloadTasksCount);
 
         var plexLibrary = context.PlexLibraries.FirstOrDefault(x => x.Type == PlexMediaType.TvShow);
         plexLibrary.ShouldNotBeNull(
             "No PlexLibrary available with type TvShow, consider setting config.DisableForeignKeyCheck = true"
         );
-
-        var plexServer = context.PlexServers.IncludeConnections().FirstOrDefault(x => x.Id == plexLibrary.PlexServerId);
-        plexServer.ShouldNotBeNull();
 
         downloadTasks.SetRelationshipIds(plexLibrary.PlexServerId, plexLibrary.Id);
 
@@ -221,21 +213,17 @@ public static partial class MockDatabase
         Seed seed,
         IPathProvider pathProvider,
         IAppRuntimeInfo appRuntimeInfo,
-        Action<FakeDataConfig>? options = null
+        FakeDataConfig config
     )
     {
-        var config = FakeDataConfig.FromOptions(options);
         var downloadTasks = FakeData
-            .GetDownloadTaskMusicArtist(seed, options)
+            .GetDownloadTaskMusicArtist(seed, config)
             .Generate(config.MusicArtistDownloadTasksCount);
 
         var plexLibrary = context.PlexLibraries.FirstOrDefault(x => x.Type == PlexMediaType.MusicArtist);
         plexLibrary.ShouldNotBeNull(
             "No PlexLibrary available with type MusicArtist, consider setting config.DisableForeignKeyCheck = true"
         );
-
-        var plexServer = context.PlexServers.IncludeConnections().FirstOrDefault(x => x.Id == plexLibrary.PlexServerId);
-        plexServer.ShouldNotBeNull();
 
         downloadTasks.SetRelationshipIds(plexLibrary.PlexServerId, plexLibrary.Id);
         ApplyIntegrationTestPaths(downloadTasks, pathProvider, appRuntimeInfo);
@@ -254,17 +242,16 @@ public static partial class MockDatabase
         return context;
     }
 
-    public static async Task<ReaparrDbContext> AddDownloadTaskPhotoFolders(
+    private static async Task<ReaparrDbContext> AddDownloadTaskPhotoFolders(
         this ReaparrDbContext context,
         Seed seed,
         IPathProvider pathProvider,
         IAppRuntimeInfo appRuntimeInfo,
-        Action<FakeDataConfig>? options = null
+        FakeDataConfig config
     )
     {
-        var config = FakeDataConfig.FromOptions(options);
         var downloadTasks = FakeData
-            .GetDownloadTaskPhotoFolder(seed, options)
+            .GetDownloadTaskPhotoFolder(seed, config)
             .Generate(config.PhotoFolderDownloadTasksCount);
 
         var plexLibraries = context
@@ -315,21 +302,17 @@ public static partial class MockDatabase
         Seed seed,
         IPathProvider pathProvider,
         IAppRuntimeInfo appRuntimeInfo,
-        Action<FakeDataConfig>? options = null
+        FakeDataConfig config
     )
     {
-        var config = FakeDataConfig.FromOptions(options);
         var downloadTasks = FakeData
-            .GetDownloadTaskOtherVideo(seed, options)
+            .GetDownloadTaskOtherVideo(seed, config)
             .Generate(config.OtherVideoDownloadTasksCount);
 
         var plexLibrary = context.PlexLibraries.FirstOrDefault(x => x.Type == PlexMediaType.OtherVideos);
         plexLibrary.ShouldNotBeNull(
             "No PlexLibrary available with type OtherVideos, consider setting config.DisableForeignKeyCheck = true"
         );
-
-        var plexServer = context.PlexServers.IncludeConnections().FirstOrDefault(x => x.Id == plexLibrary.PlexServerId);
-        plexServer.ShouldNotBeNull();
 
         downloadTasks.SetRelationshipIds(plexLibrary.PlexServerId, plexLibrary.Id);
         ApplyIntegrationTestPaths(downloadTasks, pathProvider, appRuntimeInfo);

@@ -92,6 +92,9 @@ public class DownloadQueue : IDownloadQueue
         return Result.Ok();
     }
 
+    public Task WaitForShutdownAsync(CancellationToken cancellationToken) =>
+        _workerTask?.WaitAsync(cancellationToken) ?? Task.CompletedTask;
+
     private async Task<int> ReadNextServerAsync(CancellationToken cancellationToken)
     {
         while (true)
@@ -282,10 +285,11 @@ public class DownloadQueue : IDownloadQueue
             return false;
 
         var files = await dbContext.GetDownloadTaskFilesAsync(activeKeys, cancellationToken);
-        // Missing or moved files are not evidence that an active job is only cleaning up.
+        // The move job can advance the persisted phase before Quartz removes the download job.
         return files.Count != activeKeys.Count
             || files.Any(file =>
-                file.PlexServerId != serverId || file.DownloadStatus != DownloadStatus.DownloadFinished
+                file.PlexServerId != serverId
+                || file.DownloadStatus.ToDownloadTaskPhase() is not (DownloadTaskPhase.FileTransfer or DownloadTaskPhase.Completed)
             );
     }
 

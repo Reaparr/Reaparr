@@ -1,5 +1,4 @@
 using System.IO.Abstractions.TestingHelpers;
-using Reaparr.PlexApi.Contracts;
 
 namespace Reaparr.BaseTests;
 
@@ -10,14 +9,17 @@ public partial class BaseUnitTest
     private Action<ContainerBuilder>? _appBuildInfoSetup;
     private Action<ContainerBuilder>? _appRuntimeInfoSetup;
     private Action<ContainerBuilder>? _dependenciesSetup;
-    private readonly MockFileSystem _fileSystem = new();
-    protected AutoMock Mock { get; set; }
+    private MockFileSystem? _fileSystem;
+    private AutoMock? _mock;
+    private List<AutoMock>? _ownedMocks;
+
+    protected AutoMock Mock => _mock ??= Build();
 
     protected long DefaultAvailableSpace = (long)ByteSize.FromGigaBytes(1000).Bytes;
 
-    private void Build()
+    private AutoMock Build()
     {
-        Mock = AutoMock.GetStrict(builder =>
+        var mock = AutoMock.GetStrict(builder =>
         {
             SetDefaultBuilder(builder);
 
@@ -29,7 +31,6 @@ public partial class BaseUnitTest
 
             if (_fileSystemSetup is not null)
             {
-                SetDefaultFileSystemDirectories();
                 _fileSystemSetup.Invoke(builder);
 
                 builder.Register(ctx => ctx.Resolve<IFileSystem>().Path).As<IPath>().SingleInstance();
@@ -44,13 +45,53 @@ public partial class BaseUnitTest
                 _httpClientSetup.Invoke(builder);
         });
 
-        // Mock to avoid HttpClient.Dispose() not mocked exception
-        Mock.Mock<IPlexApiClient>().Setup(x => x.Dispose());
+        // Already-resolved services can still depend on older containers until the test ends.
+        (_ownedMocks ??= []).Add(mock);
+
+        return mock;
+    }
+
+    private void InvalidateMock()
+    {
+        if (_fileSystemSetup is null)
+        {
+            _mock = null;
+            return;
+        }
+
+        // Filesystem callbacks run eagerly and use the paths from the outgoing container.
+        SetDefaultFileSystemDirectories(Mock.Container.Resolve<IPathProvider>());
+        _mock = Build();
+    }
+
+    private void DisposeMocks()
+    {
+        if (_ownedMocks is null)
+            return;
+
+        List<Exception>? failures = null;
+        for (var i = _ownedMocks.Count - 1; i >= 0; i--)
+        {
+            try
+            {
+                _ownedMocks[i].Dispose();
+            }
+            catch (Exception ex)
+            {
+                // AutoMock also verifies expectations on disposal. Still release the other containers.
+                (failures ??= []).Add(ex);
+            }
+        }
+
+        _ownedMocks.Clear();
+        _mock = null;
+        if (failures is not null)
+            throw new AggregateException(failures);
     }
 
     private void SetDefaultBuilder(ContainerBuilder builder)
     {
-        builder.Register<ILogger>((_, _) => LogFactory.Create()).SingleInstance();
+        builder.Register<ILogger>((_, _) => LogFactory.Create()).SingleInstance().ExternallyOwned();
 
         builder
             .Register(_ =>
@@ -190,7 +231,7 @@ public partial class BaseUnitTest
     {
         // Apply to the current singleton for already-resolved SUT instances, then
         // persist the same override for any future container rebuilds.
-        if (Mock.Container.Resolve<IAppBuildInfo>() is MockAppBuildInfo existingAppBuildInfo)
+        if (_mock?.Container.Resolve<IAppBuildInfo>() is MockAppBuildInfo existingAppBuildInfo)
             action.Invoke(existingAppBuildInfo);
 
         _appBuildInfoSetup = builder =>
@@ -206,14 +247,14 @@ public partial class BaseUnitTest
                 .SingleInstance();
         };
 
-        Build();
+        InvalidateMock();
     }
 
     protected void SetAppRuntimeInfo(Action<MockAppRuntimeInfo> action)
     {
         // Apply to the current singleton for already-resolved SUT instances, then
         // persist the same override for any future container rebuilds.
-        if (Mock.Container.Resolve<IAppRuntimeInfo>() is MockAppRuntimeInfo existingAppRuntimeInfo)
+        if (_mock?.Container.Resolve<IAppRuntimeInfo>() is MockAppRuntimeInfo existingAppRuntimeInfo)
             action.Invoke(existingAppRuntimeInfo);
 
         _appRuntimeInfoSetup = builder =>
@@ -229,7 +270,7 @@ public partial class BaseUnitTest
                 .SingleInstance();
         };
 
-        Build();
+        InvalidateMock();
     }
 
     protected void SetupHttpClient(Action<Mock<HttpMessageHandler>>? action = null)
@@ -247,14 +288,14 @@ public partial class BaseUnitTest
                 .SingleInstance();
         };
 
-        Build();
+        InvalidateMock();
     }
 
-    private void SetDefaultFileSystemDirectories()
+    private void SetDefaultFileSystemDirectories(IPathProvider pathProvider)
     {
-        var pathProvider = Mock.Container.Resolve<IPathProvider>();
+        var fileSystem = _fileSystem ??= new MockFileSystem();
 
-        _fileSystem.AddDrive(
+        fileSystem.AddDrive(
             "/",
             new MockDriveData
             {
@@ -263,29 +304,27 @@ public partial class BaseUnitTest
                 AvailableFreeSpace = DefaultAvailableSpace,
             }
         );
-        _fileSystem.AddDirectory(pathProvider.ConfigDirectory);
-        _fileSystem.AddDirectory(pathProvider.DefaultDownloadsDestinationFolder);
-        _fileSystem.AddDirectory(pathProvider.DefaultMovieDestinationFolder);
-        _fileSystem.AddDirectory(pathProvider.DefaultTvShowsDestinationFolder);
-        _fileSystem.AddDirectory(pathProvider.DefaultMusicDestinationFolder);
-        _fileSystem.AddDirectory(pathProvider.DefaultPhotosDestinationFolder);
-        _fileSystem.AddDirectory(pathProvider.DefaultOtherDestinationFolder);
-        _fileSystem.AddDirectory(pathProvider.DefaultGamesDestinationFolder);
+        fileSystem.AddDirectory(pathProvider.ConfigDirectory);
+        fileSystem.AddDirectory(pathProvider.DefaultDownloadsDestinationFolder);
+        fileSystem.AddDirectory(pathProvider.DefaultMovieDestinationFolder);
+        fileSystem.AddDirectory(pathProvider.DefaultTvShowsDestinationFolder);
+        fileSystem.AddDirectory(pathProvider.DefaultMusicDestinationFolder);
+        fileSystem.AddDirectory(pathProvider.DefaultPhotosDestinationFolder);
+        fileSystem.AddDirectory(pathProvider.DefaultOtherDestinationFolder);
+        fileSystem.AddDirectory(pathProvider.DefaultGamesDestinationFolder);
     }
 
     protected void SetupFileSystem(Action<MockFileSystem>? action = default)
     {
+        _ = Mock;
+        var fileSystem = _fileSystem ??= new MockFileSystem();
         _fileSystemSetup = builder =>
         {
-            if (action is not null)
-            {
-                action.Invoke(_fileSystem);
-            }
-
-            builder.Register<MockFileSystem>(_ => _fileSystem).As<IFileSystem>().SingleInstance();
+            action?.Invoke(fileSystem);
+            builder.Register<MockFileSystem>(_ => fileSystem).As<IFileSystem>().SingleInstance();
         };
 
-        Build();
+        InvalidateMock();
     }
 
     protected void SetupDependencies(Action<ContainerBuilder> action)
@@ -295,11 +334,13 @@ public partial class BaseUnitTest
 
         _dependenciesSetup = action;
 
-        Build();
+        InvalidateMock();
     }
 
     protected void SetupFileSystem(Action<MockFileSystem, IReaparrDbContext> action)
     {
+        _ = Mock;
+        var fileSystem = _fileSystem ??= new MockFileSystem();
         _fileSystemSetup = builder =>
         {
             builder
@@ -309,14 +350,14 @@ public partial class BaseUnitTest
 
                     var dbContext = ctx.Resolve<IReaparrDbContext>();
 
-                    action.Invoke(_fileSystem, dbContext);
+                    action.Invoke(fileSystem, dbContext);
 
-                    return _fileSystem;
+                    return fileSystem;
                 })
                 .As<IFileSystem>()
                 .SingleInstance();
         };
 
-        Build();
+        InvalidateMock();
     }
 }

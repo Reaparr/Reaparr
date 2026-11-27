@@ -35,24 +35,51 @@ public abstract class BaseIntegrationTests
         );
     }
 
-    protected static async Task WaitForDatabaseConditionAsync(
+    protected static Task WaitForDatabaseConditionAsync(
         Func<Task<bool>> condition,
+        int maxRetries = 10,
+        int delayMs = 500
+    ) => WaitForDatabaseConditionAsync(_ => condition(), CancellationToken, maxRetries, delayMs);
+
+    protected static async Task WaitForDatabaseConditionAsync(
+        Func<CancellationToken, Task<bool>> condition,
+        CancellationToken cancellationToken,
         int maxRetries = 10,
         int delayMs = 500
     )
     {
         for (var i = 0; i < maxRetries; i++)
         {
-            if (await condition())
+            cancellationToken.ThrowIfCancellationRequested();
+            if (await condition(cancellationToken))
                 return;
 
-            await Task.Delay(delayMs);
+            await Task.Delay(delayMs, cancellationToken);
         }
 
         throw new TimeoutException(
             $"Database condition was not met after {maxRetries} retries (total wait: {maxRetries * delayMs}ms)"
         );
     }
+
+    protected static Task WaitForDownloadStatusAsync(
+        BaseContainer container,
+        DownloadTaskKey key,
+        DownloadStatus targetStatus,
+        CancellationToken cancellationToken,
+        int maxRetries = 40,
+        int delayMs = 500
+    ) =>
+        WaitForDatabaseConditionAsync(
+            async _ =>
+            {
+                using var dbContext = await container.Resolve<IReaparrDbContextFactory>().CreateAsync();
+                return await dbContext.GetDownloadStatusAsync(key) == targetStatus;
+            },
+            cancellationToken,
+            maxRetries,
+            delayMs
+        );
 
     protected Task<BaseContainer> CreateContainer(int seed, Action<UnitTestDataConfig>? options = null) =>
         CreateContainer(new Seed(seed), options);

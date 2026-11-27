@@ -79,7 +79,6 @@ public class RestartDownloadTaskEndpointIntegrationTests : BaseIntegrationTests
             cancellationToken: CancellationToken
         );
         downloadTaskDb.ShouldNotBeNull();
-
         downloadTaskDb.DownloadStatus.ShouldBeOneOf(
             DownloadStatus.Queued,
             DownloadStatus.Downloading,
@@ -88,17 +87,11 @@ public class RestartDownloadTaskEndpointIntegrationTests : BaseIntegrationTests
             DownloadStatus.Completed
         );
 
-        var finalDownload = await container.WaitForDownloadStatusAsync(
-            downloadTask.Id,
-            [DownloadStatus.Completed],
-            TimeSpan.FromSeconds(20),
-            CancellationToken
-        );
+        await WaitForDownloadStatusAsync(container, downloadTask.ToKey(), DownloadStatus.Completed, CancellationToken);
 
         // Assert
         var result = testResult.Result;
         result.IsSuccess.ShouldBeTrue();
-        finalDownload.ShouldNotBeNull();
 
         downloadTaskDb = await container.DbContext.GetDownloadTaskAsync(
             downloadTask.Id,
@@ -106,5 +99,6 @@ public class RestartDownloadTaskEndpointIntegrationTests : BaseIntegrationTests
         );
         downloadTaskDb.ShouldNotBeNull();
         downloadTaskDb.DownloadStatus.ShouldBe(DownloadStatus.Completed);
+
     }
 }

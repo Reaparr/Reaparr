@@ -35,16 +35,16 @@ public static partial class FakeData
     public static Faker<DownloadTaskMusicArtist> GetDownloadTaskMusicArtist(
         Seed seed,
         Action<FakeDataConfig>? options = null
-    )
-    {
-        var config = FakeDataConfig.FromOptions(options);
+    ) => GetDownloadTaskMusicArtist(seed, FakeDataConfig.FromOptions(options));
 
+    internal static Faker<DownloadTaskMusicArtist> GetDownloadTaskMusicArtist(Seed seed, FakeDataConfig config)
+    {
         return _downloadTaskMusicArtistFaker
             .RuleFor(
                 x => x.Children,
                 _ =>
                 {
-                    var faker = GetDownloadTaskMusicAlbum(seed, options);
+                    var faker = GetDownloadTaskMusicAlbum(seed, config);
                     return config.MusicAlbumDownloadTasksCount > 0
                         ? faker.Generate(config.MusicAlbumDownloadTasksCount)
                         : faker.GenerateBetween(1, 5);

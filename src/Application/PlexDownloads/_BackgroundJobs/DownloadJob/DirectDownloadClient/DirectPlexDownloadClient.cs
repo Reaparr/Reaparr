@@ -37,6 +37,8 @@ public class DirectPlexDownloadClient : IPlexDownloadClient
 
     internal System.Reactive.Concurrency.IScheduler ProgressScheduler { get; set; } = Scheduler.Default;
 
+    internal TimeProvider RetryTimeProvider { get; set; } = TimeProvider.System;
+
     public DirectPlexDownloadClient(
         ILogger log,
         IReaparrDbContextFactory dbContextFactory,
@@ -147,7 +149,7 @@ public class DirectPlexDownloadClient : IPlexDownloadClient
 
         var retryAttempt = 0;
         DirectDownloadSnapshot? latestCallbackSnapshot = null;
-        var retryPipeline = new ResiliencePipelineBuilder<Result>()
+        var retryPipeline = new ResiliencePipelineBuilder<Result> { TimeProvider = RetryTimeProvider }
             .AddRetry(
                 new RetryStrategyOptions<Result>
                 {

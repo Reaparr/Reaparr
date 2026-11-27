@@ -19,9 +19,10 @@ public static partial class FakeData
         );
 
     public static Faker<DownloadTaskMovie> GetMovieDownloadTask(Seed seed, Action<FakeDataConfig>? options = null)
-    {
-        var config = FakeDataConfig.FromOptions(options);
+        => GetMovieDownloadTask(seed, FakeDataConfig.FromOptions(options));
 
+    internal static Faker<DownloadTaskMovie> GetMovieDownloadTask(Seed seed, FakeDataConfig config)
+    {
         return _downloadTaskMovieFaker
             .UseSeed(seed.Next())
             .RuleFor(
@@ -33,7 +34,7 @@ public static partial class FakeData
             )
             .RuleFor(
                 x => x.Children,
-                _ => GetDownloadTaskMovieFile(seed, options).Generate(config.IncludeMultiPartMovies ? 2 : 1)
+                _ => GetDownloadTaskMovieFile(seed, config).Generate(config.IncludeMultiPartMovies ? 2 : 1)
             );
     }
 
@@ -47,10 +48,10 @@ public static partial class FakeData
     public static Faker<DownloadTaskMovieFile> GetDownloadTaskMovieFile(
         Seed seed,
         Action<FakeDataConfig>? options = null
-    )
-    {
-        var config = FakeDataConfig.FromOptions(options);
+    ) => GetDownloadTaskMovieFile(seed, FakeDataConfig.FromOptions(options));
 
+    private static Faker<DownloadTaskMovieFile> GetDownloadTaskMovieFile(Seed seed, FakeDataConfig config)
+    {
         return _downloadTaskMovieFileFaker
             .RuleFor(
                 x => x.DataTotal,

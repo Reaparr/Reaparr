@@ -347,9 +347,40 @@ public class BootUnitTests : BaseUnitTest<Boot>
     {
         // Arrange
         var lifetime = Mock.Mock<IHostApplicationLifetime>();
-        lifetime.SetupGet(x => x.ApplicationStarted).Returns(CancellationToken.None);
+        using var started = new CancellationTokenSource();
+        lifetime.SetupGet(x => x.ApplicationStarted).Returns(started.Token);
         lifetime.SetupGet(x => x.ApplicationStopping).Returns(CancellationToken.None);
         lifetime.SetupGet(x => x.ApplicationStopped).Returns(CancellationToken.None);
+        var startupEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseStartup = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var commands = Mock.Mock<ICommandExecutor>();
+        commands
+            .Setup(x => x.Send(It.IsAny<MigrateLegacyArrSettingsCommand>(), CancellationToken.None))
+            .Returns(async () =>
+            {
+                startupEntered.SetResult();
+                await releaseStartup.Task;
+                return Result.Ok();
+            })
+            .Verifiable(Times.Once());
+        commands
+            .Setup(x => x.Send(It.IsAny<RecalculatePlexGenreTypesCommand>(), CancellationToken.None))
+            .ReturnsAsync(Result.Ok(new PlexGenreTypeRecalculationResult(0, 0)))
+            .Verifiable(Times.Once());
+        commands
+            .Setup(x => x.Send(It.IsAny<NotifyArrAppsOnStartupCommand>(), CancellationToken.None))
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
+        var queueStopping = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseQueue = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var queue = Mock.Mock<IDownloadQueue>();
+        queue.Setup(x => x.WaitForShutdownAsync(CancellationToken.None))
+            .Returns(() =>
+            {
+                queueStopping.SetResult();
+                return releaseQueue.Task;
+            })
+            .Verifiable(Times.Once());
         var standbyStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var releaseStandby = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var scheduler = Mock.Mock<IScheduler>();
@@ -377,7 +408,27 @@ public class BootUnitTests : BaseUnitTest<Boot>
 
         // Act
         var boot = Sut;
+        await started.CancelAsync();
+        await startupEntered.Task.WaitAsync(TimeSpan.FromSeconds(2));
         var firstStop = boot.StopAsync(CancellationToken.None);
+        try
+        {
+            scheduler.Verify(x => x.Standby(CancellationToken.None), Times.Never());
+        }
+        finally
+        {
+            releaseStartup.TrySetResult();
+        }
+        try
+        {
+            await queueStopping.Task.WaitAsync(TimeSpan.FromSeconds(2));
+            scheduler.Verify(x => x.Standby(CancellationToken.None), Times.Never());
+        }
+        finally
+        {
+            releaseQueue.TrySetResult();
+        }
+
         await standbyStarted.Task.WaitAsync(TimeSpan.FromSeconds(2));
         var secondStop = boot.StopAsync(CancellationToken.None);
         secondStop.ShouldBeSameAs(firstStop);
@@ -386,6 +437,7 @@ public class BootUnitTests : BaseUnitTest<Boot>
 
         // Assert
         scheduler.Verify();
+        queue.Verify();
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<IBackgroundJobsSetup>().Verify();
     }

@@ -254,6 +254,26 @@ public class StartDownloadTaskEndpointIntegrationTests : BaseIntegrationTests
     }
 
     [Test]
+    public async Task ShouldThrowTimeout_WhenDatabaseConditionIsNeverMet()
+    {
+        await Should.ThrowAsync<TimeoutException>(() =>
+            WaitForDatabaseConditionAsync(_ => Task.FromResult(false), CancellationToken.None, maxRetries: 2, delayMs: 1)
+        );
+    }
+
+    [Test]
+    public async Task ShouldCancelWait_WhenCancellationIsRequested()
+    {
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+
+        var exception = await Should.ThrowAsync<OperationCanceledException>(() =>
+            WaitForDatabaseConditionAsync(_ => Task.FromResult(false), cancellation.Token, maxRetries: 2, delayMs: 1)
+        );
+        exception.CancellationToken.ShouldBe(cancellation.Token);
+    }
+
+    [Test]
     public async Task ShouldStartQueuedMovieDownloadTaskOnStartCommand_WhenNoTasksAreDownloading()
     {
         // Arrange
@@ -296,24 +316,14 @@ public class StartDownloadTaskEndpointIntegrationTests : BaseIntegrationTests
             await testResult.Response.Content.ReadAsStringAsync(CancellationToken)
         );
 
-        var finalDownload = await container.WaitForDownloadStatusAsync(
-            downloadTask.Id,
-            [DownloadStatus.Completed],
-            TimeSpan.FromSeconds(20),
-            CancellationToken
-        );
+        await WaitForDownloadStatusAsync(container, downloadTask.ToKey(), DownloadStatus.Completed, CancellationToken);
 
         // Assert
         var result = testResult.Result;
         result.IsSuccess.ShouldBeTrue();
-        var finalDownloadFailureMessage = string.Format(
-            "WaitForDownloadStatusAsync timed out waiting for download '{0}' to reach status '{1}'.",
-            downloadTask.Id,
-            DownloadStatus.Completed
-        );
-        finalDownload.ShouldNotBeNull(finalDownloadFailureMessage);
 
-        var downloadTaskDb = await container.DbContext.GetDownloadTaskAsync(
+        using var finalDbContext = await container.Resolve<IReaparrDbContextFactory>().CreateAsync();
+        var downloadTaskDb = await finalDbContext.GetDownloadTaskAsync(
             downloadTask.Id,
             cancellationToken: CancellationToken
         );

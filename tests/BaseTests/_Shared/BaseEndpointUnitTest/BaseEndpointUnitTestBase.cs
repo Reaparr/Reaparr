@@ -21,6 +21,11 @@ public abstract class BaseEndpointUnitTestBase<TEndpoint, TResponse> : BaseUnitT
     where TEndpoint : class, IEndpoint
     where TResponse : class
 {
+    private static class ValidatorLookup<TRequest>
+    {
+        internal static readonly Type[] Matches = FindValidatorTypes(typeof(TRequest));
+    }
+
     /// <summary>
     /// Runs the endpoint request validator, when one exists, before invoking the endpoint handler.
     /// </summary>
@@ -35,8 +40,25 @@ public abstract class BaseEndpointUnitTestBase<TEndpoint, TResponse> : BaseUnitT
         where TRequest : class
     {
         var requestType = typeof(TRequest);
+        var matches = ValidatorLookup<TRequest>.Matches;
 
-        var validatorTypes = new[] { requestType.Assembly, typeof(TEndpoint).Assembly }
+        if (matches.Length > 1)
+        {
+            throw new InvalidOperationException(
+                $"Multiple validators found for endpoint request type '{requestType.FullName}'. Endpoint unit tests expect at most one validator."
+            );
+        }
+
+        if (matches.Length == 0)
+            return null;
+
+        var validator = (IValidator)Activator.CreateInstance(matches[0])!;
+        var context = new FluentValidation.ValidationContext<TRequest>(request);
+        return await validator.ValidateAsync(context, cancellationToken);
+    }
+
+    private static Type[] FindValidatorTypes(Type requestType) =>
+        new[] { requestType.Assembly, typeof(TEndpoint).Assembly }
             .Distinct()
             .SelectMany(assembly => assembly.GetTypes())
             .Where(t =>
@@ -48,22 +70,8 @@ public abstract class BaseEndpointUnitTestBase<TEndpoint, TResponse> : BaseUnitT
                         && i.GenericTypeArguments[0] == requestType
                     )
             )
-            .ToList();
-
-        var validator = validatorTypes.Count switch
-        {
-            0 => null,
-            1 => (IValidator)Activator.CreateInstance(validatorTypes[0])!,
-            _ => throw new InvalidOperationException(
-                $"Multiple validators found for endpoint request type '{requestType.FullName}'. Endpoint unit tests expect at most one validator."
-            ),
-        };
-        if (validator is null)
-            return null;
-
-        var context = new FluentValidation.ValidationContext<TRequest>(request);
-        return await validator.ValidateAsync(context, cancellationToken);
-    }
+            .Take(2)
+            .ToArray();
 
     /// <summary>
     /// Captures a response from a FastEndpoints endpoint without requiring every endpoint to assign

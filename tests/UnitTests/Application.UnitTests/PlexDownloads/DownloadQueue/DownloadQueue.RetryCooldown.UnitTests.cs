@@ -648,14 +648,8 @@ public class DownloadQueueRetryCooldownUnitTests : BaseUnitTest<DownloadQueue>
     private static async Task StopQueueAsync(DownloadQueue queue, CancellationTokenSource cancellation)
     {
         await cancellation.CancelAsync();
-        var worker = (Task)
-            typeof(DownloadQueue)
-                .GetField(
-                    "_workerTask",
-                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic
-                )!
-                .GetValue(queue)!;
-        await worker.WaitAsync(TimeSpan.FromSeconds(5));
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        await queue.WaitForShutdownAsync(timeout.Token);
     }
 
     private sealed class RetryClock : TimeProvider
