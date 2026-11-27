@@ -338,12 +338,12 @@ public class DownloadQueueCheckDownloadQueueUnitTests : BaseUnitTest<DownloadQue
     }
 
     [Test]
-    public async Task ShouldStartNextDownloadTask_WhenJobIsStillRunningButDatabaseStatusIsDownloadFinished()
+    [Arguments(DownloadStatus.DownloadFinished)]
+    [Arguments(DownloadStatus.Moving)]
+    [Arguments(DownloadStatus.Completed)]
+    public async Task ShouldStartNextDownloadTask_WhenPriorJobIsStillRegisteredAfterDownloadFinished(DownloadStatus status)
     {
-        // Arrange
-        // This test simulates the race condition where a download job has finished and updated
-        // the database status to DownloadFinished, but the Quartz job is still in the process
-        // of cleaning up and hasn't been removed from the scheduler yet.
+        // Arrange: Quartz still reports the prior download while the move pipeline advances it.
         await SetupDatabase(88234, config =>
         {
             config.PlexServerCount = 1;
@@ -359,14 +359,13 @@ public class DownloadQueueCheckDownloadQueueUnitTests : BaseUnitTest<DownloadQue
             .IncludeAll()
             .ToListAsync(CancellationToken);
 
-        // Set the first task to DownloadFinished (simulating a just-completed download)
-        // We set this on the file-level task (child) which is what actually gets downloaded
+        // The active Quartz key refers to the file-level task.
         var firstMovieDownloadTask = downloadTasks[0];
         var firstFileTaskId = firstMovieDownloadTask.Children.First().Id;
         await dbContext
             .DownloadTaskMovieFile.Where(x => x.Id == firstFileTaskId)
             .ExecuteUpdateAsync(
-                p => p.SetProperty(x => x.DownloadStatus, DownloadStatus.DownloadFinished),
+                p => p.SetProperty(x => x.DownloadStatus, status),
                 CancellationToken
             );
 
