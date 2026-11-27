@@ -1,3 +1,4 @@
+using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Hosting;
 
 namespace Reaparr.IntegrationTests;
@@ -124,6 +125,57 @@ public class IntegrationTestFileSystemIsolationIntegrationTests : BaseIntegratio
         container.GetServerSettings.GetDownloadSpeedLimit(server.MachineIdentifier).ShouldBe(100);
         container.Resolve<Seed>().Next().ShouldBe(new Seed(1).Next());
         revision.ShouldBe(1);
+    }
+
+    [Test]
+    public async Task ShouldKeepSeededMemoryDatabaseUntilFixtureDisposal()
+    {
+        // Arrange
+        string databaseName;
+
+        // Act
+        using (var container = await CreateContainer(909, config =>
+        {
+            config.OverrideAppRuntimeInfo = runtime => runtime.IsIntegrationTestMode = false;
+            config.DatabaseOptions = database => database.PlexServerCount = 2;
+        }))
+        {
+            databaseName = container.DatabaseName;
+            (await container.DbContext.PlexServers.CountAsync(CancellationToken)).ShouldBe(2);
+        }
+
+        // Assert
+        await using var connection = new SqliteConnection(
+            DbContextConnections.GetConnectionString(databaseName, SqliteOpenMode.Memory)
+        );
+        await connection.OpenAsync(CancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table'";
+        (await command.ExecuteScalarAsync(CancellationToken)).ShouldBe(0L);
+    }
+
+    [Test]
+    public async Task ShouldKeepScopeOwnedContextUsableAfterApplyingSpeedLimit()
+    {
+        // Arrange
+        const int speedLimit = 128;
+
+        // Act
+        using var container = await CreateContainer(910, config =>
+        {
+            config.DownloadSpeedLimitInKib = speedLimit;
+            config.OverrideServices = builder => builder
+                .Register(context => MockDatabase.GetMemoryReaparrDbContext(
+                    context.Resolve<ILogger>(),
+                    context.Resolve<IPathProvider>(),
+                    context.Resolve<IAppRuntimeInfo>()
+                ))
+                .InstancePerLifetimeScope();
+        });
+
+        // Assert
+        var server = await container.ReaparrDbContext.PlexServers.SingleAsync(CancellationToken);
+        container.GetServerSettings.GetDownloadSpeedLimit(server.MachineIdentifier).ShouldBe(speedLimit);
     }
 
     private sealed class FailingShutdownProbe : IHostedService, IDisposable

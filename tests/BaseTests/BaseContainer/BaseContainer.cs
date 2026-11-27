@@ -15,6 +15,7 @@ public class BaseContainer : IDisposable
 
     private readonly ILifetimeScope _lifeTimeScope;
     private readonly string _databasePath;
+    private readonly SqliteConnection? _memoryDatabaseConnection;
 
     public string DatabaseName => _factory.MemoryDbName;
 
@@ -27,13 +28,15 @@ public class BaseContainer : IDisposable
         ILogger log,
         ReaparrWebApplicationFactory factory,
         string testFileSystemRootPath,
-        string databasePath
+        string databasePath,
+        SqliteConnection? memoryDatabaseConnection
     )
     {
         _log = log.ForContext<BaseContainer>();
 
         TestFileSystemRootPath = testFileSystemRootPath;
         _databasePath = databasePath;
+        _memoryDatabaseConnection = memoryDatabaseConnection;
 
         _factory = factory;
 
@@ -61,10 +64,20 @@ public class BaseContainer : IDisposable
 
         ReaparrWebApplicationFactory? factory = null;
         BaseContainer? container = null;
+        SqliteConnection? memoryDatabaseConnection = null;
         try
         {
             testFileSystemRootPath = IntegrationTestFileSystemSandbox.Create(memoryDbName, log, mockPathProvider);
             log.Information("Initialized integration test with database name: {DatabaseName}", memoryDbName);
+            if (!mockAppRuntimeInfo.IsIntegrationTestMode)
+            {
+                // The named in-memory database disappears when its last connection closes.
+                memoryDatabaseConnection = new SqliteConnection(
+                    DbContextConnections.GetConnectionString(memoryDbName, SqliteOpenMode.Memory)
+                );
+                await memoryDatabaseConnection.OpenAsync();
+            }
+
             var (reaparrContext, authContext) = MockDatabase.GetMemoryDbContext(
                 log,
                 mockPathProvider,
@@ -78,7 +91,13 @@ public class BaseContainer : IDisposable
             }
 
             factory = new ReaparrWebApplicationFactory(seed, memoryDbName, config, mockAppBuildInfo, mockAppRuntimeInfo, useTestAuthentication);
-            container = new BaseContainer(log, factory, testFileSystemRootPath, mockPathProvider.DatabasePath);
+            container = new BaseContainer(
+                log,
+                factory,
+                testFileSystemRootPath,
+                mockPathProvider.DatabasePath,
+                memoryDatabaseConnection
+            );
 
             if (config.FileSystemOptions is not null)
             {
@@ -113,6 +132,12 @@ public class BaseContainer : IDisposable
             }
             finally
             {
+                if (memoryDatabaseConnection is not null)
+                {
+                    var cleanup = await Result.Try(memoryDatabaseConnection.DisposeAsync);
+                    cleanup.LogIfFailed();
+                }
+
                 DeleteSandbox(log, memoryDbName, testFileSystemRootPath, mockPathProvider.DatabasePath);
             }
 
@@ -156,8 +181,7 @@ public class BaseContainer : IDisposable
 
     private async Task SetDownloadSpeedLimit(int downloadSpeedLimitInKib)
     {
-        await using var dbContext = ReaparrDbContext;
-        var machineIdentifiers = await dbContext.PlexServers.Select(server => server.MachineIdentifier).ToListAsync();
+        var machineIdentifiers = await ReaparrDbContext.PlexServers.Select(server => server.MachineIdentifier).ToListAsync();
         var settings = GetServerSettings;
         foreach (var machineIdentifier in machineIdentifiers)
             settings.SetDownloadSpeedLimit(machineIdentifier, downloadSpeedLimitInKib);
@@ -187,6 +211,20 @@ public class BaseContainer : IDisposable
             if (firstFailure is not null)
                 _log.Here().Error(exception, "Failed to release fixture scope for {DatabaseName}", DatabaseName);
             firstFailure ??= exception;
+        }
+
+        if (_memoryDatabaseConnection is not null)
+        {
+            try
+            {
+                _memoryDatabaseConnection.Dispose();
+            }
+            catch (Exception exception)
+            {
+                if (firstFailure is not null)
+                    _log.Here().Error(exception, "Failed to close the memory database for {DatabaseName}", DatabaseName);
+                firstFailure ??= exception;
+            }
         }
 
         DeleteSandbox(_log, DatabaseName, TestFileSystemRootPath, _databasePath);
