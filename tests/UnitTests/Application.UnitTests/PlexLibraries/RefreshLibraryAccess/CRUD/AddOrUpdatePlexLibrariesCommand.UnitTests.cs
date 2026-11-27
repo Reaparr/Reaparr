@@ -270,6 +270,77 @@ public class AddOrUpdatePlexLibrariesCommandUnitTests : BaseUnitTest<AddOrUpdate
     }
 
     [Test]
+    public async Task ShouldFinishRevocationBookkeeping_WhenSyncCancellationFails()
+    {
+        // Arrange
+        await SetupDatabase(62616, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 2;
+            config.PlexAccountCount = 1;
+        });
+        var dbContext = IDbContext;
+        var account = await dbContext.PlexAccounts.SingleAsync(CancellationToken);
+        var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
+        var retained = libraries[0];
+        var revoked = libraries[1];
+        var links = dbContext.PlexAccountLibraries.Where(x => x.PlexAccountId == account.Id);
+        (
+            await links.OrderBy(x => x.PlexLibraryId).Select(x => x.PlexLibraryId).ToListAsync(CancellationToken)
+        ).ShouldBe([retained.Id, revoked.Id]);
+        var request = new AddOrUpdatePlexLibrariesCommand
+        {
+            PlexAccountId = account.Id,
+            PlexLibraries = new List<PlexLibrary> { retained }.ToApiLibraries(DateTime.UtcNow),
+        };
+        var cancellationError = new Error("Sync interruption failed");
+        Mock.SetupCommand(() => new CancelLibrarySyncJobCommand(revoked.Id))
+            .ReturnsAsync(Result.Fail(cancellationError))
+            .Verifiable(Times.Once());
+        var executor = Mock.Mock<ICommandExecutor>();
+        executor
+            .Setup(x =>
+                x.Send(
+                    It.Is<InvalidateLibraryComparisonJobsCommand>(c =>
+                        c.PlexLibraryIds.SequenceEqual(new[] { revoked.Id })
+                    ),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
+        Mock.SetupCommand(() => new ScheduleAffectedLibraryComparisonJobsCommand(revoked.Id))
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
+
+        // Act
+        var result = await Sut.ExecuteAsync(request, CancellationToken);
+
+        // Assert
+        result.IsFailed.ShouldBeTrue();
+        result.Errors.Single().ShouldBeSameAs(cancellationError);
+        (await links.Select(x => x.PlexLibraryId).ToListAsync(CancellationToken)).ShouldBe([retained.Id]);
+        var history = await dbContext
+            .PlexLibraryAccessHistoryEvents.Where(x => x.State == PlexAccessState.Revoked)
+            .Select(x => new
+            {
+                x.PlexAccountId,
+                x.PlexServerId,
+                x.PlexLibraryId,
+            })
+            .SingleAsync(CancellationToken);
+        history.ShouldBe(
+            new
+            {
+                PlexAccountId = account.Id,
+                PlexServerId = (int?)revoked.PlexServerId,
+                PlexLibraryId = (int?)revoked.Id,
+            }
+        );
+        executor.Verify();
+    }
+
+    [Test]
     public async Task ShouldAddAllPlexLibraries_WhenNoneExistInTheDatabase()
     {
         // Arrange
