@@ -1,3 +1,6 @@
+using Autofac;
+using Microsoft.Extensions.Hosting;
+
 namespace Reaparr.IntegrationTests;
 
 public class IntegrationTestFileSystemIsolationIntegrationTests : BaseIntegrationTests
@@ -48,5 +51,51 @@ public class IntegrationTestFileSystemIsolationIntegrationTests : BaseIntegratio
         exception.ShouldBeSameAs(failure);
         Directory.Exists(failedSandbox).ShouldBeFalse();
         Directory.Exists(retained.TestFileSystemRootPath).ShouldBeTrue();
+    }
+
+    [Test]
+    public async Task ShouldKeepSandboxUntilHostedShutdownCompletes()
+    {
+        // Arrange
+        var probe = new ShutdownProbe();
+        var container = await CreateContainer(505, config =>
+            config.OverrideServices = builder => builder.RegisterInstance(probe).As<IHostedService>()
+        );
+        var sandbox = container.TestFileSystemRootPath;
+        Directory.Exists(sandbox).ShouldBeTrue();
+
+        // Act
+        var disposal = Task.Run(container.Dispose);
+        try
+        {
+            await probe.Stopping.Task.WaitAsync(TimeSpan.FromSeconds(10), CancellationToken);
+            Directory.Exists(sandbox).ShouldBeTrue();
+            disposal.IsCompleted.ShouldBeFalse();
+        }
+        finally
+        {
+            probe.Release.TrySetResult();
+            await disposal.WaitAsync(TimeSpan.FromSeconds(30), CancellationToken);
+        }
+
+        // Assert
+        Directory.Exists(sandbox).ShouldBeFalse();
+    }
+
+    private sealed class ShutdownProbe : IHostedService
+    {
+        public ShutdownProbe() { }
+
+        public TaskCompletionSource Stopping { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+        public Task StopAsync(CancellationToken cancellationToken)
+        {
+            Stopping.TrySetResult();
+            return Release.Task.WaitAsync(cancellationToken);
+        }
     }
 }

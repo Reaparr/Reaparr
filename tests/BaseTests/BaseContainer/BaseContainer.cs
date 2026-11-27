@@ -14,6 +14,7 @@ public class BaseContainer : IDisposable
     private readonly ILogger _log;
 
     private readonly ILifetimeScope _lifeTimeScope;
+    private readonly string _databasePath;
 
     public string DatabaseName => _factory.MemoryDbName;
 
@@ -22,11 +23,17 @@ public class BaseContainer : IDisposable
     /// <summary>
     /// Creates an Autofac container and sets up a test database.
     /// </summary>
-    private BaseContainer(ILogger log, ReaparrWebApplicationFactory factory, string testFileSystemRootPath)
+    private BaseContainer(
+        ILogger log,
+        ReaparrWebApplicationFactory factory,
+        string testFileSystemRootPath,
+        string databasePath
+    )
     {
         _log = log.ForContext<BaseContainer>();
 
         TestFileSystemRootPath = testFileSystemRootPath;
+        _databasePath = databasePath;
 
         _factory = factory;
 
@@ -71,7 +78,7 @@ public class BaseContainer : IDisposable
             }
 
             factory = new ReaparrWebApplicationFactory(seed, memoryDbName, options, useTestAuthentication);
-            container = new BaseContainer(log, factory, testFileSystemRootPath);
+            container = new BaseContainer(log, factory, testFileSystemRootPath, mockPathProvider.DatabasePath);
 
             if (config.FileSystemOptions is not null)
             {
@@ -329,49 +336,20 @@ public class BaseContainer : IDisposable
 
     public void Dispose()
     {
-        var dbName = DatabaseName;
-        _log.Here().Warning("Integration Test with DatabaseName: \"{DatabaseName}\" has ended, Disposing!", dbName);
-
-        // Wait for any pending async operations to complete before disposing
-        // This prevents ObjectDisposedException when FastEndpoints command handlers
-        // are still executing in background threads during parallel test execution
-        _log.Here()
-            .Information("Waiting for async operations to complete before disposing container {DatabaseName}", dbName);
-
+        // WebApplicationFactory.Dispose joins IHost.StopAsync before returning.
         try
         {
-            var delay = Task.Delay(TimeSpan.FromMilliseconds(100));
-            delay.Wait();
-            _log.Here().Information("Async operations wait completed for container {DatabaseName}", dbName);
+            _factory.Dispose();
         }
-        catch (Exception ex)
+        finally
         {
-            _log.Here().Error(ex, "Error during async operations wait: {Error}", ex.Message);
-        }
-        _log.Here().Information("Disposing factory for container {DatabaseName}", dbName);
-        _factory.Dispose();
-
-        try
-        {
-            // Ensure the database is deleted
-            ReaparrDbContext.Database.EnsureDeleted();
-        }
-        catch (Exception ex)
-        {
-            _log.Here()
-                .Error(ex, "Failed to delete database: {DatabaseName}, Error: {ExceptionMessage}", dbName, ex.Message);
+            _lifeTimeScope.Dispose();
         }
 
-        DeleteSandbox(_log, dbName, TestFileSystemRootPath);
-
-        // Dispose of the lifetime scope as the last step
-        _log.Here().Information("Disposing lifetime scope for container {DatabaseName}", dbName);
-        _lifeTimeScope.Dispose();
-
-        _log.Here().Fatal("Container disposed");
+        DeleteSandbox(_log, DatabaseName, TestFileSystemRootPath, _databasePath);
     }
 
-    private static void DeleteSandbox(ILogger log, string dbName, string sandboxPath, string? databasePath = null)
+    private static void DeleteSandbox(ILogger log, string dbName, string sandboxPath, string databasePath)
     {
         var cleanupResult = Result.Try(() =>
         {
@@ -385,13 +363,10 @@ public class BaseContainer : IDisposable
 
             if (Directory.Exists(pathToDelete))
             {
-                if (databasePath is not null)
-                {
-                    using var connection = new SqliteConnection(
-                        DbContextConnections.GetConnectionString(databasePath, SqliteOpenMode.ReadWriteCreate)
-                    );
-                    SqliteConnection.ClearPool(connection);
-                }
+                using var connection = new SqliteConnection(
+                    DbContextConnections.GetConnectionString(databasePath, SqliteOpenMode.ReadWriteCreate)
+                );
+                SqliteConnection.ClearPool(connection);
 
                 Directory.Delete(pathToDelete, recursive: true);
                 log.Here()
