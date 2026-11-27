@@ -50,6 +50,7 @@ export const useLibraryStore = defineStore(StoreNames.LibraryStore, () => {
 	const telemetry = useTelemetry();
 	let syncQueueRevision = 0;
 	let appliedSyncQueueRevision = 0;
+	const localSyncQueueRevisions = new Map<number, number>();
 	const actions = {
 		setup(): Observable<ISetupResult> {
 			// Listen for refresh notifications
@@ -72,7 +73,9 @@ export const useLibraryStore = defineStore(StoreNames.LibraryStore, () => {
 			})));
 		},
 		updateSyncQueue(queue: LibrarySyncJobQueueDTO): void {
-			appliedSyncQueueRevision = ++syncQueueRevision;
+			const revision = ++syncQueueRevision;
+			localSyncQueueRevisions.set(queue.plexLibraryId, revision);
+			// A local update protects only its library; other snapshot rows may still advance.
 			const index = state.syncQueues.findIndex((x) => x.plexLibraryId === queue.plexLibraryId);
 			if (index > -1) {
 				state.syncQueues.splice(index, 1, queue);
@@ -110,7 +113,20 @@ export const useLibraryStore = defineStore(StoreNames.LibraryStore, () => {
 					map(({ isSuccess, value }) => {
 						if (isSuccess && revision > appliedSyncQueueRevision) {
 							appliedSyncQueueRevision = revision;
-							state.syncQueues = value ?? [];
+							const snapshot = value ?? [];
+							const newerLocalLibraryIds = new Set<number>();
+							for (const [libraryId, localRevision] of localSyncQueueRevisions) {
+								if (localRevision > revision)
+									newerLocalLibraryIds.add(libraryId);
+							}
+							state.syncQueues = [
+								...snapshot.filter((queue) => !newerLocalLibraryIds.has(queue.plexLibraryId)),
+								...state.syncQueues.filter((queue) => newerLocalLibraryIds.has(queue.plexLibraryId)),
+							];
+							for (const [libraryId, localRevision] of localSyncQueueRevisions) {
+								if (localRevision <= revision)
+									localSyncQueueRevisions.delete(libraryId);
+							}
 						}
 						return [...state.syncQueues];
 					}),
@@ -221,6 +237,7 @@ export const useLibraryStore = defineStore(StoreNames.LibraryStore, () => {
 			state.libraries.push(Object.freeze(library));
 		}, $reset() {
 			appliedSyncQueueRevision = ++syncQueueRevision;
+			localSyncQueueRevisions.clear();
 			Object.assign(state, cloneDeep(defaultState));
 		},
 	};

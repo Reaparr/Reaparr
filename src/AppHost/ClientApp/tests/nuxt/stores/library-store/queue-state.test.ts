@@ -380,6 +380,24 @@ describe('LibraryStore queue state', () => {
 		await subscribeSpyTo(store.refreshLibrarySyncStatus()).onComplete();
 		expect(store.getLibrarySyncQueue(11)).toEqual(requeued);
 	});
+	test('Should retain locally re-synced library while applying other snapshot rows', async () => {
+		const store = useLibraryStore();
+		const pending = new Subject<ResultDTO<LibrarySyncJobQueueDTO[]>>();
+		vi.spyOn(plexLibraryApi, 'getLibrarySyncStatusEndpoint').mockReturnValueOnce(pending.asObservable());
+		const queuedA = generateLibrarySyncJobQueue({ plexLibraryId: 11, plexServerId: 1, status: LibrarySyncJobStatus.Queued });
+		const queuedB = generateLibrarySyncJobQueue({ plexLibraryId: 12, plexServerId: 1, status: LibrarySyncJobStatus.Queued });
+		const newA = { ...queuedA, createdAt: '2026-11-25T12:00:00Z' };
+		const completedB = { ...queuedB, status: LibrarySyncJobStatus.Completed };
+
+		const result = subscribeSpyTo(store.refreshLibrarySyncStatus());
+		store.updateSyncQueue(newA);
+		pending.next(generateResultDTO([queuedA, completedB]));
+		pending.complete();
+		await result.onComplete();
+
+		expect(store.getLibrarySyncQueue(11)).toEqual(newA);
+		expect(store.getLibrarySyncQueue(12)).toEqual(completedB);
+	});
 });
 
 function createConnection(plexServerId: number, isSuccessful: boolean): PlexServerConnectionDTO {
