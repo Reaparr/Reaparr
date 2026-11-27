@@ -6,8 +6,10 @@ public partial class BaseUnitTest
 {
     protected readonly ILogger Log;
 
-    // Use loose behavior here to avoid Dispose() not mocked exception
-    protected Mock<HttpMessageHandler> HttpHandlerMock = new(MockBehavior.Loose);
+    private Mock<HttpMessageHandler>? _httpHandlerMock;
+
+    // Use loose behavior so callers do not need to set up Dispose().
+    protected Mock<HttpMessageHandler> HttpHandlerMock => _httpHandlerMock ??= new(MockBehavior.Loose);
 
     protected static CancellationToken CancellationToken =>
         TestContext.Current?.Execution.CancellationToken ?? CancellationToken.None;
