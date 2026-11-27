@@ -2201,6 +2201,63 @@ public static partial class DbContextExtensions
         return rootIds;
     }
 
+    public static async Task<DownloadTaskLifecycleMetadata?> GetRootDownloadTaskLifecycleMetadataAsync(
+        this IReaparrDbContext dbContext,
+        DownloadTaskKey rootKey,
+        CancellationToken cancellationToken = default
+    )
+    {
+        return rootKey.Type switch
+        {
+            DownloadTaskType.Movie => await dbContext
+                .DownloadTaskMovie.Where(x => x.Id == rootKey.Id)
+                .Select(x => new DownloadTaskLifecycleMetadata
+                {
+                    CreatedAt = x.CreatedAt,
+                    SonarrIntegrationId = x.SonarrIntegrationId,
+                    RadarrIntegrationId = x.RadarrIntegrationId,
+                })
+                .FirstOrDefaultAsync(cancellationToken),
+            DownloadTaskType.TvShow => await dbContext
+                .DownloadTaskTvShow.Where(x => x.Id == rootKey.Id)
+                .Select(x => new DownloadTaskLifecycleMetadata
+                {
+                    CreatedAt = x.CreatedAt,
+                    SonarrIntegrationId = x.SonarrIntegrationId,
+                    RadarrIntegrationId = x.RadarrIntegrationId,
+                })
+                .FirstOrDefaultAsync(cancellationToken),
+            DownloadTaskType.MusicArtist => await dbContext
+                .DownloadTaskMusicArtists.Where(x => x.Id == rootKey.Id)
+                .Select(x => new DownloadTaskLifecycleMetadata
+                {
+                    CreatedAt = x.CreatedAt,
+                    SonarrIntegrationId = x.SonarrIntegrationId,
+                    RadarrIntegrationId = x.RadarrIntegrationId,
+                })
+                .FirstOrDefaultAsync(cancellationToken),
+            DownloadTaskType.PhotoFolder => await dbContext
+                .DownloadTaskPhotoFolders.Where(x => x.Id == rootKey.Id)
+                .Select(x => new DownloadTaskLifecycleMetadata
+                {
+                    CreatedAt = x.CreatedAt,
+                    SonarrIntegrationId = x.SonarrIntegrationId,
+                    RadarrIntegrationId = x.RadarrIntegrationId,
+                })
+                .FirstOrDefaultAsync(cancellationToken),
+            DownloadTaskType.OtherVideo => await dbContext
+                .DownloadTaskOtherVideos.Where(x => x.Id == rootKey.Id)
+                .Select(x => new DownloadTaskLifecycleMetadata
+                {
+                    CreatedAt = x.CreatedAt,
+                    SonarrIntegrationId = x.SonarrIntegrationId,
+                    RadarrIntegrationId = x.RadarrIntegrationId,
+                })
+                .FirstOrDefaultAsync(cancellationToken),
+            _ => null,
+        };
+    }
+
     public static async Task<DownloadTaskKey?> GetRootDownloadTaskKeyAsync(
         this IReaparrDbContext dbContext,
         DownloadTaskKey key,

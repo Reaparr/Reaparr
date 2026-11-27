@@ -57,10 +57,11 @@ public class GenerateDownloadTaskOtherVideosCommandUnitTests
         // Assert
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
-        result.Value.ShouldBe(new DownloadTaskCreationReport { OtherVideos = 1 });
         result.Value.Total.ShouldBe(1);
         var task = await dbContext.DownloadTaskOtherVideos.Include(x => x.Children).SingleAsync(CancellationToken);
         task.Id.ShouldNotBe(Guid.Empty);
+        result.Value.OtherVideos.ShouldBe(1);
+        result.Value.RootTaskIds.ShouldBe([task.Id]);
         task.PlexApiRatingKey.ShouldBe(source.PlexApiRatingKey);
         task.PlexServerId.ShouldBe(source.PlexServerId);
         task.PlexLibraryId.ShouldBe(source.PlexLibraryId);
@@ -180,8 +181,9 @@ public class GenerateDownloadTaskOtherVideosCommandUnitTests
         // Assert
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
-        result.Value.ShouldBe(new DownloadTaskCreationReport { OtherVideos = 1 });
+        result.Value.OtherVideos.ShouldBe(1);
         var task = await dbContext.DownloadTaskOtherVideos.Include(x => x.Children).SingleAsync(CancellationToken);
+        result.Value.RootTaskIds.ShouldBe([task.Id]);
         task.Calculate();
         task.DataTotal.ShouldBe(expected.Sum(x => x.Size));
         task.Children.OrderBy(x => x.PlexApiPartId)
@@ -251,9 +253,10 @@ public class GenerateDownloadTaskOtherVideosCommandUnitTests
         // Assert
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
-        result.Value.ShouldBe(new DownloadTaskCreationReport());
         var root = await dbContext.DownloadTaskOtherVideos.SingleAsync(CancellationToken);
         root.Id.ShouldBe(existing.Id);
+        result.Value.OtherVideos.ShouldBe(0);
+        result.Value.RootTaskIds.ShouldBeEmpty();
         root.DownloadStatus.ShouldBe(DownloadStatus.Completed);
         (await dbContext.DownloadTaskOtherVideoFiles.CountAsync(CancellationToken)).ShouldBe(0);
         (await dbContext.DownloadTaskOtherVideoFileLogs.CountAsync(CancellationToken)).ShouldBe(0);
@@ -452,8 +455,8 @@ public class GenerateDownloadTaskOtherVideosCommandUnitTests
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
-        result.Errors.Count.ShouldBe(0);
-        result.Value.ShouldBe(new DownloadTaskCreationReport());
+        result.Value.Total.ShouldBe(0);
+        result.Value.RootTaskIds.ShouldBeEmpty();
         (await dbContext.DownloadTaskOtherVideos.CountAsync(CancellationToken)).ShouldBe(0);
         (await dbContext.DownloadTaskOtherVideoFiles.CountAsync(CancellationToken)).ShouldBe(0);
         (await dbContext.DownloadTaskOtherVideoFileLogs.CountAsync(CancellationToken)).ShouldBe(0);
@@ -547,7 +550,7 @@ public class GenerateDownloadTaskOtherVideosCommandUnitTests
         // Assert
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
-        result.Value.ShouldBe(new DownloadTaskCreationReport { OtherVideos = 1 });
+        result.Value.OtherVideos.ShouldBe(1);
         var root = await dbContext.DownloadTaskOtherVideos.Include(x => x.Children).SingleAsync(CancellationToken);
         root.PlexApiRatingKey.ShouldBe(source.PlexApiRatingKey);
         root.PlexServerId.ShouldBe(source.PlexServerId);

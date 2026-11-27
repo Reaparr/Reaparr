@@ -55,6 +55,7 @@ public class GenerateDownloadTaskTvShowSeasonsCommandHandler
 
         var episodesIds = new List<DownloadMediaDTO>();
         var seasonsToInsert = new List<DownloadTaskTvShowSeason>();
+        var rootTaskIds = new HashSet<Guid>();
         var request = command.Request;
 
         foreach (var downloadMediaDto in plexSeasonList)
@@ -95,6 +96,7 @@ public class GenerateDownloadTaskTvShowSeasonsCommandHandler
                     _dbContext.DownloadTaskTvShow.Add(downloadTaskTvShow);
                     await _dbContext.SaveChangesAsync(cancellationToken);
                 }
+                rootTaskIds.Add(downloadTaskTvShow.Id);
 
                 // Check if the SeasonDownloadTask has already been created
                 var downloadTaskTvShowSeason = downloadTaskTvShow.Children.FirstOrDefault(x =>
@@ -140,6 +142,9 @@ public class GenerateDownloadTaskTvShowSeasonsCommandHandler
         if (episodesResult.IsFailed)
             return episodesResult.LogError();
 
-        return Result.Ok(new DownloadTaskCreationReport { Seasons = seasonsToInsert.Count } + episodesResult.Value);
+        return Result.Ok(
+            new DownloadTaskCreationReport { Seasons = seasonsToInsert.Count, RootTaskIds = rootTaskIds.ToArray() }
+                + episodesResult.Value
+        );
     }
 }

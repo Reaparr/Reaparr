@@ -70,15 +70,12 @@ public class GenerateDownloadTaskMusicArtistsCommandUnitTests
         // Assert
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
-        result.Value.ShouldBe(
-            new DownloadTaskCreationReport
-            {
-                MusicArtists = 1,
-                MusicAlbums = 1,
-                MusicTracks = 1,
-            }
-        );
+        result.Value.MusicArtists.ShouldBe(1);
+        result.Value.MusicAlbums.ShouldBe(1);
+        result.Value.MusicTracks.ShouldBe(1);
+        result.Value.Total.ShouldBe(3);
         var task = await IDbContext.DownloadTaskMusicArtists.SingleAsync(CancellationToken);
+        result.Value.RootTaskIds.ShouldBe([task.Id]);
         (task.PlexApiRatingKey, task.PlexServerId, task.PlexLibraryId).ShouldBe(
             (artist.PlexApiRatingKey, artist.PlexServerId, artist.PlexLibraryId)
         );
@@ -195,14 +192,9 @@ public class GenerateDownloadTaskMusicArtistsCommandUnitTests
         // Assert
         first.IsSuccess.ShouldBeTrue();
         first.Errors.Count.ShouldBe(0);
-        first.Value.ShouldBe(
-            new DownloadTaskCreationReport
-            {
-                MusicArtists = 1,
-                MusicAlbums = 1,
-                MusicTracks = 2,
-            }
-        );
+        first.Value.MusicArtists.ShouldBe(1);
+        first.Value.MusicAlbums.ShouldBe(1);
+        first.Value.MusicTracks.ShouldBe(2);
         repeated.IsSuccess.ShouldBeTrue();
         repeated.Errors.Count.ShouldBe(0);
         repeated.Value.ShouldBe(new DownloadTaskCreationReport());

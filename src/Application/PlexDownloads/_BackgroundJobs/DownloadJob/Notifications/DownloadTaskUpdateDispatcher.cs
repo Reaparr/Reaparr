@@ -193,7 +193,23 @@ public class DownloadTaskUpdateDispatcher : BackgroundService, IDownloadTaskUpda
                         rootStatus = (rootKey, newStatus);
 
                     if (rootStatus.Key is not null)
-                        _telemetry.DownloadLifecycleChanged(rootStatus.Key, rootStatus.Status);
+                    {
+                        var rootMetadata = await dbContext.GetRootDownloadTaskLifecycleMetadataAsync(
+                            rootStatus.Key,
+                            CancellationToken.None
+                        );
+                        if (rootMetadata is not null)
+                            _telemetry.DownloadLifecycleChanged(
+                                rootStatus.Key,
+                                rootStatus.Status,
+                                rootMetadata.CreatedAt,
+                                (
+                                    rootMetadata.SonarrIntegrationId,
+                                    rootMetadata.RadarrIntegrationId
+                                ).ToIntegrationIdentity(),
+                                DateTime.UtcNow
+                            );
+                    }
                     await _statusChannel.Writer.WriteAsync(
                         new ImmediatePatchRequest(ProgressScopeKey.From(rootKey), changedNodeIds),
                         cancellationToken

@@ -1,5 +1,29 @@
 namespace Reaparr.Application.UnitTests;
 
+public class DownloadTaskCreationReportUnitTests
+{
+    public DownloadTaskCreationReportUnitTests() { }
+
+    [Test]
+    public void ShouldAddCountsAndUnionRootIds_WhenReportsAreCombined()
+    {
+        // Arrange
+        var sharedRootId = Guid.Parse("00000000-0000-0000-0000-000000000001");
+        var leftOnlyRootId = Guid.Parse("00000000-0000-0000-0000-000000000002");
+        var rightOnlyRootId = Guid.Parse("00000000-0000-0000-0000-000000000003");
+        var left = new DownloadTaskCreationReport { Movies = 1, RootTaskIds = [sharedRootId, leftOnlyRootId] };
+        var right = new DownloadTaskCreationReport { Episodes = 2, RootTaskIds = [sharedRootId, rightOnlyRootId] };
+
+        // Act
+        var combined = left + right;
+
+        // Assert
+        combined.Movies.ShouldBe(1);
+        combined.Episodes.ShouldBe(2);
+        combined.RootTaskIds.Order().ShouldBe(new[] { sharedRootId, leftOnlyRootId, rightOnlyRootId }.Order());
+    }
+}
+
 public class CreateDownloadTasksCommandHandlerUnitTests : BaseCommandUnitTest<CreateDownloadTasksCommand>
 {
     [Test]
@@ -52,8 +76,10 @@ public class CreateDownloadTasksCommandHandlerUnitTests : BaseCommandUnitTest<Cr
         // Assert
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
-        result.Value.ShouldBe(new DownloadTaskCreationReport { PhotoFolders = 1, PhotoImages = 1 });
         var folder = await dbContext.DownloadTaskPhotoFolders.Include(x => x.Files).SingleAsync(CancellationToken);
+        result.Value.PhotoFolders.ShouldBe(1);
+        result.Value.PhotoImages.ShouldBe(1);
+        result.Value.RootTaskIds.ShouldBe([folder.Id]);
         var file = folder.Files.Single();
         file.ParentId.ShouldBe(folder.Id);
         file.DirectoryMeta.DestinationRootPath.ShouldBe("/create-target");
@@ -421,21 +447,16 @@ public class CreateDownloadTasksCommandHandlerUnitTests : BaseCommandUnitTest<Cr
         // Assert
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
-        result.Value.ShouldBe(
-            new DownloadTaskCreationReport
-            {
-                Movies = 1,
-                TvShows = 1,
-                Seasons = 1,
-                Episodes = 1,
-                MusicArtists = 1,
-                MusicAlbums = 1,
-                MusicTracks = 1,
-                PhotoFolders = 1,
-                PhotoImages = 1,
-                OtherVideos = 1,
-            }
-        );
+        result.Value.Movies.ShouldBe(1);
+        result.Value.TvShows.ShouldBe(1);
+        result.Value.Seasons.ShouldBe(1);
+        result.Value.Episodes.ShouldBe(1);
+        result.Value.MusicArtists.ShouldBe(1);
+        result.Value.MusicAlbums.ShouldBe(1);
+        result.Value.MusicTracks.ShouldBe(1);
+        result.Value.PhotoFolders.ShouldBe(1);
+        result.Value.PhotoImages.ShouldBe(1);
+        result.Value.OtherVideos.ShouldBe(1);
         result.Value.Total.ShouldBe(10);
         (await dbContext.DownloadTaskMovie.CountAsync(CancellationToken)).ShouldBe(1);
         (await dbContext.DownloadTaskTvShow.CountAsync(CancellationToken)).ShouldBe(1);

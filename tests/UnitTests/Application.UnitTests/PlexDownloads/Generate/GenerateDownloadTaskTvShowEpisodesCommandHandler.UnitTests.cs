@@ -106,6 +106,9 @@ public class GenerateDownloadTaskTvShowEpisodesCommandHandlerUnitTests
         result.Value.Episodes.ShouldBe(2);
         var tasks = await dbContext.DownloadTaskTvShowEpisode.Include(x => x.Children).ToListAsync(CancellationToken);
         var target = tasks.Single(x => x.PlexApiRatingKey == episode.PlexApiRatingKey);
+        result.Value.RootTaskIds.ShouldBe(
+            await dbContext.DownloadTaskTvShow.Select(x => x.Id).ToArrayAsync(CancellationToken)
+        );
         var files = target.Children.OrderBy(x => x.PlexApiPartId).ToArray();
         files
             .Select(x => (x.PlexApiMediaId, x.PlexApiPartId, x.FileLocationUrl, x.DataTotal))

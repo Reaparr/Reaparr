@@ -16,6 +16,152 @@ public class TelemetryUnitTests : BaseUnitTest
     private const string HOST = "https://telemetry.example.test";
 
     [Test]
+    public async Task ShouldKeepCreatedNodeCountSeparateFromCorrelatedRoots_WhenCreationIsReported()
+    {
+        // Arrange
+        SetAppBuildInfo(build =>
+        {
+            build.TelemetryHost = HOST;
+            build.TelemetryProjectToken = "phc_test";
+        });
+        var rootTaskIds = new[] { Guid.Parse("2179daa8-5226-448e-b132-f407d3568b41") };
+        var report = new DownloadTaskCreationReport
+        {
+            TvShows = 1,
+            Seasons = 2,
+            Episodes = 5,
+            RootTaskIds = rootTaskIds,
+        };
+        var events = new List<(string Name, Dictionary<string, object> Properties)>();
+        var user = new Mock<IUserService>(MockBehavior.Strict);
+        using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
+        var client = new Mock<IPostHogClient>(MockBehavior.Strict);
+        user.Setup(x => x.GetTelemetryId()).ReturnsAsync(IDENTITY).Verifiable(Times.Once());
+        client
+            .Setup(x =>
+                x.Capture(IDENTITY, It.IsAny<string>(), It.IsAny<Dictionary<string, object>>(), null, null, null)
+            )
+            .Callback<string, string, Dictionary<string, object>?, GroupCollection?, object?, DateTimeOffset?>(
+                (_, name, properties, _, _, _) => events.Add((name, properties!))
+            )
+            .Returns(true)
+            .Verifiable(Times.Exactly(2));
+        using var telemetry = new Telemetry(
+            client.Object,
+            Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
+            user.Object,
+            source,
+            new UserSettings()
+        );
+        await telemetry.InitializeAsync();
+        events.Clear();
+
+        // Act
+        telemetry.DownloadCreationProcessed(new CreateDownloadTasksRequest([]), Result.Ok(report));
+
+        // Assert
+        var captured = events.Single();
+        captured.Name.ShouldBe(nameof(TelemetryEvent.DownloadCreationProcessed));
+        captured.Properties[TelemetryProperty.Outcome].ShouldBe(nameof(TelemetryOutcome.Succeeded));
+        captured.Properties[TelemetryProperty.Downloads.CreatedTotal].ShouldBe(8);
+        ((IEnumerable<Guid>)captured.Properties[TelemetryProperty.Downloads.RootTaskIds]).ShouldBe(rootTaskIds);
+        captured.Properties.ShouldNotContainKey(TelemetryProperty.Downloads.CompletionElapsedMilliseconds);
+        user.Verify();
+        client.Verify();
+    }
+
+    [Test]
+    [Arguments(DownloadStatus.Completed, true)]
+    [Arguments(DownloadStatus.Downloading, false)]
+    [Arguments(DownloadStatus.DownloadFinished, true)]
+    [Arguments(DownloadStatus.ServerUnreachable, false)]
+    [Arguments(DownloadStatus.Stopped, true)]
+    public async Task ShouldDescribePersistedRootWithoutInventingTerminalFailures_WhenLifecycleChanges(
+        DownloadStatus status,
+        bool attributed
+    )
+    {
+        // Arrange
+        SetAppBuildInfo(build =>
+        {
+            build.TelemetryHost = HOST;
+            build.TelemetryProjectToken = "phc_test";
+        });
+        var key = new DownloadTaskKey
+        {
+            Id = Guid.Parse("2179daa8-5226-448e-b132-f407d3568b41"),
+            Type = DownloadTaskType.Movie,
+            PlexServerId = 11,
+            PlexLibraryId = 22,
+        };
+        var createdAt = new DateTime(2026, 11, 20, 10, 0, 0, DateTimeKind.Utc);
+        var observedAt = createdAt.AddMinutes(12);
+        var integration = attributed
+            ? new IntegrationIdentity(IntegrationType.Radarr, Guid.Parse("06fdf6ef-e3fc-457d-b35f-e3619e498d47"))
+            : null;
+        var events = new List<(string Name, Dictionary<string, object> Properties)>();
+        var user = new Mock<IUserService>(MockBehavior.Strict);
+        using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
+        var client = new Mock<IPostHogClient>(MockBehavior.Strict);
+        user.Setup(x => x.GetTelemetryId()).ReturnsAsync(IDENTITY).Verifiable(Times.Once());
+        client
+            .Setup(x =>
+                x.Capture(IDENTITY, It.IsAny<string>(), It.IsAny<Dictionary<string, object>>(), null, null, null)
+            )
+            .Callback<string, string, Dictionary<string, object>?, GroupCollection?, object?, DateTimeOffset?>(
+                (_, name, properties, _, _, _) => events.Add((name, properties!))
+            )
+            .Returns(true)
+            .Verifiable(Times.Exactly(2));
+        using var telemetry = new Telemetry(
+            client.Object,
+            Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
+            user.Object,
+            source,
+            new UserSettings()
+        );
+        await telemetry.InitializeAsync();
+        events.Clear();
+
+        // Act
+        telemetry.DownloadLifecycleChanged(key, status, createdAt, integration, observedAt);
+
+        // Assert
+        var captured = events.Single();
+        captured.Name.ShouldBe(nameof(TelemetryEvent.DownloadLifecycleChanged));
+        captured.Properties[TelemetryProperty.TaskId].ShouldBe(key.Id);
+        captured.Properties[TelemetryProperty.Downloads.TaskType].ShouldBe(nameof(DownloadTaskType.Movie));
+        captured.Properties[TelemetryProperty.ServerId].ShouldBe(11);
+        captured.Properties[TelemetryProperty.LibraryId].ShouldBe(22);
+        captured.Properties[TelemetryProperty.Status].ShouldBe(status.ToString());
+        captured.Properties[TelemetryProperty.CreatedAt].ShouldBe(createdAt);
+        if (attributed)
+        {
+            captured.Properties[TelemetryProperty.IntegrationId].ShouldBe(integration!.Id);
+            captured.Properties[TelemetryProperty.Provider].ShouldBe(nameof(IntegrationType.Radarr));
+        }
+        else
+        {
+            captured.Properties.ShouldNotContainKey(TelemetryProperty.IntegrationId);
+            captured.Properties.ShouldNotContainKey(TelemetryProperty.Provider);
+        }
+        if (status == DownloadStatus.Completed)
+        {
+            captured.Properties[TelemetryProperty.Outcome].ShouldBe(nameof(TelemetryOutcome.Succeeded));
+            captured.Properties[TelemetryProperty.Downloads.CompletionElapsedMilliseconds].ShouldBe(720000d);
+        }
+        else
+        {
+            captured.Properties.ShouldNotContainKey(TelemetryProperty.Outcome);
+            captured.Properties.ShouldNotContainKey(TelemetryProperty.Downloads.CompletionElapsedMilliseconds);
+        }
+        user.Verify();
+        client.Verify();
+    }
+
+    [Test]
     [Arguments(TelemetryDiagnosticOrigin.Backend, TelemetryProtocol.BackendOrigin)]
     [Arguments(TelemetryDiagnosticOrigin.Frontend, TelemetryProtocol.FrontendOrigin)]
     public async Task ShouldUseExistingIdentityAndNativeContext_WhenEventsAreCaptured(
@@ -233,7 +379,13 @@ public class TelemetryUnitTests : BaseUnitTest
             PlexApiPartId = 66,
             VideoQuality = VideoQuality.HD,
         };
-        var report = new DownloadTaskCreationReport { Movies = 2, Episodes = 3 };
+        var rootTaskId = Guid.Parse("2ed7cf50-6983-45f4-9d91-bca1c401b292");
+        var report = new DownloadTaskCreationReport
+        {
+            Movies = 2,
+            Episodes = 3,
+            RootTaskIds = [rootTaskId],
+        };
         var associationFailed = Result.Fail<int>("association failed");
         var associationCancelled = Result.Fail<int>(new ExceptionalError(new OperationCanceledException()));
         var associationFailedWithoutCreation = Result.Fail<int>(
@@ -361,6 +513,7 @@ public class TelemetryUnitTests : BaseUnitTest
         accepted[TelemetryProperty.Stage].ShouldBe(nameof(TelemetryStage.HashAssociation));
         accepted[TelemetryProperty.Integrations.AssociatedTaskCount].ShouldBe(5);
         accepted[TelemetryProperty.Integrations.CreatedTotal].ShouldBe(5);
+        ((IEnumerable<Guid>)accepted[TelemetryProperty.Downloads.RootTaskIds]).ShouldBe([rootTaskId]);
         var created = (Dictionary<string, object>)accepted[TelemetryProperty.Integrations.CreatedReport];
         created[TelemetryProperty.Integrations.CreatedMovies].ShouldBe(2);
         created[TelemetryProperty.Integrations.CreatedEpisodes].ShouldBe(3);

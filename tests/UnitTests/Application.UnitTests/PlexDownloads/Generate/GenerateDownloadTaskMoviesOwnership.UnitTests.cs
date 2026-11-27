@@ -51,7 +51,6 @@ public class GenerateDownloadTaskMoviesOwnershipUnitTests : BaseCommandUnitTest<
         var expectedCreatedCount = scenario.ExpectedCreatedParents.Length;
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
-        result.Value.ShouldBe(new DownloadTaskCreationReport { Movies = expectedCreatedCount });
         result.Value.Movies.ShouldBe(expectedCreatedCount);
         result.Value.Total.ShouldBe(expectedCreatedCount);
 
@@ -60,6 +59,9 @@ public class GenerateDownloadTaskMoviesOwnershipUnitTests : BaseCommandUnitTest<
         var afterFiles = await ReadFileRows(afterDbContext);
         afterParents.Length.ShouldBe(beforeParents.Length + expectedCreatedCount);
         afterFiles.Length.ShouldBe(beforeFiles.Length + expectedCreatedCount);
+        result
+            .Value.RootTaskIds.Order()
+            .ShouldBe(afterParents.Where(x => !scenario.ExistingTaskIds.Contains(x.Id)).Select(x => x.Id).Order());
 
         afterParents
             .Where(x => scenario.ExistingTaskIds.Contains(x.Id))
@@ -245,7 +247,7 @@ public class GenerateDownloadTaskMoviesOwnershipUnitTests : BaseCommandUnitTest<
         // Assert
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
-        result.Value.ShouldBe(new DownloadTaskCreationReport { Movies = 2 });
+        result.Value.Movies.ShouldBe(2);
         result.Value.Total.ShouldBe(2);
         var parents = await ReadParentRows(dbContext);
         var files = await ReadFileRows(dbContext);

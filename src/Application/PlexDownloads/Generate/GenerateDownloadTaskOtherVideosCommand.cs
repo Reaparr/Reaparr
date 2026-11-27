@@ -159,6 +159,12 @@ public class GenerateDownloadTaskOtherVideosCommandHandler
             .ToList();
         _dbContext.DownloadTaskOtherVideoFileLogs.AddRange(logs);
         await _dbContext.SaveChangesAsync(cancellationToken);
-        return Result.Ok(new DownloadTaskCreationReport { OtherVideos = allDownloadTasks.Count });
+        return Result.Ok(
+            new DownloadTaskCreationReport
+            {
+                OtherVideos = allDownloadTasks.Count,
+                RootTaskIds = allDownloadTasks.Select(x => x.Id).ToArray(),
+            }
+        );
     }
 }

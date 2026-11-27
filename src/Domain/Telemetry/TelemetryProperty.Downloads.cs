@@ -40,6 +40,8 @@ public static partial class TelemetryProperty
         public const string ReportChildCount = "child_count";
         public const string ReportMediaType = "media_type";
         public const string CreatedTotal = "created_total";
+        public const string RootTaskIds = "root_task_ids";
+        public const string CompletionElapsedMilliseconds = "completion_elapsed_ms";
         public const string CreatedReport = "created_report";
         public const string Movies = "movies";
         public const string TvShows = "tv_shows";

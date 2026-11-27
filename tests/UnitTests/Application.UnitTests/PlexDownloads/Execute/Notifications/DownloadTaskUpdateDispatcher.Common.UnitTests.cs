@@ -872,12 +872,31 @@ public class DownloadTaskUpdateDispatcherCommonUnitTests : BaseUnitTest<Download
     }
 
     [Test]
-    public async Task ShouldTrackOnlyCommittedRootLifecycleTransition_AndIgnoreDuplicateStatusRequests()
+    [Arguments(false)]
+    [Arguments(true)]
+    public async Task ShouldTrackOnlyCommittedRootLifecycleTransition_AndIgnoreDuplicateStatusRequests(bool attributed)
     {
         // Arrange
-        await SetupDatabase(84340, config => config.MovieDownloadTasksCount = 1);
+        await SetupDatabase(84340, config =>
+        {
+            config.MovieDownloadTasksCount = 1;
+            config.RadarrIntegrationCount = attributed ? 1 : 0;
+            config.AssignUnownedDownloadTasksToRadarrIntegration = attributed;
+        });
         var key = (await IDbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken)).ToKey();
-        var rootKey = (await IDbContext.DownloadTaskMovie.FirstAsync(CancellationToken)).ToKey();
+        var root = await IDbContext.DownloadTaskMovie.FirstAsync(CancellationToken);
+        var rootKey = root.ToKey();
+        var expectedCreatedAt = root.CreatedAt;
+        var expectedIntegration = (root.SonarrIntegrationId, root.RadarrIntegrationId).ToIntegrationIdentity();
+        if (attributed)
+            expectedIntegration.ShouldBe(
+                new IntegrationIdentity(
+                    IntegrationType.Radarr,
+                    await IDbContext.RadarrIntegrations.Select(x => x.Id).SingleAsync(CancellationToken)
+                )
+            );
+        else
+            expectedIntegration.ShouldBeNull();
         Mock.Mock<IDownloadTaskScheduler>()
             .Setup(x => x.IsServerDownloading(key.PlexServerId))
             .ReturnsAsync(false)
@@ -886,10 +905,28 @@ public class DownloadTaskUpdateDispatcherCommonUnitTests : BaseUnitTest<Download
             .Setup(x => x.Send(It.IsAny<UpdateScheduledDownloadLimitsCommand>(), CancellationToken.None))
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
-        var lifecycleEvents = new List<(DownloadTaskKey Key, DownloadStatus Status)>();
+        var lifecycleEvents =
+            new List<(
+                DownloadTaskKey Key,
+                DownloadStatus Status,
+                DateTime CreatedAt,
+                IntegrationIdentity? Integration,
+                DateTime ObservedAt
+            )>();
         Mock.Mock<ITelemetry>()
-            .Setup(x => x.DownloadLifecycleChanged(It.IsAny<DownloadTaskKey>(), DownloadStatus.Downloading))
-            .Callback<DownloadTaskKey, DownloadStatus>((eventKey, status) => lifecycleEvents.Add((eventKey, status)))
+            .Setup(x =>
+                x.DownloadLifecycleChanged(
+                    It.IsAny<DownloadTaskKey>(),
+                    DownloadStatus.Downloading,
+                    It.IsAny<DateTime>(),
+                    It.IsAny<IntegrationIdentity?>(),
+                    It.IsAny<DateTime>()
+                )
+            )
+            .Callback<DownloadTaskKey, DownloadStatus, DateTime, IntegrationIdentity?, DateTime>(
+                (eventKey, status, createdAt, integration, observedAt) =>
+                    lifecycleEvents.Add((eventKey, status, createdAt, integration, observedAt))
+            )
             .Verifiable(Times.Once());
 
         // Act
@@ -900,6 +937,12 @@ public class DownloadTaskUpdateDispatcherCommonUnitTests : BaseUnitTest<Download
         lifecycleEvents.Count.ShouldBe(1);
         lifecycleEvents[0].Key.ShouldBe(rootKey);
         lifecycleEvents[0].Status.ShouldBe(DownloadStatus.Downloading);
+        lifecycleEvents[0].CreatedAt.ShouldBe(expectedCreatedAt);
+        lifecycleEvents[0].Integration.ShouldBe(expectedIntegration);
+        lifecycleEvents[0].ObservedAt.ShouldBeGreaterThanOrEqualTo(expectedCreatedAt);
+        (
+            await IDbContext.DownloadTaskMovie.SingleAsync(x => x.Id == rootKey.Id, CancellationToken)
+        ).DownloadStatus.ShouldBe(DownloadStatus.Downloading);
         Mock.Mock<ITelemetry>().Verify();
         Mock.Mock<IDownloadTaskScheduler>().Verify();
         Mock.Mock<ICommandExecutor>().Verify();
@@ -918,13 +961,28 @@ public class DownloadTaskUpdateDispatcherCommonUnitTests : BaseUnitTest<Download
             .Verifiable(Times.Once());
         using var cancellation = new CancellationTokenSource();
         Action cancel = cancellation.Cancel;
-        var lifecycleEvents = new List<(DownloadTaskKey Key, DownloadStatus Status)>();
+        var lifecycleEvents =
+            new List<(
+                DownloadTaskKey Key,
+                DownloadStatus Status,
+                DateTime CreatedAt,
+                IntegrationIdentity? Integration,
+                DateTime ObservedAt
+            )>();
         Mock.Mock<ITelemetry>()
-            .Setup(x => x.DownloadLifecycleChanged(It.IsAny<DownloadTaskKey>(), DownloadStatus.Downloading))
-            .Callback<DownloadTaskKey, DownloadStatus>(
-                (eventKey, status) =>
+            .Setup(x =>
+                x.DownloadLifecycleChanged(
+                    It.IsAny<DownloadTaskKey>(),
+                    DownloadStatus.Downloading,
+                    It.IsAny<DateTime>(),
+                    It.IsAny<IntegrationIdentity?>(),
+                    It.IsAny<DateTime>()
+                )
+            )
+            .Callback<DownloadTaskKey, DownloadStatus, DateTime, IntegrationIdentity?, DateTime>(
+                (eventKey, status, createdAt, integration, observedAt) =>
                 {
-                    lifecycleEvents.Add((eventKey, status));
+                    lifecycleEvents.Add((eventKey, status, createdAt, integration, observedAt));
                     cancel();
                 }
             )
