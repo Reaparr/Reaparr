@@ -151,6 +151,8 @@ public class Boot : IHostedService
         if (_postStartupTask is not null)
             await _postStartupTask.WaitAsync(cancellationToken);
 
+        await _downloadQueue.WaitForShutdownAsync(cancellationToken);
+
         await _scheduler.Standby(cancellationToken);
         var activeMoveJobs = (await _scheduler.GetLocalExecutingFireInstances(cancellationToken))
             .Where(x => x.JobKey?.Group == nameof(JobTypes.MoveDownloadFileJob))

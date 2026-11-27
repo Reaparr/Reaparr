@@ -4,6 +4,9 @@ public interface IDownloadQueue : ISetup, IBusy
 {
     Result Setup(CancellationToken cancellationToken);
 
+    /// <summary>Waits for the worker to exit after its application-stopping token is cancelled.</summary>
+    Task WaitForShutdownAsync(CancellationToken cancellationToken);
+
     /// <summary>
     /// Check the DownloadQueue for downloadTasks which can be started.
     /// </summary>

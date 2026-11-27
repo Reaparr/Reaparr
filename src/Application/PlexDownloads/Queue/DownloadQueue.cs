@@ -82,6 +82,9 @@ public class DownloadQueue : IDownloadQueue
         return Result.Ok();
     }
 
+    public Task WaitForShutdownAsync(CancellationToken cancellationToken) =>
+        _workerTask?.WaitAsync(cancellationToken) ?? Task.CompletedTask;
+
     private async Task<int> ReadNextServerAsync(CancellationToken cancellationToken)
     {
         while (true)

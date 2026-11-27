@@ -371,6 +371,16 @@ public class BootUnitTests : BaseUnitTest<Boot>
             .Setup(x => x.Send(It.IsAny<NotifyArrAppsOnStartupCommand>(), CancellationToken.None))
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
+        var queueStopping = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseQueue = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var queue = Mock.Mock<IDownloadQueue>();
+        queue.Setup(x => x.WaitForShutdownAsync(CancellationToken.None))
+            .Returns(() =>
+            {
+                queueStopping.SetResult();
+                return releaseQueue.Task;
+            })
+            .Verifiable(Times.Once());
         var standbyStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var releaseStandby = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var scheduler = Mock.Mock<IScheduler>();
@@ -409,6 +419,16 @@ public class BootUnitTests : BaseUnitTest<Boot>
         {
             releaseStartup.TrySetResult();
         }
+        try
+        {
+            await queueStopping.Task.WaitAsync(TimeSpan.FromSeconds(2));
+            scheduler.Verify(x => x.Standby(CancellationToken.None), Times.Never());
+        }
+        finally
+        {
+            releaseQueue.TrySetResult();
+        }
+
         await standbyStarted.Task.WaitAsync(TimeSpan.FromSeconds(2));
         var secondStop = boot.StopAsync(CancellationToken.None);
         secondStop.ShouldBeSameAs(firstStop);
@@ -417,6 +437,7 @@ public class BootUnitTests : BaseUnitTest<Boot>
 
         // Assert
         scheduler.Verify();
+        queue.Verify();
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<IBackgroundJobsSetup>().Verify();
     }
