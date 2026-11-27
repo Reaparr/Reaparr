@@ -1,4 +1,3 @@
-using Autofac;
 using Microsoft.Extensions.Hosting;
 
 namespace Reaparr.IntegrationTests;
@@ -144,8 +143,6 @@ public class IntegrationTestFileSystemIsolationIntegrationTests : BaseIntegratio
 
     private sealed class ShutdownProbe : IHostedService
     {
-        public ShutdownProbe() { }
-
         public TaskCompletionSource Stopping { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);

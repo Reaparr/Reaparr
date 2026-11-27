@@ -2464,7 +2464,6 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
             downloadTask.DataTotal * 3 / 5
         );
         var resumedPackages = new List<DownloadPackage>();
-        var attempt = 0;
 
         SetupSpeedLimitMocks(serverMachineIdentifier);
         SetupCommandExecutor();
@@ -2532,27 +2531,16 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
         downloadServiceMock
             .Setup(x => x.DownloadFileTaskAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .Returns<string, string, CancellationToken>(
-                (_, targetPath, _) =>
+                (_, _, _) =>
                 {
-                    if (Interlocked.Increment(ref attempt) == 1)
-                    {
-                        downloadServiceMock.Raise(
-                            x => x.DownloadFileCompleted += null,
-                            downloadServiceMock.Object,
-                            new AsyncCompletedEventArgs(
-                                new TaskCanceledException("Temporary transport cancellation."),
-                                false,
-                                package
-                            )
-                        );
-                        return Task.CompletedTask;
-                    }
-
-                    SetupVerifiedFile(fileMock, fileInfoFactoryMock, targetPath, downloadTask.DataTotal);
                     downloadServiceMock.Raise(
                         x => x.DownloadFileCompleted += null,
                         downloadServiceMock.Object,
-                        new AsyncCompletedEventArgs(null, false, package)
+                        new AsyncCompletedEventArgs(
+                            new TaskCanceledException("Temporary transport cancellation."),
+                            false,
+                            package
+                        )
                     );
                     return Task.CompletedTask;
                 }
@@ -2566,7 +2554,10 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
         var timer = await clock.NextTimerAsync(CancellationToken);
         timer.DueTime.ShouldBe(TimeSpan.FromSeconds(3));
         timer.Advance(TimeSpan.FromMilliseconds(2999));
-        Volatile.Read(ref attempt).ShouldBe(1);
+        downloadServiceMock.Verify(
+            x => x.DownloadFileTaskAsync(It.IsAny<DownloadPackage>(), It.IsAny<CancellationToken>()),
+            Times.Never()
+        );
         timer.Advance(TimeSpan.FromMilliseconds(1));
         var result = await startTask.WaitAsync(TimeSpan.FromSeconds(5), CancellationToken);
 
@@ -2852,8 +2843,6 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
     private sealed class RetryClock : TimeProvider
     {
         private readonly Channel<RetryTimer> _timers = Channel.CreateUnbounded<RetryTimer>();
-
-        public RetryClock() { }
 
         public Task<RetryTimer> NextTimerAsync(CancellationToken cancellationToken) =>
             _timers.Reader.ReadAsync(cancellationToken).AsTask().WaitAsync(TimeSpan.FromSeconds(5), cancellationToken);

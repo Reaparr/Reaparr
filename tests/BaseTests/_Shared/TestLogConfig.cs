@@ -1,4 +1,3 @@
-using Reaparr.Environment;
 using Serilog.Core;
 
 namespace Reaparr.BaseTests;

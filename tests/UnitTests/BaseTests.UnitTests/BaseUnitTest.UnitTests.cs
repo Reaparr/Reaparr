@@ -1,7 +1,7 @@
 using Autofac;
 using Reaparr.Data;
 using Reaparr.Environment;
-using Reaparr.Logging;
+using Reaparr.Identity;
 using Serilog.Events;
 using Serilog.Sinks.TestCorrelator;
 
@@ -13,22 +13,25 @@ public class BaseUnitTestUnitTests
     public void ShouldDisposeBothGenerations_WhenAnAlreadyResolvedServiceSurvivesARebuild()
     {
         // Arrange
-        using var fixture = new Fixture();
-        var original = fixture.ResolveProbe();
-        original.IsDisposed.ShouldBeFalse();
+        Probe original;
+        Probe replacement;
+        using (var fixture = new Fixture())
+        {
+            original = fixture.ResolveProbe();
+            original.IsDisposed.ShouldBeFalse();
 
-        // Act
-        fixture.UseDesktopMode();
-        var replacement = fixture.ResolveProbe();
+            // Act
+            fixture.UseDesktopMode();
+            replacement = fixture.ResolveProbe();
 
-        // Assert
-        replacement.ShouldNotBeSameAs(original);
-        original.BuildInfo.RuntimeMode.ShouldBe("desktop");
-        replacement.BuildInfo.RuntimeMode.ShouldBe("desktop");
-        original.IsDisposed.ShouldBeFalse();
-        replacement.IsDisposed.ShouldBeFalse();
+            // Assert
+            replacement.ShouldNotBeSameAs(original);
+            original.BuildInfo.RuntimeMode.ShouldBe("desktop");
+            replacement.BuildInfo.RuntimeMode.ShouldBe("desktop");
+            original.IsDisposed.ShouldBeFalse();
+            replacement.IsDisposed.ShouldBeFalse();
+        }
 
-        fixture.Dispose();
         original.IsDisposed.ShouldBeTrue();
         replacement.IsDisposed.ShouldBeTrue();
     }
@@ -38,12 +41,13 @@ public class BaseUnitTestUnitTests
     {
         // Arrange
         using var context = TestCorrelator.CreateContext();
-        using var fixture = new Fixture();
-        var logger = fixture.ResolveLogger();
-        logger.Debug("Before fixture disposal");
+        using (var fixture = new Fixture())
+        {
+            var logger = fixture.ResolveLogger();
+            logger.Debug("Before fixture disposal");
+        }
 
         // Act
-        fixture.Dispose();
         LogFactory.Create().Debug("After fixture disposal");
 
         // Assert
@@ -57,21 +61,23 @@ public class BaseUnitTestUnitTests
     public async Task ShouldCloseOnlyItsOwnConnections_WhenFixtureIsDisposed()
     {
         // Arrange
-        using var first = new Fixture();
         using var second = new Fixture();
-        await first.SeedDatabase();
         await second.SeedDatabase();
-        var firstContext = first.OpenContext();
-        var firstAuth = first.OpenAuthContext();
         var secondContext = second.OpenContext();
-        await firstContext.Database.OpenConnectionAsync();
-        await firstAuth.Database.OpenConnectionAsync();
         await secondContext.Database.OpenConnectionAsync();
-        var firstConnection = firstContext.Database.GetDbConnection();
-        var firstAuthConnection = firstAuth.Database.GetDbConnection();
 
-        // Act
-        first.Dispose();
+        System.Data.Common.DbConnection firstConnection;
+        System.Data.Common.DbConnection firstAuthConnection;
+        using (var first = new Fixture())
+        {
+            await first.SeedDatabase();
+            var firstContext = first.OpenContext();
+            var firstAuth = first.OpenAuthContext();
+            await firstContext.Database.OpenConnectionAsync();
+            await firstAuth.Database.OpenConnectionAsync();
+            firstConnection = firstContext.Database.GetDbConnection();
+            firstAuthConnection = firstAuth.Database.GetDbConnection();
+        }
 
         // Assert
         firstConnection.State.ShouldBe(System.Data.ConnectionState.Closed);
@@ -88,13 +94,13 @@ public class BaseUnitTestUnitTests
 
         public Probe ResolveProbe() => Mock.Container.Resolve<Probe>();
 
-        public Serilog.ILogger ResolveLogger() => Mock.Container.Resolve<Serilog.ILogger>();
+        public ILogger ResolveLogger() => Mock.Container.Resolve<ILogger>();
 
         public Task<Seed> SeedDatabase() => SetupDatabase(421);
 
         public ReaparrDbContext OpenContext() => (ReaparrDbContext)IDbContext;
 
-        public Reaparr.Identity.AuthDbContext OpenAuthContext() => (Reaparr.Identity.AuthDbContext)AuthDbContext;
+        public AuthDbContext OpenAuthContext() => (AuthDbContext)AuthDbContext;
 
         public void UseDesktopMode() => SetAppBuildInfo(info => info.RuntimeMode = "desktop");
     }

@@ -1,7 +1,3 @@
-using FastEndpoints;
-using FluentValidation;
-using Reaparr.BaseTests;
-
 namespace Reaparr.BaseTests.UnitTests;
 
 public sealed class EndpointValidatorLookupUnitTests
@@ -84,15 +80,11 @@ public sealed class EndpointValidatorLookupUnitTests
 
     private sealed class Fixture : BaseEndpointUnitTestBase<Fixture.Endpoint, object>
     {
-        public Fixture() { }
-
         public static Task<FluentValidation.Results.ValidationResult?> ValidateAsync<TRequest>(TRequest request)
             where TRequest : class => ValidateEndpointRequestAsync(request, CancellationToken.None);
 
         public sealed class Endpoint : Endpoint<ValidRequest>
         {
-            public Endpoint() { }
-
             public override void Configure() { }
 
             public override Task HandleAsync(ValidRequest request, CancellationToken cancellationToken) => Task.CompletedTask;
