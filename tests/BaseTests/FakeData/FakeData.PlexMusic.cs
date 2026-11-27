@@ -31,9 +31,11 @@ public static partial class FakeData
         );
 
     public static Faker<PlexMusicArtist> GetPlexMusicArtists(Seed seed, Action<FakeDataConfig>? options = null)
+        => GetPlexMusicArtists(seed, FakeDataConfig.FromOptions(options));
+
+    internal static Faker<PlexMusicArtist> GetPlexMusicArtists(Seed seed, FakeDataConfig config)
     {
-        var config = FakeDataConfig.FromOptions(options);
-        var albumFaker = GetPlexMusicAlbums(seed, options);
+        var albumFaker = GetPlexMusicAlbums(seed, config);
 
         return _plexMusicArtist
             .Clone() // Clone to isolate per-call child rules and seed state.
@@ -76,9 +78,11 @@ public static partial class FakeData
         );
 
     public static Faker<PlexMusicAlbum> GetPlexMusicAlbums(Seed seed, Action<FakeDataConfig>? options = null)
+        => GetPlexMusicAlbums(seed, FakeDataConfig.FromOptions(options));
+
+    private static Faker<PlexMusicAlbum> GetPlexMusicAlbums(Seed seed, FakeDataConfig config)
     {
-        var config = FakeDataConfig.FromOptions(options);
-        var trackFaker = GetPlexMusicTracks(seed, options);
+        var trackFaker = GetPlexMusicTracks(seed, config);
 
         return _plexMusicAlbum
             .Clone() // Clone to isolate per-call child rules and seed state.
@@ -113,8 +117,11 @@ public static partial class FakeData
         );
 
     public static Faker<PlexMusicTrack> GetPlexMusicTracks(Seed seed, Action<FakeDataConfig>? options = null)
+        => GetPlexMusicTracks(seed, FakeDataConfig.FromOptions(options));
+
+    private static Faker<PlexMusicTrack> GetPlexMusicTracks(Seed seed, FakeDataConfig config)
     {
-        var mediaDataFaker = GetPlexMusicTrackMediaData(seed, options);
+        var mediaDataFaker = GetPlexMusicTrackMediaData(seed, config);
 
         return _plexMusicTrack
             .Clone() // Clone to isolate per-call media-data rules and seed state.
@@ -148,9 +155,13 @@ public static partial class FakeData
     public static Faker<PlexMusicTrackMediaData> GetPlexMusicTrackMediaData(
         Seed seed,
         Action<FakeDataConfig>? options = null
+    ) => GetPlexMusicTrackMediaData(seed, FakeDataConfig.FromOptions(options));
+
+    private static Faker<PlexMusicTrackMediaData> GetPlexMusicTrackMediaData(
+        Seed seed,
+        FakeDataConfig config
     )
     {
-        var config = FakeDataConfig.FromOptions(options);
         return _plexMusicTrackMediaData
             .Clone() // Clone to isolate per-call size rules and caller overrides.
             .RuleFor(

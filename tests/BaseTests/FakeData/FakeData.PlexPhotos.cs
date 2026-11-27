@@ -71,9 +71,14 @@ public static partial class FakeData
         Seed seed,
         Action<FakeDataConfig>? options = null,
         bool isClip = false
+    ) => GetPlexPhotoMediaData(seed, FakeDataConfig.FromOptions(options), isClip);
+
+    internal static Faker<PlexPhotoMediaData> GetPlexPhotoMediaData(
+        Seed seed,
+        FakeDataConfig config,
+        bool isClip = false
     )
     {
-        var config = FakeDataConfig.FromOptions(options);
         return (isClip ? _plexPhotoClipMediaData : _plexPhotoMediaData)
             .Clone()
             .RuleFor(

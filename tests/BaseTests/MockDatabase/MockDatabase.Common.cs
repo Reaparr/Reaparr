@@ -22,11 +22,9 @@ public static partial class MockDatabase
     private static async Task<ReaparrDbContext> AddPlexServers(
         this ReaparrDbContext context,
         Seed seed,
-        Action<FakeDataConfig>? options = null
+        FakeDataConfig config
     )
     {
-        var config = FakeDataConfig.FromOptions(options);
-
         if (!config.ShouldHavePlexServer)
             return context;
 
@@ -77,11 +75,9 @@ public static partial class MockDatabase
     private static async Task<ReaparrDbContext> AddPlexLibraries(
         this ReaparrDbContext context,
         Seed seed,
-        Action<FakeDataConfig>? options = null
+        FakeDataConfig config
     )
     {
-        var config = FakeDataConfig.FromOptions(options);
-
         if (!config.ShouldHavePlexLibrary)
             return context;
 
@@ -142,11 +138,9 @@ public static partial class MockDatabase
     private static async Task<ReaparrDbContext> AddPlexAccount(
         this ReaparrDbContext context,
         Seed seed,
-        Action<FakeDataConfig>? options
+        FakeDataConfig config
     )
     {
-        var config = FakeDataConfig.FromOptions(options);
-
         var plexServers = context.PlexServers.Include(x => x.PlexLibraries).ToList();
 
         for (var i = 0; i < config.PlexAccountCount; i++)
@@ -226,13 +220,12 @@ public static partial class MockDatabase
 
     public static string GetMemoryDatabaseName() => $"memory_database_{Guid.NewGuid():N}";
 
-    public static async Task<ReaparrDbContext> AddRadarrIntegrations(
+    private static async Task<ReaparrDbContext> AddRadarrIntegrations(
         this ReaparrDbContext context,
         Seed seed,
-        Action<FakeDataConfig>? options = null
+        FakeDataConfig config
     )
     {
-        var config = FakeDataConfig.FromOptions(options);
         if (config.AssignUnownedDownloadTasksToRadarrIntegration && config.RadarrIntegrationCount > 1)
             throw new InvalidOperationException(
                 "AssignUnownedDownloadTasksToRadarrIntegration allows at most one Radarr integration."
@@ -289,13 +282,12 @@ public static partial class MockDatabase
         return context;
     }
 
-    public static async Task<ReaparrDbContext> AddSonarrIntegrations(
+    private static async Task<ReaparrDbContext> AddSonarrIntegrations(
         this ReaparrDbContext context,
         Seed seed,
-        Action<FakeDataConfig>? options = null
+        FakeDataConfig config
     )
     {
-        var config = FakeDataConfig.FromOptions(options);
         for (var i = 0; i < config.SonarrIntegrationCount; i++)
         {
             var integrationId = new Guid(seed.Next(), 0, 0, new byte[8]);
@@ -398,14 +390,7 @@ public static partial class MockDatabase
                 await reaparrContext.FolderPaths.ExecuteDeleteAsync();
                 ReaparrDBContextSeed.Seed(pathProvider)(reaparrContext, true);
             }
-            reaparrContext = await SeedDatabaseAsync(
-                reaparrContext,
-                seed,
-                pathProvider,
-                appRuntimeInfo,
-                config,
-                options
-            );
+            reaparrContext = await SeedDatabaseAsync(reaparrContext, seed, pathProvider, appRuntimeInfo, config);
         }
         finally
         {
@@ -505,8 +490,7 @@ public static partial class MockDatabase
         Seed seed,
         IPathProvider pathProvider,
         IAppRuntimeInfo appRuntimeInfo,
-        FakeDataConfig config,
-        Action<FakeDataConfig>? options
+        FakeDataConfig config
     )
     {
         _log.Here()
@@ -517,41 +501,41 @@ public static partial class MockDatabase
             );
 
         if (config.ShouldHavePlexServer)
-            reaparrContext = await reaparrContext.AddPlexServers(seed, options);
+            reaparrContext = await reaparrContext.AddPlexServers(seed, config);
 
         if (config.ShouldHavePlexLibrary)
-            reaparrContext = await reaparrContext.AddPlexLibraries(seed, options);
+            reaparrContext = await reaparrContext.AddPlexLibraries(seed, config);
 
         if (config.PlexAccountCount > 0)
-            reaparrContext = await reaparrContext.AddPlexAccount(seed, options);
+            reaparrContext = await reaparrContext.AddPlexAccount(seed, config);
 
         if (config.MovieCount > 0)
-            reaparrContext = await reaparrContext.AddPlexMovies(seed, options);
+            reaparrContext = await reaparrContext.AddPlexMovies(seed, config);
 
         if (config.TvShowCount > 0)
-            reaparrContext = await reaparrContext.AddPlexTvShows(seed, options);
+            reaparrContext = await reaparrContext.AddPlexTvShows(seed, config);
 
         if (config.MusicArtistCount > 0)
-            reaparrContext = await reaparrContext.AddPlexMusic(seed, options);
+            reaparrContext = await reaparrContext.AddPlexMusic(seed, config);
 
         if (config.PhotoAlbumCount > 0 || config.PhotoCount > 0 || config.PhotoClipCount > 0)
-            reaparrContext = await reaparrContext.AddPlexPhotos(seed, options);
+            reaparrContext = await reaparrContext.AddPlexPhotos(seed, config);
 
         if (config.OtherVideoCount > 0)
-            reaparrContext = await reaparrContext.AddPlexOtherVideos(seed, options);
+            reaparrContext = await reaparrContext.AddPlexOtherVideos(seed, config);
 
         if (config.MovieDownloadTasksCount > 0)
-            reaparrContext = await reaparrContext.AddDownloadTaskMovies(seed, pathProvider, appRuntimeInfo, options);
+            reaparrContext = await reaparrContext.AddDownloadTaskMovies(seed, pathProvider, appRuntimeInfo, config);
 
         if (config.TvShowDownloadTasksCount > 0)
-            reaparrContext = await reaparrContext.AddDownloadTaskTvShows(seed, pathProvider, appRuntimeInfo, options);
+            reaparrContext = await reaparrContext.AddDownloadTaskTvShows(seed, pathProvider, appRuntimeInfo, config);
 
         if (config.MusicArtistDownloadTasksCount > 0)
             reaparrContext = await reaparrContext.AddDownloadTaskMusicArtists(
                 seed,
                 pathProvider,
                 appRuntimeInfo,
-                options
+                config
             );
 
         if (config.PhotoFolderDownloadTasksCount > 0)
@@ -559,7 +543,7 @@ public static partial class MockDatabase
                 seed,
                 pathProvider,
                 appRuntimeInfo,
-                options
+                config
             );
 
         if (config.OtherVideoDownloadTasksCount > 0)
@@ -567,14 +551,14 @@ public static partial class MockDatabase
                 seed,
                 pathProvider,
                 appRuntimeInfo,
-                options
+                config
             );
 
         if (config.RadarrIntegrationCount > 0)
-            reaparrContext = await reaparrContext.AddRadarrIntegrations(seed, options);
+            reaparrContext = await reaparrContext.AddRadarrIntegrations(seed, config);
 
         if (config.SonarrIntegrationCount > 0)
-            reaparrContext = await reaparrContext.AddSonarrIntegrations(seed, options);
+            reaparrContext = await reaparrContext.AddSonarrIntegrations(seed, config);
 
         if (config.AccountHasAccessToAllLibraries)
             reaparrContext = await reaparrContext.AddPlexAccountLibraries();
@@ -608,18 +592,16 @@ public static partial class MockDatabase
     private static async Task<ReaparrDbContext> AddPlexMovies(
         this ReaparrDbContext context,
         Seed seed,
-        Action<FakeDataConfig>? options = null
+        FakeDataConfig config
     )
     {
-        var config = FakeDataConfig.FromOptions(options);
-
         var plexLibraries = context.PlexLibraries.Where(x => x.Type == PlexMediaType.Movie).ToList();
         plexLibraries.ShouldNotBeNull().ShouldNotBeEmpty();
 
         // Add movies for each library
         foreach (var plexLibrary in plexLibraries)
         {
-            var movies = FakeData.GetPlexMovies(seed, options).Generate(config.MovieCount);
+            var movies = FakeData.GetPlexMovies(seed, config).Generate(config.MovieCount);
             await context.BulkInsertPlexMoviesAsync(movies, plexLibrary.PlexServerId, plexLibrary.Id);
 
             var mediaSize = movies.Sum(x => x.MediaSize);
@@ -641,17 +623,15 @@ public static partial class MockDatabase
     private static async Task<ReaparrDbContext> AddPlexTvShows(
         this ReaparrDbContext context,
         Seed seed,
-        Action<FakeDataConfig>? options = null
+        FakeDataConfig config
     )
     {
-        var config = FakeDataConfig.FromOptions(options);
-
         var plexLibraries = context.PlexLibraries.Where(x => x.Type == PlexMediaType.TvShow).ToList();
         plexLibraries.ShouldNotBeNull().ShouldNotBeEmpty();
 
         foreach (var plexLibrary in plexLibraries)
         {
-            var tvShows = FakeData.GetPlexTvShows(seed, options).Generate(config.TvShowCount);
+            var tvShows = FakeData.GetPlexTvShows(seed, config).Generate(config.TvShowCount);
             await context.BulkInsertPlexTvShowsAsync(tvShows, plexLibrary.PlexServerId, plexLibrary.Id);
 
             var seasons = tvShows.SelectMany(x => x.Seasons).ToList();
@@ -680,14 +660,13 @@ public static partial class MockDatabase
     private static async Task<ReaparrDbContext> AddPlexMusic(
         this ReaparrDbContext context,
         Seed seed,
-        Action<FakeDataConfig>? options
+        FakeDataConfig config
     )
     {
-        var config = FakeDataConfig.FromOptions(options);
         var libraries = await context.PlexLibraries.Where(x => x.Type == PlexMediaType.MusicArtist).ToListAsync();
         foreach (var library in libraries)
         {
-            var artists = FakeData.GetPlexMusicArtists(seed, options).Generate(config.MusicArtistCount);
+            var artists = FakeData.GetPlexMusicArtists(seed, config).Generate(config.MusicArtistCount);
             var albumCount = 0;
             var trackCount = 0;
             long mediaSize = 0;
@@ -726,10 +705,9 @@ public static partial class MockDatabase
     private static async Task<ReaparrDbContext> AddPlexPhotos(
         this ReaparrDbContext context,
         Seed seed,
-        Action<FakeDataConfig>? options
+        FakeDataConfig config
     )
     {
-        var config = FakeDataConfig.FromOptions(options);
         var libraries = await context.PlexLibraries.Where(x => x.Type == PlexMediaType.PhotoAlbum).ToListAsync();
         foreach (var library in libraries)
         {
@@ -757,11 +735,11 @@ public static partial class MockDatabase
                 album.PlexLibraryId = library.Id;
                 var albumImages =
                     config.PhotoCount > 0
-                        ? FakeData.GetPlexPhotoMediaData(seed, options).Generate(config.PhotoCount)
+                        ? FakeData.GetPlexPhotoMediaData(seed, config).Generate(config.PhotoCount)
                         : [];
                 var albumClips =
                     config.PhotoClipCount > 0
-                        ? FakeData.GetPlexPhotoMediaData(seed, options, isClip: true).Generate(config.PhotoClipCount)
+                        ? FakeData.GetPlexPhotoMediaData(seed, config, isClip: true).Generate(config.PhotoClipCount)
                         : [];
                 var albumAssets = albumImages.Concat(albumClips).ToList();
                 foreach (var file in albumAssets)
@@ -779,11 +757,11 @@ public static partial class MockDatabase
             {
                 var images =
                     config.PhotoCount > 0
-                        ? FakeData.GetPlexPhotoMediaData(seed, options).Generate(config.PhotoCount)
+                        ? FakeData.GetPlexPhotoMediaData(seed, config).Generate(config.PhotoCount)
                         : [];
                 var clips =
                     config.PhotoClipCount > 0
-                        ? FakeData.GetPlexPhotoMediaData(seed, options, isClip: true).Generate(config.PhotoClipCount)
+                        ? FakeData.GetPlexPhotoMediaData(seed, config, isClip: true).Generate(config.PhotoClipCount)
                         : [];
                 foreach (var file in images.Concat(clips))
                 {
@@ -820,14 +798,13 @@ public static partial class MockDatabase
     private static async Task<ReaparrDbContext> AddPlexOtherVideos(
         this ReaparrDbContext context,
         Seed seed,
-        Action<FakeDataConfig>? options
+        FakeDataConfig config
     )
     {
-        var config = FakeDataConfig.FromOptions(options);
         var libraries = await context.PlexLibraries.Where(x => x.Type == PlexMediaType.OtherVideos).ToListAsync();
         foreach (var library in libraries)
         {
-            var videos = FakeData.GetPlexOtherVideos(seed, options).Generate(config.OtherVideoCount);
+            var videos = FakeData.GetPlexOtherVideos(seed, config).Generate(config.OtherVideoCount);
             long mediaSize = 0;
             foreach (var video in videos)
             {

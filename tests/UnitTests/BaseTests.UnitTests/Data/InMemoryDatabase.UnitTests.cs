@@ -51,4 +51,28 @@ public class InMemoryDatabaseUnitTests : BaseUnitTest
         // Assert
         notifications.Count.ShouldBe(0);
     }
+
+    [Test]
+    public async Task ShouldApplyOneSeedConfiguration_ToPersistedParentsAndFiles()
+    {
+        // Arrange
+        var calls = 0;
+
+        // Act
+        await SetupDatabase(5003, config =>
+        {
+            calls++;
+            config.MovieDownloadTasksCount = 1;
+            config.IncludeMultiPartMovies = true;
+            config.DownloadFileSizeInMb = 3;
+        });
+
+        // Assert
+        calls.ShouldBe(1);
+        var db = IDbContext;
+        var parent = await db.DownloadTaskMovie.SingleAsync(CancellationToken);
+        var files = await db.DownloadTaskMovieFile.ToListAsync(CancellationToken);
+        files.Count.ShouldBe(2);
+        files.ShouldAllBe(file => file.ParentId == parent.Id && file.DataTotal == 3L * 1024 * 1024);
+    }
 }

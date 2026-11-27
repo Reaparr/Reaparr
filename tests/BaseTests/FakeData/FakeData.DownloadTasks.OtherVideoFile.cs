@@ -15,10 +15,10 @@ public static partial class FakeData
     public static Faker<DownloadTaskOtherVideoFile> GetDownloadTaskOtherVideoFile(
         Seed seed,
         Action<FakeDataConfig>? options = null
-    )
-    {
-        var config = FakeDataConfig.FromOptions(options);
+    ) => GetDownloadTaskOtherVideoFile(seed, FakeDataConfig.FromOptions(options));
 
+    private static Faker<DownloadTaskOtherVideoFile> GetDownloadTaskOtherVideoFile(Seed seed, FakeDataConfig config)
+    {
         return _downloadTaskOtherVideoFileFaker
             .RuleFor(
                 x => x.DataTotal,

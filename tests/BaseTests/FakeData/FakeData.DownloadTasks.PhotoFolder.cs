@@ -5,9 +5,10 @@ public static partial class FakeData
     public static Faker<DownloadTaskPhotoFolder> GetDownloadTaskPhotoFolder(
         Seed seed,
         Action<FakeDataConfig>? options = null
-    )
+    ) => GetDownloadTaskPhotoFolder(seed, FakeDataConfig.FromOptions(options));
+
+    internal static Faker<DownloadTaskPhotoFolder> GetDownloadTaskPhotoFolder(Seed seed, FakeDataConfig config)
     {
-        var config = FakeDataConfig.FromOptions(options);
         return new Faker<DownloadTaskPhotoFolder>()
             .ApplyDownloadTaskParentBase(DownloadTaskType.PhotoFolder)
             .UseSeed(seed.Next())
@@ -22,7 +23,7 @@ public static partial class FakeData
                 _ =>
                 {
                     var count = config.PhotoImageDownloadTasksCount > 0 ? config.PhotoImageDownloadTasksCount : 1;
-                    return GetDownloadTaskPhotoImageFile(seed, options).Generate(count);
+                    return GetDownloadTaskPhotoImageFile(seed, config).Generate(count);
                 }
             )
             .RuleFor(x => x.DataTotal, (_, x) => x.Files.Sum(file => file.DataTotal))

@@ -79,13 +79,14 @@ public static partial class FakeData
         );
 
     public static Faker<PlexMovie> GetPlexMovies(Seed seed, Action<FakeDataConfig>? options = null)
-    {
-        var config = FakeDataConfig.FromOptions(options);
+        => GetPlexMovies(seed, FakeDataConfig.FromOptions(options));
 
+    internal static Faker<PlexMovie> GetPlexMovies(Seed seed, FakeDataConfig config)
+    {
         return _plexMovieFaker
             .RuleFor(
                 x => x.MediaDataList,
-                _ => GetPlexMovieMediaData(seed, options).Generate(config.IncludeMultiPartMovies ? 2 : 1)
+                _ => GetPlexMovieMediaData(seed, config).Generate(config.IncludeMultiPartMovies ? 2 : 1)
             )
             .UseSeed(seed.Next());
     }
@@ -147,11 +148,12 @@ public static partial class FakeData
         );
 
     public static Faker<PlexTvShow> GetPlexTvShows(Seed seed, Action<FakeDataConfig>? options = null)
-    {
-        var config = FakeDataConfig.FromOptions(options);
+        => GetPlexTvShows(seed, FakeDataConfig.FromOptions(options));
 
+    internal static Faker<PlexTvShow> GetPlexTvShows(Seed seed, FakeDataConfig config)
+    {
         return _plexTvShowFaker
-            .RuleFor(x => x.Seasons, _ => GetPlexTvShowSeason(seed, options).Generate(config.TvShowSeasonCount))
+            .RuleFor(x => x.Seasons, _ => GetPlexTvShowSeason(seed, config).Generate(config.TvShowSeasonCount))
             .RuleFor(x => x.ChildCount, _ => config.TvShowSeasonCount)
             .RuleFor(x => x.GrandChildCount, _ => config.TvShowSeasonCount * config.TvShowEpisodeCount)
             .UseSeed(seed.Next());
@@ -191,10 +193,12 @@ public static partial class FakeData
         );
 
     public static Faker<PlexTvShowSeason> GetPlexTvShowSeason(Seed seed, Action<FakeDataConfig>? options = null)
+        => GetPlexTvShowSeason(seed, FakeDataConfig.FromOptions(options));
+
+    private static Faker<PlexTvShowSeason> GetPlexTvShowSeason(Seed seed, FakeDataConfig config)
     {
-        var config = FakeDataConfig.FromOptions(options);
         return _plexTvShowSeasonFaker
-            .RuleFor(x => x.Episodes, _ => GetPlexTvShowEpisode(seed, options).Generate(config.TvShowEpisodeCount))
+            .RuleFor(x => x.Episodes, _ => GetPlexTvShowEpisode(seed, config).Generate(config.TvShowEpisodeCount))
             .UseSeed(seed.Next());
     }
 
@@ -236,8 +240,11 @@ public static partial class FakeData
         );
 
     public static Faker<PlexTvShowEpisode> GetPlexTvShowEpisode(Seed seed, Action<FakeDataConfig>? options = null) =>
+        GetPlexTvShowEpisode(seed, FakeDataConfig.FromOptions(options));
+
+    private static Faker<PlexTvShowEpisode> GetPlexTvShowEpisode(Seed seed, FakeDataConfig config) =>
         _plexTvShowEpisodeFaker
-            .RuleFor(x => x.MediaDataList, _ => GetPlexTvShowEpisodeMediaData(seed, options).Generate(1))
+            .RuleFor(x => x.MediaDataList, _ => GetPlexTvShowEpisodeMediaData(seed, config).Generate(1))
             .UseSeed(seed.Next());
 
     #endregion

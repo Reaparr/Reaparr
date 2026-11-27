@@ -143,11 +143,10 @@ public static partial class MockDatabase
         Seed seed,
         IPathProvider pathProvider,
         IAppRuntimeInfo appRuntimeInfo,
-        Action<FakeDataConfig>? options = null
+        FakeDataConfig config
     )
     {
-        var config = FakeDataConfig.FromOptions(options);
-        var downloadTasks = FakeData.GetMovieDownloadTask(seed, options).Generate(config.MovieDownloadTasksCount);
+        var downloadTasks = FakeData.GetMovieDownloadTask(seed, config).Generate(config.MovieDownloadTasksCount);
 
         var plexLibrary = context.PlexLibraries.FirstOrDefault(x => x.Type == PlexMediaType.Movie);
         plexLibrary.ShouldNotBeNull(
@@ -182,11 +181,10 @@ public static partial class MockDatabase
         Seed seed,
         IPathProvider pathProvider,
         IAppRuntimeInfo appRuntimeInfo,
-        Action<FakeDataConfig>? options = null
+        FakeDataConfig config
     )
     {
-        var config = FakeDataConfig.FromOptions(options);
-        var downloadTasks = FakeData.GetDownloadTaskTvShow(seed, options).Generate(config.TvShowDownloadTasksCount);
+        var downloadTasks = FakeData.GetDownloadTaskTvShow(seed, config).Generate(config.TvShowDownloadTasksCount);
 
         var plexLibrary = context.PlexLibraries.FirstOrDefault(x => x.Type == PlexMediaType.TvShow);
         plexLibrary.ShouldNotBeNull(
@@ -221,12 +219,11 @@ public static partial class MockDatabase
         Seed seed,
         IPathProvider pathProvider,
         IAppRuntimeInfo appRuntimeInfo,
-        Action<FakeDataConfig>? options = null
+        FakeDataConfig config
     )
     {
-        var config = FakeDataConfig.FromOptions(options);
         var downloadTasks = FakeData
-            .GetDownloadTaskMusicArtist(seed, options)
+            .GetDownloadTaskMusicArtist(seed, config)
             .Generate(config.MusicArtistDownloadTasksCount);
 
         var plexLibrary = context.PlexLibraries.FirstOrDefault(x => x.Type == PlexMediaType.MusicArtist);
@@ -254,17 +251,16 @@ public static partial class MockDatabase
         return context;
     }
 
-    public static async Task<ReaparrDbContext> AddDownloadTaskPhotoFolders(
+    private static async Task<ReaparrDbContext> AddDownloadTaskPhotoFolders(
         this ReaparrDbContext context,
         Seed seed,
         IPathProvider pathProvider,
         IAppRuntimeInfo appRuntimeInfo,
-        Action<FakeDataConfig>? options = null
+        FakeDataConfig config
     )
     {
-        var config = FakeDataConfig.FromOptions(options);
         var downloadTasks = FakeData
-            .GetDownloadTaskPhotoFolder(seed, options)
+            .GetDownloadTaskPhotoFolder(seed, config)
             .Generate(config.PhotoFolderDownloadTasksCount);
 
         var plexLibraries = context
@@ -315,12 +311,11 @@ public static partial class MockDatabase
         Seed seed,
         IPathProvider pathProvider,
         IAppRuntimeInfo appRuntimeInfo,
-        Action<FakeDataConfig>? options = null
+        FakeDataConfig config
     )
     {
-        var config = FakeDataConfig.FromOptions(options);
         var downloadTasks = FakeData
-            .GetDownloadTaskOtherVideo(seed, options)
+            .GetDownloadTaskOtherVideo(seed, config)
             .Generate(config.OtherVideoDownloadTasksCount);
 
         var plexLibrary = context.PlexLibraries.FirstOrDefault(x => x.Type == PlexMediaType.OtherVideos);
