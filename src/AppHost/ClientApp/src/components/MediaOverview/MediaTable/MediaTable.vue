@@ -70,6 +70,8 @@ import {
 import { useMediaOverviewStore } from '@store';
 import Convert from '@class/Convert';
 import { getMediaTableColumns } from '~/composables/mediaTableColumns';
+import { from } from 'rxjs';
+import { switchMap } from 'rxjs/operators';
 
 type QScrollInstance = {
 	getScrollTarget: () => HTMLElement | null;
@@ -226,28 +228,30 @@ function highlightPendingMedia() {
 	}).catch((error) => Log.error('Failed to highlight the pending media item', error));
 }
 
-onMounted(async () => {
-	// Quasar exposes the scroll target after mount; let the virtualizer attach first.
-	await nextTick();
-	// Listen for scroll to navigation index command
-	useSubscription(mediaOverviewStore.getScrollCommand().subscribe(({ index, highlight }) => {
+onMounted(() => {
+	useSubscription(from(nextTick()).pipe(
+		switchMap(() => mediaOverviewStore.getScrollCommand()),
+	).subscribe(({ index, highlight }) => {
 		scrollToIndex(index, highlight);
 	}));
 
-	const requestedScrollIndex = get(mediaOverviewStore.currentScrollIndex);
-	if (requestedScrollIndex > 0 && !props.rows) {
-		scrollToIndex(requestedScrollIndex - 1, get(mediaOverviewStore.pendingMediaHighlightId) === null);
-	}
+	void nextTick().then(() => {
+		// Quasar exposes the scroll target after mount; let the virtualizer attach first.
+		const requestedScrollIndex = get(mediaOverviewStore.currentScrollIndex);
+		if (requestedScrollIndex > 0 && !props.rows) {
+			scrollToIndex(requestedScrollIndex - 1, get(mediaOverviewStore.pendingMediaHighlightId) === null);
+		}
 
-	highlightPendingMedia();
-	if (get(mediaOverviewStore.pendingMediaHighlightId) !== null)
-		return;
+		highlightPendingMedia();
+		if (get(mediaOverviewStore.pendingMediaHighlightId) !== null)
+			return;
 
-	const lastMediaItemViewed = get(mediaOverviewStore.lastMediaItemViewed);
-	if (requestedScrollIndex <= 0 && lastMediaItemViewed && lastMediaItemViewed.sortIndex > 0) {
-		// If we have a last viewed media item, scroll to it
-		scrollToIndex(lastMediaItemViewed.sortIndex - 1);
-	}
+		const lastMediaItemViewed = get(mediaOverviewStore.lastMediaItemViewed);
+		if (requestedScrollIndex <= 0 && lastMediaItemViewed && lastMediaItemViewed.sortIndex > 0) {
+			// If we have a last viewed media item, scroll to it
+			scrollToIndex(lastMediaItemViewed.sortIndex - 1);
+		}
+	});
 });
 
 defineEmits<{
