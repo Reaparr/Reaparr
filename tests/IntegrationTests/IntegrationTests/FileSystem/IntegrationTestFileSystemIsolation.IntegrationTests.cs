@@ -25,4 +25,28 @@ public class IntegrationTestFileSystemIsolationIntegrationTests : BaseIntegratio
 
         Directory.Exists(firstSandboxPath).ShouldBeFalse();
     }
+
+    [Test]
+    public async Task ShouldRemoveOnlyFailedSandbox_WhenFilesystemSetupThrows()
+    {
+        // Arrange
+        using var retained = await CreateContainer(303);
+        var failure = new InvalidOperationException("Fixture setup failed");
+        string? failedSandbox = null;
+
+        // Act
+        var exception = await Should.ThrowAsync<InvalidOperationException>(() =>
+            CreateContainer(404, config => config.FileSystemOptions = (_, db) =>
+            {
+                failedSandbox = IntegrationTestFileSystemSandbox.GetSandboxFolder(db.DatabaseName);
+                Directory.Exists(failedSandbox).ShouldBeTrue();
+                throw failure;
+            })
+        );
+
+        // Assert
+        exception.ShouldBeSameAs(failure);
+        Directory.Exists(failedSandbox).ShouldBeFalse();
+        Directory.Exists(retained.TestFileSystemRootPath).ShouldBeTrue();
+    }
 }

@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using Autofac.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Data.Sqlite;
 using Reaparr.FileSystem.Contracts;
 using Reaparr.Settings.Contracts;
 
@@ -21,22 +22,13 @@ public class BaseContainer : IDisposable
     /// <summary>
     /// Creates an Autofac container and sets up a test database.
     /// </summary>
-    private BaseContainer(
-        ILogger log,
-        Seed seed,
-        string memoryDbName,
-        string testFileSystemRootPath,
-        Action<UnitTestDataConfig>? options = null,
-        bool useTestAuthentication = true
-    )
+    private BaseContainer(ILogger log, ReaparrWebApplicationFactory factory, string testFileSystemRootPath)
     {
         _log = log.ForContext<BaseContainer>();
 
         TestFileSystemRootPath = testFileSystemRootPath;
 
-        _log.Here().Information("Setting up BaseContainer with database: {MemoryDbName}", memoryDbName);
-
-        _factory = new ReaparrWebApplicationFactory(seed, memoryDbName, options, useTestAuthentication);
+        _factory = factory;
 
         // Create a separate scope as not to interfere with tests running in parallel
         _lifeTimeScope = _factory.Services.GetAutofacRoot().BeginLifetimeScope();
@@ -58,36 +50,67 @@ public class BaseContainer : IDisposable
         var mockAppBuildInfo = config.OverrideAppBuildInfo ?? new MockAppBuildInfo();
         var mockPathProvider = new MockPathProvider(memoryDbName, mockAppBuildInfo, mockAppRuntimeInfo);
 
-        // Create isolated filesystem
-        var testFileSystemRootPath = IntegrationTestFileSystemSandbox.Create(memoryDbName, log, mockPathProvider);
+        var testFileSystemRootPath = IntegrationTestFileSystemSandbox.GetSandboxFolder(memoryDbName);
 
-        log.Information("Initialized integration test with database name: {DatabaseName}", memoryDbName);
-
-        // Setup database
-        await MockDatabase
-            .GetMemoryDbContext(log, mockPathProvider, mockAppRuntimeInfo, memoryDbName)
-            .Setup(seed, mockPathProvider, mockAppRuntimeInfo, config.DatabaseOptions);
-
-        var container = new BaseContainer(
-            log,
-            seed,
-            memoryDbName,
-            testFileSystemRootPath,
-            options,
-            useTestAuthentication
-        );
-
-        if (config.FileSystemOptions is not null)
+        ReaparrWebApplicationFactory? factory = null;
+        BaseContainer? container = null;
+        try
         {
-            var fileSystem = container.Resolve<IFileSystem>();
-            var dbContext = container.Resolve<IReaparrDbContext>();
-            config.FileSystemOptions.Invoke(fileSystem, dbContext);
+            testFileSystemRootPath = IntegrationTestFileSystemSandbox.Create(memoryDbName, log, mockPathProvider);
+            log.Information("Initialized integration test with database name: {DatabaseName}", memoryDbName);
+            var (reaparrContext, authContext) = MockDatabase.GetMemoryDbContext(
+                log,
+                mockPathProvider,
+                mockAppRuntimeInfo,
+                memoryDbName
+            );
+            await using (reaparrContext)
+            await using (authContext)
+            {
+                await (reaparrContext, authContext).Setup(seed, mockPathProvider, mockAppRuntimeInfo, config.DatabaseOptions);
+            }
+
+            factory = new ReaparrWebApplicationFactory(seed, memoryDbName, options, useTestAuthentication);
+            container = new BaseContainer(log, factory, testFileSystemRootPath);
+
+            if (config.FileSystemOptions is not null)
+            {
+                var fileSystem = container.Resolve<IFileSystem>();
+                var dbContext = container.Resolve<IReaparrDbContext>();
+                config.FileSystemOptions.Invoke(fileSystem, dbContext);
+            }
+
+            if (config.DownloadSpeedLimitInKib > 0)
+                await container.SetDownloadSpeedLimit(options);
+
+            return container;
         }
+        catch
+        {
+            try
+            {
+                try
+                {
+                    if (container is not null)
+                        await container._lifeTimeScope.DisposeAsync();
+                }
+                finally
+                {
+                    if (factory is not null)
+                        await factory.DisposeAsync();
+                }
+            }
+            catch (Exception cleanupFailure)
+            {
+                log.Here().Error(cleanupFailure, "Failed to dispose incomplete fixture {DatabaseName}", memoryDbName);
+            }
+            finally
+            {
+                DeleteSandbox(log, memoryDbName, testFileSystemRootPath, mockPathProvider.DatabasePath);
+            }
 
-        if (config.DownloadSpeedLimitInKib > 0)
-            await container.SetDownloadSpeedLimit(options);
-
-        return container;
+            throw;
+        }
     }
 
     private static MockAppRuntimeInfo ResolveRuntimeInfo(UnitTestDataConfig config)
@@ -339,10 +362,21 @@ public class BaseContainer : IDisposable
                 .Error(ex, "Failed to delete database: {DatabaseName}, Error: {ExceptionMessage}", dbName, ex.Message);
         }
 
+        DeleteSandbox(_log, dbName, TestFileSystemRootPath);
+
+        // Dispose of the lifetime scope as the last step
+        _log.Here().Information("Disposing lifetime scope for container {DatabaseName}", dbName);
+        _lifeTimeScope.Dispose();
+
+        _log.Here().Fatal("Container disposed");
+    }
+
+    private static void DeleteSandbox(ILogger log, string dbName, string sandboxPath, string? databasePath = null)
+    {
         var cleanupResult = Result.Try(() =>
         {
             var expectedSandboxRoot = Path.GetFullPath(IntegrationTestFileSystemSandbox.GetSandboxFolder(dbName));
-            var pathToDelete = Path.GetFullPath(TestFileSystemRootPath);
+            var pathToDelete = Path.GetFullPath(sandboxPath);
 
             if (!pathToDelete.StartsWith(expectedSandboxRoot, StringComparison.Ordinal))
                 throw new InvalidOperationException(
@@ -351,8 +385,16 @@ public class BaseContainer : IDisposable
 
             if (Directory.Exists(pathToDelete))
             {
+                if (databasePath is not null)
+                {
+                    using var connection = new SqliteConnection(
+                        DbContextConnections.GetConnectionString(databasePath, SqliteOpenMode.ReadWriteCreate)
+                    );
+                    SqliteConnection.ClearPool(connection);
+                }
+
                 Directory.Delete(pathToDelete, recursive: true);
-                _log.Here()
+                log.Here()
                     .Information(
                         "Deleted test filesystem sandbox for container {DatabaseName}: {Path}",
                         dbName,
@@ -363,14 +405,8 @@ public class BaseContainer : IDisposable
 
         if (cleanupResult.IsFailed)
         {
-            _log.Here().Error("Failed to delete test filesystem sandbox for container {DatabaseName}", dbName);
+            log.Here().Error("Failed to delete test filesystem sandbox for container {DatabaseName}", dbName);
             cleanupResult.LogError();
         }
-
-        // Dispose of the lifetime scope as the last step
-        _log.Here().Information("Disposing lifetime scope for container {DatabaseName}", dbName);
-        _lifeTimeScope.Dispose();
-
-        _log.Here().Fatal("Container disposed");
     }
 }
