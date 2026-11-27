@@ -266,8 +266,32 @@ public class DownloadTaskUpdateDispatcherEpisodeUnitTests : BaseUnitTest<Downloa
         );
 
         await sut.StartAsync(CancellationToken.None);
-        await Task.Delay(1500, CancellationToken);
-        await sut.StopAsync(CancellationToken.None);
+        try
+        {
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(CancellationToken);
+            timeout.CancelAfter(TimeSpan.FromSeconds(5));
+            while (true)
+            {
+                using var dbContext = IDbContext;
+                var files = await dbContext.DownloadTaskTvShowEpisodeFile
+                    .Where(x => x.Id == completedEpisodeFile.Id || x.Id == siblingEpisodeFile.Id)
+                    .ToListAsync(timeout.Token);
+                var completed = files.Single(x => x.Id == completedEpisodeFile.Id);
+                var sibling = files.Single(x => x.Id == siblingEpisodeFile.Id);
+                if (
+                    completed.DirectDownloadSnapshot is { Status: 5, SaveProgress: 100, FileName: "completed.mkv" }
+                    && sibling.DirectDownloadSnapshot is { Status: 2, FileName: "sibling.mkv" }
+                    && sibling.DataReceived == 500
+                )
+                    break;
+
+                await Task.Delay(50, timeout.Token);
+            }
+        }
+        finally
+        {
+            await sut.StopAsync(CancellationToken.None);
+        }
 
         var updatedCompletedEpisodeFile = await IDbContext
             .DownloadTaskTvShowEpisodeFile.AsNoTracking()

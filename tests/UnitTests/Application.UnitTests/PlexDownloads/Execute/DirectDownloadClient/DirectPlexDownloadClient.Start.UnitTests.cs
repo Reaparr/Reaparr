@@ -1,3 +1,4 @@
+using System.Threading.Channels;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Reactive.Concurrency;
@@ -1160,6 +1161,7 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
 
         SetupSpeedLimitMocks(serverMachineIdentifier);
 
+        var scheduler = new HistoricalScheduler();
         var fileMock = new Mock<IFile>();
         var downloadServiceMock = new Mock<IDownloadService>();
         downloadServiceMock.Setup(x => x.Clear()).Returns(Task.CompletedTask);
@@ -1177,7 +1179,7 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
         downloadServiceMock
             .Setup(x => x.DownloadFileTaskAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .Returns<string, string, CancellationToken>(
-                async (_, targetPath, cancellationToken) =>
+                (_, targetPath, _) =>
                 {
                     SetupVerifiedFile(fileMock, Mock.Mock<IFileInfoFactory>(), targetPath, downloadTask.DataTotal);
 
@@ -1192,14 +1194,14 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
                         }
                     );
 
-                    // Wait beyond the 500 ms sample window so the Rx handler fires and persists
-                    await Task.Delay(700, cancellationToken);
+                    scheduler.AdvanceBy(TimeSpan.FromMilliseconds(300));
                     downloadServiceMock.Raise(
                         x => x.DownloadFileCompleted += null,
                         downloadServiceMock.Object,
                         // UserState must be a DownloadPackage — the production handler casts and dereferences it
                         new AsyncCompletedEventArgs(null, false, fakePackage)
                     );
+                    return Task.CompletedTask;
                 }
             );
 
@@ -1207,6 +1209,7 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
 
         // Act
         var sut = CreateSut(downloadServiceMock, fileMock);
+        sut.ProgressScheduler = scheduler;
         var result = await sut.Start(downloadTask.ToKey(), CancellationToken);
 
         // Assert
@@ -1218,9 +1221,9 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
             .Verify(
                 x =>
                     x.OnProgressUpdated(
-                        It.IsAny<DownloadTaskKey>(),
-                        It.IsAny<DownloadTaskProgress>(),
-                        It.Is<DirectDownloadSnapshot?>(s => s != null)
+                        It.Is<DownloadTaskKey>(key => key == downloadTask.ToKey()),
+                        It.Is<DownloadTaskProgress>(progress => progress.DataReceived == downloadTask.DataTotal / 2),
+                        It.Is<DirectDownloadSnapshot?>(snapshot => snapshot != null)
                     ),
                 Times.AtLeastOnce()
             );
@@ -2179,6 +2182,7 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
         var fileMock = new Mock<IFile>();
         var fileInfoFactoryMock = new Mock<IFileInfoFactory>();
         var package = MakeDownloadPackage(downloadTask.DataTotal);
+        var scheduler = new HistoricalScheduler();
 
         var downloadServiceMock = new Mock<IDownloadService>();
         downloadServiceMock.Setup(x => x.Clear()).Returns(Task.CompletedTask);
@@ -2187,7 +2191,7 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
         downloadServiceMock
             .Setup(x => x.DownloadFileTaskAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .Returns<string, string, CancellationToken>(
-                async (_, targetPath, _) =>
+                (_, targetPath, _) =>
                 {
                     SetupVerifiedFile(fileMock, fileInfoFactoryMock, targetPath, downloadTask.DataTotal);
 
@@ -2202,12 +2206,14 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
                         }
                     );
 
-                    await Task.Delay(2500, CancellationToken);
+                    scheduler.AdvanceBy(TimeSpan.FromMilliseconds(300));
+                    return Task.CompletedTask;
                 }
             );
 
         // Act
         var sut = CreateSut(downloadServiceMock, fileMock, fileInfoFactoryMock);
+        sut.ProgressScheduler = scheduler;
         var result = await sut.Start(downloadTask.ToKey(), CancellationToken);
 
         // Assert
@@ -2554,7 +2560,15 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
 
         // Act
         var sut = CreateSut(downloadServiceMock, fileMock, fileInfoFactoryMock);
-        var result = await sut.Start(downloadTask.ToKey(), CancellationToken);
+        var clock = new RetryClock();
+        sut.RetryTimeProvider = clock;
+        var startTask = sut.Start(downloadTask.ToKey(), CancellationToken);
+        var timer = await clock.NextTimerAsync(CancellationToken);
+        timer.DueTime.ShouldBe(TimeSpan.FromSeconds(3));
+        timer.Advance(TimeSpan.FromMilliseconds(2999));
+        Volatile.Read(ref attempt).ShouldBe(1);
+        timer.Advance(TimeSpan.FromMilliseconds(1));
+        var result = await startTask.WaitAsync(TimeSpan.FromSeconds(5), CancellationToken);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -2658,7 +2672,17 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
 
         // Act
         var sut = CreateSut(downloadServiceMock);
-        var result = await sut.Start(downloadTask.ToKey(), CancellationToken);
+        var clock = new RetryClock();
+        sut.RetryTimeProvider = clock;
+        var startTask = sut.Start(downloadTask.ToKey(), CancellationToken);
+        for (var retry = 0; retry < 2; retry++)
+        {
+            var timer = await clock.NextTimerAsync(CancellationToken);
+            timer.DueTime.ShouldBe(TimeSpan.FromSeconds(3));
+            timer.Advance(TimeSpan.FromSeconds(3));
+        }
+
+        var result = await startTask.WaitAsync(TimeSpan.FromSeconds(5), CancellationToken);
 
         // Assert
         result.IsFailed.ShouldBeTrue();
@@ -2823,5 +2847,57 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
             );
         Mock.Mock<ICommandExecutor>()
             .Verify(x => x.Send(It.IsAny<GetDirectDownloadUrlCommand>(), It.IsAny<CancellationToken>()), Times.Once());
+    }
+
+    private sealed class RetryClock : TimeProvider
+    {
+        private readonly Channel<RetryTimer> _timers = Channel.CreateUnbounded<RetryTimer>();
+
+        public RetryClock() { }
+
+        public Task<RetryTimer> NextTimerAsync(CancellationToken cancellationToken) =>
+            _timers.Reader.ReadAsync(cancellationToken).AsTask().WaitAsync(TimeSpan.FromSeconds(5), cancellationToken);
+
+        public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
+        {
+            period.ShouldBe(Timeout.InfiniteTimeSpan);
+            var timer = new RetryTimer(callback, state, dueTime);
+            _timers.Writer.TryWrite(timer);
+            return timer;
+        }
+    }
+
+    private sealed class RetryTimer : ITimer
+    {
+        private readonly TimerCallback _callback;
+        private readonly object? _state;
+        private TimeSpan _elapsed;
+        private int _inactive;
+
+        public RetryTimer(TimerCallback callback, object? state, TimeSpan dueTime)
+        {
+            _callback = callback;
+            _state = state;
+            DueTime = dueTime;
+        }
+
+        public TimeSpan DueTime { get; }
+
+        public void Advance(TimeSpan amount)
+        {
+            _elapsed += amount;
+            if (_elapsed >= DueTime && Interlocked.Exchange(ref _inactive, 1) == 0)
+                _callback(_state);
+        }
+
+        public bool Change(TimeSpan dueTime, TimeSpan period) => throw new NotSupportedException();
+
+        public void Dispose() => Interlocked.Exchange(ref _inactive, 1);
+
+        public ValueTask DisposeAsync()
+        {
+            Interlocked.Exchange(ref _inactive, 1);
+            return ValueTask.CompletedTask;
+        }
     }
 }

@@ -26,7 +26,8 @@ public class MoveDownloadFileSchedulerIntegrationTests : BaseIntegrationTests
                 var directoryPath = system.Path.GetDirectoryName(downloadTask.DownloadFilePath);
                 directoryPath.ShouldNotBeNullOrEmpty();
                 system.Directory.CreateDirectory(directoryPath);
-                system.File.WriteAllBytes(downloadTask.DownloadFilePath, FakeData.GetDownloadFile(10));
+                using var file = system.File.Create(downloadTask.DownloadFilePath);
+                file.SetLength(downloadTask.DataTotal);
             };
         });
         var dbContext = container.DbContext;
@@ -105,7 +106,8 @@ public class MoveDownloadFileSchedulerIntegrationTests : BaseIntegrationTests
                 var directoryPath = system.Path.GetDirectoryName(downloadTask.DownloadFilePath);
                 directoryPath.ShouldNotBeNullOrEmpty();
                 system.Directory.CreateDirectory(directoryPath);
-                system.File.WriteAllBytes(downloadTask.DownloadFilePath, FakeData.GetDownloadFile(10));
+                using var file = system.File.Create(downloadTask.DownloadFilePath);
+                file.SetLength(downloadTask.DataTotal);
             };
 
             config.OverrideServices = builder =>

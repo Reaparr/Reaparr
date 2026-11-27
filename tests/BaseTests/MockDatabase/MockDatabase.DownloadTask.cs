@@ -153,9 +153,6 @@ public static partial class MockDatabase
             "No PlexLibrary available with type Movie, consider setting config.DisableForeignKeyCheck = true"
         );
 
-        var plexServer = context.PlexServers.IncludeConnections().FirstOrDefault(x => x.Id == plexLibrary.PlexServerId);
-        plexServer.ShouldNotBeNull();
-
         downloadTasks.SetRelationshipIds(plexLibrary.PlexServerId, plexLibrary.Id);
 
         // Normalize seeded file paths for integration tests after relationship IDs are assigned, so the
@@ -190,9 +187,6 @@ public static partial class MockDatabase
         plexLibrary.ShouldNotBeNull(
             "No PlexLibrary available with type TvShow, consider setting config.DisableForeignKeyCheck = true"
         );
-
-        var plexServer = context.PlexServers.IncludeConnections().FirstOrDefault(x => x.Id == plexLibrary.PlexServerId);
-        plexServer.ShouldNotBeNull();
 
         downloadTasks.SetRelationshipIds(plexLibrary.PlexServerId, plexLibrary.Id);
 
@@ -230,9 +224,6 @@ public static partial class MockDatabase
         plexLibrary.ShouldNotBeNull(
             "No PlexLibrary available with type MusicArtist, consider setting config.DisableForeignKeyCheck = true"
         );
-
-        var plexServer = context.PlexServers.IncludeConnections().FirstOrDefault(x => x.Id == plexLibrary.PlexServerId);
-        plexServer.ShouldNotBeNull();
 
         downloadTasks.SetRelationshipIds(plexLibrary.PlexServerId, plexLibrary.Id);
         ApplyIntegrationTestPaths(downloadTasks, pathProvider, appRuntimeInfo);
@@ -322,9 +313,6 @@ public static partial class MockDatabase
         plexLibrary.ShouldNotBeNull(
             "No PlexLibrary available with type OtherVideos, consider setting config.DisableForeignKeyCheck = true"
         );
-
-        var plexServer = context.PlexServers.IncludeConnections().FirstOrDefault(x => x.Id == plexLibrary.PlexServerId);
-        plexServer.ShouldNotBeNull();
 
         downloadTasks.SetRelationshipIds(plexLibrary.PlexServerId, plexLibrary.Id);
         ApplyIntegrationTestPaths(downloadTasks, pathProvider, appRuntimeInfo);

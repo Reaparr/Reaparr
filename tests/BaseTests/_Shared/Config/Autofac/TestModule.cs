@@ -11,6 +11,8 @@ public class TestModule : Module
 {
     public required string MemoryDbName { get; init; }
     public required UnitTestDataConfig Config { get; init; }
+    public required IAppBuildInfo BuildInfo { get; init; }
+    public required IAppRuntimeInfo RuntimeInfo { get; init; }
 
     protected override void Load(ContainerBuilder builder)
     {
@@ -79,22 +81,8 @@ public class TestModule : Module
             .As<Func<DownloadConfiguration, IDownloadService>>()
             .SingleInstance();
 
-        builder
-            .Register((_, _) => Config.OverrideAppBuildInfo ?? new MockAppBuildInfo())
-            .As<IAppBuildInfo>()
-            .SingleInstance();
-
-        builder
-            .Register(
-                (_, _) =>
-                {
-                    var runtimeInfo = new MockAppRuntimeInfo { IsIntegrationTestMode = true, IsUnmasked = true };
-                    Config.OverrideAppRuntimeInfo?.Invoke(runtimeInfo);
-                    return runtimeInfo;
-                }
-            )
-            .As<IAppRuntimeInfo>()
-            .SingleInstance();
+        builder.RegisterInstance(BuildInfo).As<IAppBuildInfo>();
+        builder.RegisterInstance(RuntimeInfo).As<IAppRuntimeInfo>();
 
         builder
             .Register(

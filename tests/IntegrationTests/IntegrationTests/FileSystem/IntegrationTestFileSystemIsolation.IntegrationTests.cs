@@ -82,6 +82,66 @@ public class IntegrationTestFileSystemIsolationIntegrationTests : BaseIntegratio
         Directory.Exists(sandbox).ShouldBeFalse();
     }
 
+    [Test]
+    public async Task ShouldReleaseHostAndRemoveOnlyItsSandbox_WhenHostedStopThrows()
+    {
+        // Arrange
+        using var neighbor = await CreateContainer(606);
+        var failure = new InvalidOperationException("Hosted stop failed");
+        var probe = new FailingShutdownProbe(failure);
+        var container = await CreateContainer(707, config =>
+            config.OverrideServices = builder => builder.RegisterInstance(probe).As<IHostedService>()
+        );
+        var sandbox = container.TestFileSystemRootPath;
+        Directory.Exists(sandbox).ShouldBeTrue();
+
+        // Act
+        var exception = Should.Throw<InvalidOperationException>(container.Dispose);
+
+        // Assert
+        exception.ShouldBeSameAs(failure);
+        probe.Disposed.ShouldBeTrue();
+        Directory.Exists(sandbox).ShouldBeFalse();
+        Directory.Exists(neighbor.TestFileSystemRootPath).ShouldBeTrue();
+    }
+
+    [Test]
+    public async Task ShouldUseOneConfigurationForSeedingAndHosting_WhenOptionsHaveState()
+    {
+        // Arrange
+        var revision = 0;
+
+        // Act
+        using var container = await CreateContainer(808, config =>
+        {
+            var configuredRevision = ++revision;
+            config.DatabaseOptions = database => database.PlexServerCount = configuredRevision;
+            config.DownloadSpeedLimitInKib = 100 * configuredRevision;
+            config.OverrideServices = builder => builder.RegisterInstance(new Seed(configuredRevision));
+        });
+
+        // Assert
+        var server = await container.DbContext.PlexServers.SingleAsync(CancellationToken);
+        container.GetServerSettings.GetDownloadSpeedLimit(server.MachineIdentifier).ShouldBe(100);
+        container.Resolve<Seed>().Next().ShouldBe(new Seed(1).Next());
+        revision.ShouldBe(1);
+    }
+
+    private sealed class FailingShutdownProbe : IHostedService, IDisposable
+    {
+        private readonly Exception _failure;
+
+        public FailingShutdownProbe(Exception failure) => _failure = failure;
+
+        public bool Disposed { get; private set; }
+
+        public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+        public Task StopAsync(CancellationToken cancellationToken) => Task.FromException(_failure);
+
+        public void Dispose() => Disposed = true;
+    }
+
     private sealed class ShutdownProbe : IHostedService
     {
         public ShutdownProbe() { }

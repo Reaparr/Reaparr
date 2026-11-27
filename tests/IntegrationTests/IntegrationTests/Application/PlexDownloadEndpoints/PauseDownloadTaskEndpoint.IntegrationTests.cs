@@ -35,7 +35,8 @@ public class PauseDownloadTaskEndpointIntegrationTests : BaseIntegrationTests
                 var directoryPath = system.Path.GetDirectoryName(downloadTask.DownloadFilePath);
                 directoryPath.ShouldNotBeNullOrEmpty();
                 system.Directory.CreateDirectory(directoryPath);
-                system.File.WriteAllBytes(downloadTask.DownloadFilePath, FakeData.GetDownloadFile(50.0 / 4.0));
+                using var partialFile = system.File.Create(downloadTask.DownloadFilePath);
+                partialFile.SetLength(downloadTask.DataTotal / 4);
             };
         });
 

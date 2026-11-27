@@ -18,17 +18,24 @@ public class ReaparrWebApplicationFactory : WebApplicationFactory<Program>
 
     private readonly UnitTestDataConfig _config;
     private readonly bool _useTestAuthentication;
+    private readonly IAppBuildInfo _buildInfo;
+    private readonly IAppRuntimeInfo _runtimeInfo;
+    private IHost? _host;
 
     public ReaparrWebApplicationFactory(
         Seed seed,
         string memoryDbName,
-        Action<UnitTestDataConfig>? options = null,
+        UnitTestDataConfig config,
+        IAppBuildInfo buildInfo,
+        IAppRuntimeInfo runtimeInfo,
         bool useTestAuthentication = true
     )
     {
         Seed = seed;
         MemoryDbName = memoryDbName;
-        _config = UnitTestDataConfig.FromOptions(options);
+        _config = config;
+        _buildInfo = buildInfo;
+        _runtimeInfo = runtimeInfo;
         _useTestAuthentication = useTestAuthentication;
     }
 
@@ -53,19 +60,52 @@ public class ReaparrWebApplicationFactory : WebApplicationFactory<Program>
     {
         builder.ConfigureContainer<ContainerBuilder>(autoFacBuilder =>
         {
-            autoFacBuilder.RegisterModule(new TestModule { MemoryDbName = MemoryDbName, Config = _config });
-            // Allow per-test overrides last so they win
+            autoFacBuilder.RegisterModule(new TestModule
+            {
+                MemoryDbName = MemoryDbName,
+                Config = _config,
+                BuildInfo = _buildInfo,
+                RuntimeInfo = _runtimeInfo,
+            });
+            // Allow per-test overrides last so they win.
             _config.OverrideServices?.Invoke(autoFacBuilder);
         });
 
         try
         {
-            return base.CreateHost(builder);
+            return _host = base.CreateHost(builder);
         }
         catch (Exception e)
         {
             _log.Here().Fatal(e, "Failed to create the test host");
             throw;
+        }
+    }
+
+    public override async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await base.DisposeAsync();
+        }
+        catch
+        {
+            // The factory only disposes the host after StopAsync returns successfully.
+            if (_host is IAsyncDisposable asyncHost)
+            {
+                var result = await Result.Try(asyncHost.DisposeAsync);
+                result.LogIfFailed();
+            }
+            else if (_host is not null)
+            {
+                Result.Try(_host.Dispose).LogIfFailed();
+            }
+
+            throw;
+        }
+        finally
+        {
+            _host = null;
         }
     }
 }

@@ -12,6 +12,7 @@ public class DesktopMode : IDesktopMode
     private readonly IAppRuntimeInfo _appRuntimeInfo;
     private readonly IServer _server;
     private readonly Func<Uri, IDesktopWindow> _windowFactory;
+    private readonly TimeProvider _timeProvider;
     private readonly TaskCompletionSource _exitCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     private TaskCompletionSource? _desktopReadyCompletion;
@@ -28,11 +29,21 @@ public class DesktopMode : IDesktopMode
         IServer server,
         Func<Uri, IDesktopWindow> windowFactory
     )
+        : this(log, appRuntimeInfo, server, windowFactory, TimeProvider.System) { }
+
+    internal DesktopMode(
+        Serilog.ILogger log,
+        IAppRuntimeInfo appRuntimeInfo,
+        IServer server,
+        Func<Uri, IDesktopWindow> windowFactory,
+        TimeProvider timeProvider
+    )
     {
         _log = log.ForContext<DesktopMode>();
         _appRuntimeInfo = appRuntimeInfo;
         _server = server;
         _windowFactory = windowFactory;
+        _timeProvider = timeProvider;
     }
 
     /// <inheritdoc />
@@ -199,7 +210,7 @@ public class DesktopMode : IDesktopMode
         if (_appRuntimeInfo.IsIntegrationTestMode)
             return;
 
-        using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(DESKTOP_READY_TIMEOUT_SECONDS));
+        using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(DESKTOP_READY_TIMEOUT_SECONDS), _timeProvider);
         try
         {
             await desktopReadyCompletion.Task.WaitAsync(timeoutCts.Token);
