@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+
 namespace Reaparr.Application.UnitTests;
 
 public class DownloadTaskUpdateDispatcherEpisodeUnitTests : BaseUnitTest<DownloadTaskUpdateDispatcher>
@@ -336,7 +338,7 @@ public class DownloadTaskUpdateDispatcherEpisodeUnitTests : BaseUnitTest<Downloa
             .Setup(x => x.IsServerDownloading(completedEpisodeFile.PlexServerId))
             .ReturnsAsync(true);
 
-        var capturedPatches = new List<IReadOnlyCollection<DownloadPatchDTO>>();
+        var capturedPatches = new ConcurrentQueue<IReadOnlyCollection<DownloadPatchDTO>>();
         Mock.Mock<IDownloadHubService>()
             .Setup(x =>
                 x.SendDownloadPatchAsync(
@@ -348,14 +350,12 @@ public class DownloadTaskUpdateDispatcherEpisodeUnitTests : BaseUnitTest<Downloa
                 )
             )
             .Callback<int, long, IReadOnlyCollection<DownloadPatchDTO>, IReadOnlyCollection<Guid>?, CancellationToken>(
-                (_, _, upserts, _, _) => capturedPatches.Add(upserts)
+                (_, _, upserts, _, _) => capturedPatches.Enqueue(upserts)
             )
             .Returns(Task.CompletedTask)
             .Verifiable(Times.AtLeastOnce());
 
         var sut = Sut;
-
-        await sut.StartAsync(CancellationToken.None);
 
         await sut.OnStatusChangedAsync(completedEpisodeFile.ToKey(), DownloadStatus.Downloading, CancellationToken);
         await sut.OnStatusChangedAsync(siblingEpisodeFile.ToKey(), DownloadStatus.Downloading, CancellationToken);
@@ -383,7 +383,16 @@ public class DownloadTaskUpdateDispatcherEpisodeUnitTests : BaseUnitTest<Downloa
             }
         );
 
-        await WaitForPatchCount(capturedPatches, 4);
+        await sut.StartAsync(CancellationToken.None);
+
+        await WaitUntilAsync(() =>
+            Task.FromResult(
+                capturedPatches.Any(patch =>
+                    patch.Any(node => node.Id == completedEpisodeFile.Id && node.DataReceived == 300)
+                    && patch.Any(node => node.Id == siblingEpisodeFile.Id && node.DataReceived == 400)
+                )
+            )
+        );
 
         sut.OnProgressUpdated(
             completedEpisodeFile.ToKey(),

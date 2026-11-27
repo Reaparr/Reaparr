@@ -331,6 +331,73 @@ describe('LibraryStore queue state', () => {
 		// Assert
 		expect(libraryStore.syncQueues).toEqual([latestQueue]);
 	});
+
+	test('Should keep the newest queue snapshot when independent refreshes finish out of order', async () => {
+		// Arrange
+		const store = useLibraryStore();
+		const older = new Subject<ResultDTO<LibrarySyncJobQueueDTO[]>>();
+		const newer = new Subject<ResultDTO<LibrarySyncJobQueueDTO[]>>();
+		vi.spyOn(plexLibraryApi, 'getLibrarySyncStatusEndpoint')
+			.mockReturnValueOnce(older.asObservable())
+			.mockReturnValueOnce(newer.asObservable());
+		const queued = generateLibrarySyncJobQueue({ plexLibraryId: 11, plexServerId: 1, status: LibrarySyncJobStatus.Queued });
+		const processing = { ...queued, status: LibrarySyncJobStatus.Processing };
+
+		// Act
+		const oldResult = subscribeSpyTo(store.refreshLibrarySyncStatus());
+		const newResult = subscribeSpyTo(store.refreshLibrarySyncStatus());
+		newer.next(generateResultDTO([processing]));
+		newer.complete();
+		older.next(generateResultDTO([queued]));
+		older.complete();
+		await Promise.all([oldResult.onComplete(), newResult.onComplete()]);
+
+		// Assert
+		expect(store.getLibrarySyncQueue(11)).toEqual(processing);
+		expect(oldResult.getFirstValue()).toEqual([processing]);
+	});
+
+	test('Should ignore snapshots older than a confirmed cancellation and accept a new sync', async () => {
+		// Arrange
+		const store = useLibraryStore();
+		const stale = new Subject<ResultDTO<LibrarySyncJobQueueDTO[]>>();
+		const queued = generateLibrarySyncJobQueue({ plexLibraryId: 11, plexServerId: 1, status: LibrarySyncJobStatus.Queued });
+		const cancelled = { ...queued, status: LibrarySyncJobStatus.Cancelled };
+		const requeued = { ...queued, createdAt: '2026-11-25T12:00:00Z' };
+		vi.spyOn(plexLibraryApi, 'getLibrarySyncStatusEndpoint').mockReturnValueOnce(stale.asObservable());
+		mock.onGet(PlexLibraryPaths.getLibrarySyncStatusEndpoint()).reply(200, generateResultDTO([requeued]));
+		store.updateSyncQueue(queued);
+
+		// Act
+		const older = subscribeSpyTo(store.refreshLibrarySyncStatus());
+		store.updateSyncQueue(cancelled);
+		stale.next(generateResultDTO([queued]));
+		stale.complete();
+		await older.onComplete();
+
+		// Assert
+		expect(store.getLibrarySyncQueue(11)).toEqual(cancelled);
+		await subscribeSpyTo(store.refreshLibrarySyncStatus()).onComplete();
+		expect(store.getLibrarySyncQueue(11)).toEqual(requeued);
+	});
+	test('Should retain locally re-synced library while applying other snapshot rows', async () => {
+		const store = useLibraryStore();
+		const pending = new Subject<ResultDTO<LibrarySyncJobQueueDTO[]>>();
+		vi.spyOn(plexLibraryApi, 'getLibrarySyncStatusEndpoint').mockReturnValueOnce(pending.asObservable());
+		const queuedA = generateLibrarySyncJobQueue({ plexLibraryId: 11, plexServerId: 1, status: LibrarySyncJobStatus.Queued });
+		const queuedB = generateLibrarySyncJobQueue({ plexLibraryId: 12, plexServerId: 1, status: LibrarySyncJobStatus.Queued });
+		const newA = { ...queuedA, createdAt: '2026-11-25T12:00:00Z' };
+		const completedB = { ...queuedB, status: LibrarySyncJobStatus.Completed };
+
+		const result = subscribeSpyTo(store.refreshLibrarySyncStatus());
+		store.updateSyncQueue(newA);
+		pending.next(generateResultDTO([queuedA, completedB]));
+		pending.complete();
+		await result.onComplete();
+
+		expect(store.getLibrarySyncQueue(11)).toEqual(newA);
+		expect(store.getLibrarySyncQueue(12)).toEqual(completedB);
+	});
 });
 
 function createConnection(plexServerId: number, isSuccessful: boolean): PlexServerConnectionDTO {

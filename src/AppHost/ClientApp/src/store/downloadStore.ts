@@ -289,7 +289,8 @@ export const useDownloadStore = defineStore(StoreNames.DownloadStore, () => {
 			for (const id of deletedNodeIds) nodeIndex.delete(id);
 		}
 		for (const upsert of patch.upserts) {
-			const existing = nodeIndex.get(upsert.id)!;
+			const existing = nodeIndex.get(upsert.id);
+			if (!existing) continue;
 			existing.status = upsert.status;
 			existing.percentage = upsert.percentage;
 			existing.dataReceived = upsert.dataReceived;
@@ -347,7 +348,7 @@ export const useDownloadStore = defineStore(StoreNames.DownloadStore, () => {
 		return deletedNodeIds;
 	}
 
-	function removeDeletedInPlace(nodes: DownloadProgressDTO[], deletedNodeIds: ReadonlySet<string>): void {
+	function removeDeletedInPlace(nodes: DownloadProgressDTO[], deletedNodeIds: Set<string>): void {
 		for (let index = nodes.length - 1; index >= 0; index--) {
 			const node = nodes[index]!;
 			if (deletedNodeIds.has(node.id)) {
@@ -355,7 +356,13 @@ export const useDownloadStore = defineStore(StoreNames.DownloadStore, () => {
 				continue;
 			}
 
-			removeDeletedInPlace(node.children ?? [], deletedNodeIds);
+			if (!node.children?.length) continue;
+
+			removeDeletedInPlace(node.children, deletedNodeIds);
+			if (node.children.length === 0) {
+				deletedNodeIds.add(node.id);
+				nodes.splice(index, 1);
+			}
 		}
 	}
 

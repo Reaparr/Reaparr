@@ -2,6 +2,7 @@ import { cloneDeep } from 'lodash-es';
 import prettyBytes from 'pretty-bytes';
 import { HubConnectionState } from '@microsoft/signalr';
 import { route } from '@fixtures';
+import { DownloadPaths } from '@api-urls';
 import { DownloadStatus, MessageTypes, RefreshDataType, type DownloadProgressDTO } from '@dto';
 import { generateFailedResultDTO, generateResultDTO, toDownloadPatchMessagePackTuple } from '@mock';
 
@@ -59,6 +60,90 @@ describe('Downloads page', () => {
 			cy.wait('@refreshDownloads');
 			getVisibleCy(`column-status-${initialTask.id}`).should('have.text', refreshedStatus);
 			cy.then(() => expect(refreshRequests).to.equal(1));
+		});
+	});
+
+	it('Should offer distinct Start and Restart controls for a storage error', () => {
+		cy.basePageSetup({
+			seed: 47022, plexAccountCount: 1, plexServerCount: 1, plexMovieLibraryCount: 1, movieDownloadTask: 1, isLoggedIn: true,
+		}).then((data) => {
+			const queue = cloneDeep(data.serverDownloadProgress);
+			const task = queue[0]!.downloads[0]!;
+			task.status = DownloadStatus.StorageError;
+			task.percentage = 50;
+			task.dataReceived = task.dataTotal / 2;
+			cy.intercept('GET', DownloadPaths.getAllDownloadTasksEndpoint(), (request) => {
+				request.reply({ statusCode: 200, body: generateResultDTO({ downloads: queue, patchSequenceByServer: {} }) });
+			}).as('storageErrorQueue');
+			const startPath = DownloadPaths.startDownloadTaskEndpoint(task.id);
+			cy.intercept('PUT', startPath, (request) => {
+				task.status = DownloadStatus.Downloading;
+				request.reply({ statusCode: 200, body: generateResultDTO(null) });
+			}).as('resumeDownload');
+			cy.intercept('PUT', DownloadPaths.restartDownloadTaskEndpoint(task.id), (request) => {
+				task.status = DownloadStatus.Queued;
+				task.dataReceived = 0;
+				task.percentage = 0;
+				request.reply({ statusCode: 200, body: generateResultDTO(null) });
+			}).as('restartDownload');
+
+			cy.visit(route('/downloads'));
+			cy.wait('@storageErrorQueue');
+			getVisibleCy(`column-status-${task.id}`).should('have.text', 'Storage Error');
+			getVisibleCy(`column-percentage-${task.id}`).should('have.text', '50%');
+			getVisibleCy(`column-actions-restart-${task.id}`).should('have.attr', 'aria-label', `Restart: ${task.title}`);
+			getVisibleCy(`column-actions-start-${task.id}`).should('have.attr', 'aria-label', `Start: ${task.title}`).click();
+			cy.wait('@resumeDownload').its('response.statusCode').should('equal', 200);
+
+			cy.hubPublish('notifications', MessageTypes.RefreshNotification, RefreshDataType.DownloadTasks);
+			cy.wait('@storageErrorQueue');
+			getVisibleCy(`column-status-${task.id}`).should('have.text', DownloadStatus.Downloading);
+			getVisibleCy(`column-percentage-${task.id}`).should('have.text', '50%');
+
+			cy.then(() => {
+				task.status = DownloadStatus.StorageError;
+			});
+			cy.hubPublish('notifications', MessageTypes.RefreshNotification, RefreshDataType.DownloadTasks);
+			cy.wait('@storageErrorQueue');
+			getVisibleCy(`column-actions-restart-${task.id}`).click();
+			cy.wait('@restartDownload').its('response.statusCode').should('equal', 200);
+			cy.hubPublish('notifications', MessageTypes.RefreshNotification, RefreshDataType.DownloadTasks);
+			cy.wait('@storageErrorQueue');
+			getVisibleCy(`column-status-${task.id}`).should('have.text', DownloadStatus.Queued);
+		});
+	});
+
+	it('Should remove an empty TV download branch when its last file is deleted remotely', () => {
+		cy.basePageSetup({
+			seed: 47023, plexAccountCount: 1, plexServerCount: 1, tvShowDownloadTask: 2, movieDownloadTask: 0,
+			seasonDownloadTask: 1, episodeDownloadTask: 1, isLoggedIn: true,
+		}).then((data) => {
+			const server = cloneDeep(data.serverDownloadProgress[0]!);
+			const [show, retained] = server.downloads;
+			const season = show!.children[0]!;
+			const episode = season.children[0]!;
+			const file = { ...episode, id: `${episode.id}-file`, title: `${episode.title}.mkv` };
+			episode.children = [file];
+			cy.intercept('GET', DownloadPaths.getAllDownloadTasksEndpoint(), (request) => {
+				request.reply({ statusCode: 200, body: generateResultDTO({ downloads: [server], patchSequenceByServer: {} }) });
+			}).as('nestedQueue');
+			cy.visit(route('/downloads'));
+			cy.wait('@nestedQueue');
+			getVisibleCy(`column-title-${show!.id}`).should('have.text', show!.title);
+			getVisibleCy(`column-title-${retained!.id}`).should('have.text', retained!.title);
+
+			cy.then(() => {
+				server.downloads = [retained!];
+			});
+			cy.hubPublish('download', MessageTypes.DownloadPatch, toDownloadPatchMessagePackTuple({
+				serverId: server.id, sequence: 1, deletedIds: [file.id], upserts: [],
+			}));
+			cy.getCy(`column-title-${show!.id}`).should('not.exist');
+			getVisibleCy(`column-title-${retained!.id}`).should('have.text', retained!.title);
+			cy.reload();
+			cy.wait('@nestedQueue');
+			cy.getCy(`column-title-${show!.id}`).should('not.exist');
+			getVisibleCy(`column-title-${retained!.id}`).should('have.text', retained!.title);
 		});
 	});
 

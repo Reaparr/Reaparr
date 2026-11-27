@@ -8,7 +8,7 @@ import { StoreNames, type ISetupResult } from '@interfaces';
 import { plexServerApi } from '@api';
 import { RefreshDataType, SortDirection } from '@dto';
 import { cloneDeep, orderBy } from 'lodash-es';
-import { useServerConnectionStore, useSettingsStore, useSignalrStore } from '@store';
+import { useAlertStore, useServerConnectionStore, useSettingsStore, useSignalrStore } from '@store';
 import { getSortOrder } from '@composables';
 
 interface IServerStoreState {
@@ -73,11 +73,16 @@ export const useServerStore = defineStore(StoreNames.ServerStore, () => {
 		setServerEnabled(serverId: number, isEnabled: boolean) {
 			telemetry.serverEnabledChanged(serverId, isEnabled);
 			return plexServerApi
-				.setServerEnabledEndpoint(serverId, {
-					isEnabled,
-				})
+				.setServerEnabledEndpoint(serverId, { isEnabled }, { handleErrorsLocally: true })
 				.pipe(
 					tap((response) => {
+						if (!response.isSuccess) {
+							useAlertStore().showAlert({
+								id: 0,
+								title: 'Unable to change server availability',
+								text: response.errors.map((error) => error.message).join('\n'),
+							});
+						}
 						if (response.isSuccess && response.value) {
 							const i = state.servers.findIndex((x) => x.id === serverId);
 							if (i > -1) {

@@ -256,42 +256,29 @@ function persistScrollIndex() {
 
 	persistTimer = setTimeout(() => {
 		persistTimer = null;
-		const container = getScrollElement();
-		if (!container)
-			return;
-
-		const virtualItems = rowVirtualizer.value.getVirtualItems();
-		const firstVirtualRow = virtualItems.at(0);
-		if (!firstVirtualRow)
-			return;
-
-		// Guard initial mount at absolute top
-		if (!(container.scrollTop > 0 || firstVirtualRow.index > 0))
-			return;
-
-		const posterNodes = Array.from(container.querySelectorAll<HTMLElement>('[data-scroll-index]'));
-		if (posterNodes.length === 0)
-			return;
-
-		const containerTop = container.getBoundingClientRect().top;
-		let nearestIndex: number | null = null;
-		let nearestDistance = Number.POSITIVE_INFINITY;
-
-		for (const node of posterNodes) {
-			const candidateIndex = Number(node.dataset.scrollIndex);
-			if (!Number.isInteger(candidateIndex) || candidateIndex < 0)
-				continue;
-
-			const distance = Math.abs(node.getBoundingClientRect().top - containerTop);
-			if (distance < nearestDistance) {
-				nearestDistance = distance;
-				nearestIndex = candidateIndex;
-			}
-		}
-
-		if (nearestIndex !== null)
-			mediaOverviewStore.setCurrentScrollIndex(nearestIndex + 1);
+		const index = getVisibleScrollIndex();
+		if (index !== undefined && index > 1)
+			mediaOverviewStore.setCurrentScrollIndex(index);
 	}, 500);
+}
+function getVisibleScrollIndex(): number | undefined {
+	const container = getScrollElement();
+	if (!container) return;
+	if (container.scrollTop === 0) return 1;
+
+	const containerTop = container.getBoundingClientRect().top;
+	let nearestIndex: number | undefined;
+	let nearestDistance = Number.POSITIVE_INFINITY;
+	for (const node of container.querySelectorAll<HTMLElement>('[data-scroll-index]')) {
+		const index = Number(node.dataset.scrollIndex);
+		if (!Number.isInteger(index) || index < 0) continue;
+		const distance = Math.abs(node.getBoundingClientRect().top - containerTop);
+		if (distance < nearestDistance) {
+			nearestDistance = distance;
+			nearestIndex = index + 1;
+		}
+	}
+	return nearestIndex;
 }
 function onPageReady() {
 	if (get(controlled))
@@ -342,8 +329,11 @@ async function onOpenMediaDetails(mediaItem: PlexMediaSlimDTO) {
 	}
 	mediaOverviewStore.setPendingMediaHighlight(mediaItem.id, mediaOverviewStore.libraryId);
 	try {
-		// Flush any scroll-query replacement queued before the details action.
-		await nextTick();
+		const scrollIndex = getVisibleScrollIndex();
+		if (scrollIndex !== undefined) {
+			const { path: overviewPath, query } = get(router.currentRoute);
+			await router.replace({ path: overviewPath, query: { ...query, scrollIndex: String(scrollIndex) } });
+		}
 		await router.push(path);
 	} finally {
 		navigatingToDetails = false;

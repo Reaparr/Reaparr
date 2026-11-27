@@ -5,7 +5,9 @@ namespace Reaparr.Application.UnitTests;
 public class DownloadJobListenerUnitTests : BaseUnitTest<DownloadJobListener>
 {
     [Test]
-    public async Task ShouldCheckQueues_WhenDownloadFinishes()
+    [Arguments(false)]
+    [Arguments(true)]
+    public async Task ShouldCheckDownloadQueue_WhenDownloadFinishesEvenIfMoveCheckThrows(bool moveCheckThrows)
     {
         // Arrange
         await SetupDatabase(39397, config => config.MovieDownloadTasksCount = 1);
@@ -18,10 +20,12 @@ public class DownloadJobListenerUnitTests : BaseUnitTest<DownloadJobListener>
         context.SetupGet(x => x.JobDetail).Returns(jobDetail.Object);
         context.SetupGet(x => x.MergedJobDataMap).Returns(new DownloadJobPayload(downloadTask.ToKey()).ToJobDataMap());
 
-        Mock.Mock<IMoveDownloadFileQueue>()
-            .Setup(x => x.CheckMoveDownloadFileJobQueue(CancellationToken))
-            .ReturnsAsync(Result.Ok())
-            .Verifiable(Times.Once());
+        var moveCheck = Mock.Mock<IMoveDownloadFileQueue>()
+            .Setup(x => x.CheckMoveDownloadFileJobQueue(CancellationToken));
+        if (moveCheckThrows)
+            moveCheck.ThrowsAsync(new InvalidOperationException("Move queue unavailable")).Verifiable(Times.Once());
+        else
+            moveCheck.ReturnsAsync(Result.Ok()).Verifiable(Times.Once());
         Mock.Mock<IEventPublisher>()
             .Setup(x =>
                 x.PublishAsync(

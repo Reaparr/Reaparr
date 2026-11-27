@@ -448,4 +448,67 @@ public class DownloadQueueCheckDownloadQueueUnitTests : BaseUnitTest<DownloadQue
                 Times.Never
             );
     }
+
+    [Test]
+    public async Task ShouldReadOnlyEligibleFilesAndPreserveMixedMediaSelectionOrder()
+    {
+        // Arrange
+        await SetupDatabase(88410, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieDownloadTasksCount = 12;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowDownloadTasksCount = 2;
+            config.TvShowSeasonDownloadTasksCount = 2;
+            config.TvShowEpisodeDownloadTasksCount = 2;
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistDownloadTasksCount = 2;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoFolderDownloadTasksCount = 2;
+            config.PlexOtherVideoLibraryCount = 1;
+            config.OtherVideoDownloadTasksCount = 2;
+        });
+        var db = IDbContext;
+        var serverId = await db.PlexServers.Select(x => x.Id).SingleAsync(CancellationToken);
+        var original = await db.GetAllDownloadTasksByServerAsync(serverId, cancellationToken: CancellationToken);
+        var files = original.Flatten(x => x.Children).Where(x => x.IsDownloadable).ToArray();
+        var eligible = files.Where(x => x.DownloadTaskType != DownloadTaskType.MovieData).ToArray();
+        eligible
+            .Select(x => x.DownloadTaskType)
+            .Distinct()
+            .Order()
+            .ShouldBe(
+                new[]
+                {
+                    DownloadTaskType.EpisodeData,
+                    DownloadTaskType.MusicTrackData,
+                    DownloadTaskType.PhotoImage,
+                    DownloadTaskType.OtherVideoData,
+                }.Order()
+            );
+        foreach (var file in files.Where(x => x.DownloadTaskType == DownloadTaskType.MovieData))
+            await db.SetDownloadStatus(file.ToKey(), DownloadStatus.Completed);
+        var full = await db.GetAllDownloadTasksByServerAsync(serverId, cancellationToken: CancellationToken);
+        var expected = Sut.GetNextDownloadTask(full, out _).Value.ToKey();
+        var scheduler = Mock.Mock<IDownloadTaskScheduler>();
+        scheduler.Setup(x => x.GetCurrentlyDownloadingKeysByServer(serverId)).ReturnsAsync([]).Verifiable(Times.Once());
+        scheduler.Setup(x => x.StartDownloadTaskJob(expected, CancellationToken)).ReturnOk().Verifiable(Times.Once());
+
+        // Act
+        var candidates = await db.GetDownloadQueueCandidatesAsync(serverId, [DownloadStatus.Queued], CancellationToken);
+        var result = await Sut.CheckDownloadQueueServer(serverId, CancellationToken);
+
+        // Assert
+        candidates
+            .Flatten(x => x.Children)
+            .Where(x => x.IsDownloadable)
+            .Select(x => x.Id)
+            .ShouldBe(eligible.Select(x => x.Id));
+        candidates.Count.ShouldBeLessThan(full.Count);
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.ShouldBeEmpty();
+        result.Value.ToKey().ShouldBe(expected);
+        scheduler.Verify();
+    }
 }

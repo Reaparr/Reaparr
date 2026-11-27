@@ -271,6 +271,26 @@ describe('PostHog browser plugin', () => {
 		expect(posthogMock.client.startSessionRecording).toHaveBeenCalledOnce();
 	});
 
+	test.each([
+		['/e/i/v0/e/', '/e/submit/'],
+		['/client/e/i/v0/e/', '/client/e/submit/'],
+		['/e/e/', '/e/submit-batch/'],
+		['/e/s/', '/e/s/'],
+		['/e/static/recorder.js', '/e/static/recorder.js'],
+		['/e/i/v0/e/other', '/e/i/v0/e/other'],
+	])('Should map only event capture paths (%s)', (path, expectedPath) => {
+		// Arrange
+		const url = new URL(path + '?retry_count=1&compression=gzip', 'https://reaparr.example.test');
+		runPlugin({ afterEach: vi.fn() } as unknown as Router, new Map());
+		const rewrite = posthogMock.client.set_config.mock.calls[0]![0].rewriteRequestPath!;
+
+		// Act
+		const rewrittenUrl = rewrite(url);
+
+		// Assert
+		expect(rewrittenUrl.href).toBe(`https://reaparr.example.test${expectedPath}?retry_count=1&compression=gzip`);
+	});
+
 	test('Should leave an unconfigured module client inactive without requesting bootstrap', () => {
 		// Arrange
 		posthogMock.client.__loaded = false;

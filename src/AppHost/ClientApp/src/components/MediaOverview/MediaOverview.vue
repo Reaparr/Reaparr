@@ -18,23 +18,23 @@
 					:library-id="libraryId"
 					:refresh-disabled="isRefreshDisabled"
 					@action="onAction" />
-				<!-- Library Inaccessible Alert -->
-				<q-banner
-					v-if="isLibraryInaccessible"
-					class="media-overview-inaccessible-banner bg-warning text-black"
-					dense
-					role="status"
-					aria-live="polite"
-					data-cy="media-overview-inaccessible-library-banner">
-					<template #avatar>
-						<q-icon
-							name="mdi-alert"
-							aria-hidden="true" />
-					</template>
-					<strong>{{ $t('components.media-overview.library-inaccessible-title') }}</strong>
-					{{ $t('components.media-overview.library-inaccessible') }}
-				</q-banner>
 			</div>
+			<!-- Library Inaccessible Alert -->
+			<q-banner
+				v-if="isLibraryInaccessible"
+				class="media-overview-inaccessible-banner bg-warning text-black"
+				dense
+				role="status"
+				aria-live="polite"
+				data-cy="media-overview-inaccessible-library-banner">
+				<template #avatar>
+					<q-icon
+						name="mdi-alert"
+						aria-hidden="true" />
+				</template>
+				<strong>{{ $t('components.media-overview.library-inaccessible-title') }}</strong>
+				{{ $t('components.media-overview.library-inaccessible') }}
+			</q-banner>
 			<QBanner
 				v-if="refreshSubmitting && !isQueued"
 				class="media-overview-refresh-requesting"
@@ -402,33 +402,8 @@ onMounted(() => {
 			filter(Boolean),
 			take(1),
 			switchMap(() => mediaOverviewStore.initializeLibrary(props.libraryId)),
-		).subscribe({
-			next: () => {
-				void restorePosterScrollPosition().catch((error: unknown) => Log.error('Failed to restore media scroll position', error));
-			},
-		}),
+		).subscribe(),
 	);
-
-	async function restorePosterScrollPosition(): Promise<void> {
-		const requestedScrollIndex = mediaOverviewStore.currentScrollIndex;
-		if (requestedScrollIndex <= 0) return;
-
-		// URL/store uses one-based index (same convention as media sortIndex).
-		// PosterTable scroll API expects zero-based row/item index.
-		const targetIndex = requestedScrollIndex - 1;
-		// Initial render can race with virtualized content mounting and page prefetch.
-		// Retry a few times so refresh/back-forward restores land at the intended poster.
-		const maxAttempts = 10;
-		for (let attempt = 0; attempt < maxAttempts; attempt++) {
-			await nextTick();
-			useSubscription(mediaOverviewStore.scrollToIndex(targetIndex, false).subscribe());
-			await new Promise((resolve) => setTimeout(resolve, 100));
-
-			const container = document.querySelector<HTMLElement>('#poster-table');
-			const targetNode = container?.querySelector(`[data-scroll-index="${targetIndex}"]`);
-			if ((container && container.scrollTop > 0) || targetNode) break;
-		}
-	}
 });
 </script>
 

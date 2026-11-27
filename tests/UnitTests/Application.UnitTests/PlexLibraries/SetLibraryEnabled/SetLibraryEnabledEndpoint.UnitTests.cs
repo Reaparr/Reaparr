@@ -4,6 +4,61 @@ public class SetLibraryEnabledEndpointUnitTests
     : BaseEndpointUnitTest<SetLibraryEnabledEndpoint, SetLibraryEnabledRequest, ResultDTO<PlexLibraryDTO>>
 {
     [Test]
+    public async Task ShouldRejectDisablingWithoutSideEffects_WhenAnyMediaHasUnfinishedDownloads()
+    {
+        // Arrange
+        await SetupDatabase(73320, config =>
+        {
+            config.PlexMovieLibraryCount = 1;
+            config.MovieDownloadTasksCount = 1;
+            config.TvShowDownloadTasksCount = 1;
+            config.TvShowSeasonDownloadTasksCount = 1;
+            config.TvShowEpisodeDownloadTasksCount = 1;
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistDownloadTasksCount = 1;
+            config.MusicAlbumDownloadTasksCount = 1;
+            config.MusicTrackDownloadTasksCount = 1;
+            config.MusicTrackFileDownloadTasksCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoFolderDownloadTasksCount = 1;
+            config.PhotoImageDownloadTasksCount = 1;
+            config.PlexOtherVideoLibraryCount = 1;
+            config.OtherVideoDownloadTasksCount = 1;
+            config.OtherVideoFileDownloadTasksCount = 1;
+        });
+        var dbContext = IDbContext;
+        var libraries = await dbContext
+            .PlexLibraries.OrderBy(x => x.Id)
+            .Select(x => x.Id)
+            .ToArrayAsync(CancellationToken);
+        libraries.Length.ShouldBe(5);
+
+        // Act / Assert
+        foreach (var libraryId in libraries)
+        {
+            var result = await TestEndpointHandleAsync(
+                new SetLibraryEnabledRequest { PlexLibraryId = libraryId, IsEnabled = false }
+            );
+            result.StatusCode.ShouldBe(409);
+            result.Response.ShouldNotBeNull();
+            result.Response.IsSuccess.ShouldBeFalse();
+            result.Response.Errors.Count.ShouldBe(1);
+        }
+        (await dbContext.PlexLibraries.Select(x => x.Id).OrderBy(x => x).ToArrayAsync(CancellationToken)).ShouldBe(
+            libraries
+        );
+        Mock.Mock<ICommandExecutor>()
+            .Verify(x => x.Send(It.IsAny<CancelLibrarySyncJobCommand>(), It.IsAny<CancellationToken>()), Times.Never());
+        Mock.Mock<ICommandExecutor>()
+            .Verify(
+                x => x.Send(It.IsAny<QueueMediaOverviewRebuildCommand>(), It.IsAny<CancellationToken>()),
+                Times.Never()
+            );
+        Mock.Mock<INotificationHubService>()
+            .Verify(x => x.SendRefreshNotificationAsync(It.IsAny<List<RefreshDataType>>()), Times.Never());
+    }
+
+    [Test]
     public async Task ShouldDisablePhotoLibraryByClearingCatalogAndDescendantsWhileRetainingRoots()
     {
         // Arrange

@@ -136,4 +136,49 @@ describe('SyncServerMediaDialog', () => {
 			cy.getCy('sync-server-media-dialog').should('not.exist');
 		});
 	});
+
+	it('removes a confirmed cancellation before the queue reload and keeps other syncs visible', () => {
+		cy.getPageData().then(({ plexServers, plexLibraries }) => {
+			const [targetServer, otherServer] = plexServers;
+			const target = plexLibraries.find((library) => library.plexServerId === targetServer!.id)!;
+			const other = plexLibraries.find((library) => library.plexServerId === otherServer!.id)!;
+			let queues = [target, other].map((library) => generateLibrarySyncJobQueue({
+				plexLibraryId: library.id,
+				plexServerId: library.plexServerId,
+				status: LibrarySyncJobStatus.Queued,
+			}));
+			let releaseSnapshot!: () => void;
+			const waitForRemoval = new Cypress.Promise<void>((resolve) => {
+				releaseSnapshot = resolve;
+			});
+			let cancelled = false;
+			cy.intercept('GET', PlexLibraryPaths.getLibrarySyncStatusEndpoint(), (request) => {
+				if (cancelled) {
+					return waitForRemoval.then(() => request.reply(200, generateResultDTO(queues)));
+				}
+				request.reply(200, generateResultDTO(queues));
+			}).as('syncSnapshot');
+			cy.intercept('DELETE', PlexLibraryPaths.cancelLibrarySyncEndpoint(target.id), (request) => {
+				cancelled = true;
+				queues = queues.map((queue) => queue.plexLibraryId === target.id
+					? { ...queue, status: LibrarySyncJobStatus.Cancelled, completedAt: new Date().toISOString() }
+					: queue);
+				request.reply(200, generateResultDTO(undefined));
+			}).as('cancelSync');
+
+			cy.hubPublishJobStatusUpdate(JobTypes.LibrarySyncJob, JobStatus.Started, { serverId: target.plexServerId, libraryId: target.id });
+			cy.wait('@syncSnapshot');
+			cy.getCy('background-activity-button').click();
+			cy.getCy(JobTypes.LibrarySyncJob + 'activity-button').click();
+			cy.getCy('sync-server-media-dialog-library-title').should('have.length', 2);
+			cy.getCy(`sync-server-media-dialog-cancel-library-${target.id}`).click();
+			cy.wait('@cancelSync').its('response.statusCode').should('eq', 200);
+			cy.getCy('sync-server-media-dialog-server-title').should('have.length', 1).and('contain.text', otherServer!.name);
+			cy.getCy('sync-server-media-dialog-library-title').should('have.length', 1).and('contain.text', other.title);
+			cy.then(() => releaseSnapshot());
+			cy.wait('@syncSnapshot');
+			cy.getCy('sync-server-media-dialog-server-title').should('have.length', 1).and('contain.text', otherServer!.name);
+			cy.getCy('sync-server-media-dialog-library-title').should('have.length', 1).and('contain.text', other.title);
+		});
+	});
 });

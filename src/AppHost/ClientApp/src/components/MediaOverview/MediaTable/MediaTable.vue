@@ -42,6 +42,7 @@
 						:selected="isSelected(getRowItem(virtualRow.index)!.id)"
 						:disable-highlight="disableHighlight"
 						:disable-hover-click="disableHoverClick"
+						@open-details="openDetails"
 						@selected="updateSelectedRow(getRowItem(virtualRow.index)!.id, $event)" />
 					<div
 						v-else
@@ -67,7 +68,10 @@ import {
 	waitForElement,
 } from '#imports';
 import { useMediaOverviewStore } from '@store';
+import Convert from '@class/Convert';
 import { getMediaTableColumns } from '~/composables/mediaTableColumns';
+import { from } from 'rxjs';
+import { switchMap } from 'rxjs/operators';
 
 type QScrollInstance = {
 	getScrollTarget: () => HTMLElement | null;
@@ -103,6 +107,7 @@ const autoScrollEnabled = ref(false);
 const pendingHighlightIndex = ref<number | null>(null);
 
 const mediaOverviewStore = useMediaOverviewStore();
+const router = useRouter();
 const $q = useQuasar();
 const rowVirtualizer = useVirtualizer(
 	computed(() => ({
@@ -184,6 +189,17 @@ function updateSelectedRow(mediaId: number, state: boolean) {
 		allSelected: false,
 	} as ISelection);
 }
+function openDetails(item: PlexMediaSlimDTO): void {
+	const detailPath = Convert.mediaTypeToDetailsPath(item);
+	if (!detailPath) return;
+
+	const index = Math.floor((getScrollElement()?.scrollTop ?? 0) / get(ROW_HEIGHT)) + 1;
+	const { path, query } = get(router.currentRoute);
+	mediaOverviewStore.setPendingMediaHighlight(item.id, mediaOverviewStore.libraryId);
+	router.replace({ path, query: { ...query, scrollIndex: String(index) } })
+		.then(() => router.push(detailPath))
+		.catch((error) => Log.error('Failed to navigate to media details', error));
+}
 function scrollToIndex(index: number, highlight = true) {
 	const container = getScrollElement();
 	if (!container) {
@@ -213,25 +229,29 @@ function highlightPendingMedia() {
 }
 
 onMounted(() => {
-	// Listen for scroll to navigation index command
-	useSubscription(mediaOverviewStore.getScrollCommand().subscribe(({ index, highlight }) => {
+	useSubscription(from(nextTick()).pipe(
+		switchMap(() => mediaOverviewStore.getScrollCommand()),
+	).subscribe(({ index, highlight }) => {
 		scrollToIndex(index, highlight);
 	}));
 
-	const requestedScrollIndex = get(mediaOverviewStore.currentScrollIndex);
-	if (requestedScrollIndex > 0) {
-		scrollToIndex(requestedScrollIndex - 1, get(mediaOverviewStore.pendingMediaHighlightId) === null);
-	}
+	void nextTick().then(() => {
+		// Quasar exposes the scroll target after mount; let the virtualizer attach first.
+		const requestedScrollIndex = get(mediaOverviewStore.currentScrollIndex);
+		if (requestedScrollIndex > 0 && !props.rows) {
+			scrollToIndex(requestedScrollIndex - 1, get(mediaOverviewStore.pendingMediaHighlightId) === null);
+		}
 
-	highlightPendingMedia();
-	if (get(mediaOverviewStore.pendingMediaHighlightId) !== null)
-		return;
+		highlightPendingMedia();
+		if (get(mediaOverviewStore.pendingMediaHighlightId) !== null)
+			return;
 
-	const lastMediaItemViewed = get(mediaOverviewStore.lastMediaItemViewed);
-	if (requestedScrollIndex <= 0 && lastMediaItemViewed && lastMediaItemViewed.sortIndex > 0) {
-		// If we have a last viewed media item, scroll to it
-		scrollToIndex(lastMediaItemViewed.sortIndex - 1);
-	}
+		const lastMediaItemViewed = get(mediaOverviewStore.lastMediaItemViewed);
+		if (requestedScrollIndex <= 0 && lastMediaItemViewed && lastMediaItemViewed.sortIndex > 0) {
+			// If we have a last viewed media item, scroll to it
+			scrollToIndex(lastMediaItemViewed.sortIndex - 1);
+		}
+	});
 });
 
 defineEmits<{

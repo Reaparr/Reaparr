@@ -73,7 +73,7 @@
 								v-for="band in bands[dayIndex]"
 								:key="band.from"
 								class="schedule-band-label"
-								:class="{ 'text-weight-bold': band.selected }"
+								:class="{ 'text-weight-bold': band.selected, 'schedule-zone-start': band.boundary }"
 								aria-hidden="true"
 								:style="{ insetInlineStart: `${band.from / 48 * 100}%`, width: `${(band.until - band.from) / 48 * 100}%` }">
 								{{ band.limit === null ? unlimitedLabel : `${numberFormat.format(band.limit)} kB/s` }}
@@ -88,10 +88,11 @@
 
 <script setup lang="ts">
 import { get, set, useEventListener } from '@vueuse/core';
-import type { DownloadScheduleRange } from '@composables/download-schedule';
+import { DOWNLOAD_SCHEDULE_DAY_KEYS, formatDownloadScheduleTime, type DownloadScheduleDays, type DownloadScheduleRange } from '@composables/download-schedule';
 
 const props = defineProps<{
 	limits: (number | null)[];
+	changePoints?: DownloadScheduleDays;
 	selection: number[];
 	previewLimit?: number | null;
 	days: string[];
@@ -124,15 +125,17 @@ useEventListener(grid, 'pointercancel', () => set(dragging, false));
 const selectedSlots = computed(() => new Set(props.selection));
 const numberFormat = computed(() => new Intl.NumberFormat(props.locale));
 const bands = computed(() => props.days.map((_, day) => {
-	const result: { from: number; until: number; limit: number | null; selected: boolean }[] = [];
+	const result: { from: number; until: number; limit: number | null; selected: boolean; boundary: boolean }[] = [];
 	for (let halfHour = 0; halfHour < 48; halfHour++) {
 		const limit = slotLimit(day * 48 + halfHour);
 		const selected = get(selectedSlots).has(day * 48 + halfHour);
 		const previous = result.at(-1);
-		if (previous?.limit === limit && previous.selected === selected) {
+		const changePoint = Object.hasOwn(props.changePoints?.[DOWNLOAD_SCHEDULE_DAY_KEYS[day]!] ?? {}, formatDownloadScheduleTime(halfHour));
+		const boundary = halfHour > 0 && (changePoint || slotLimit(day * 48 + halfHour - 1) !== limit);
+		if (previous?.limit === limit && previous.selected === selected && !changePoint) {
 			previous.until = halfHour + 1;
 		} else {
-			result.push({ from: halfHour, until: halfHour + 1, limit, selected });
+			result.push({ from: halfHour, until: halfHour + 1, limit, selected, boundary });
 		}
 	}
 	return result;
@@ -308,5 +311,10 @@ const emit = defineEmits<{ select: [range: DownloadScheduleRange] }>();
   font-size: 11px;
   font-weight: 600;
   white-space: nowrap;
+}
+
+.schedule-band-label.schedule-zone-start {
+  border-inline-start: 3px solid currentColor;
+  box-sizing: border-box;
 }
 </style>

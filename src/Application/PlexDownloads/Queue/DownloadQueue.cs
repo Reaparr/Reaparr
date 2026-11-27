@@ -13,6 +13,16 @@ public class DownloadQueue : IDownloadQueue
     /// task from being selected repeatedly in a tight listener-triggered loop.
     /// </summary>
     private static readonly TimeSpan _retryCooldown = TimeSpan.FromSeconds(60);
+    private static readonly DownloadStatus[] _candidateStatuses =
+    [
+        DownloadStatus.Downloading,
+        DownloadStatus.AutoPaused,
+        DownloadStatus.ServerUnreachable,
+        DownloadStatus.DownloadClientError,
+        DownloadStatus.Error,
+        DownloadStatus.StorageError,
+        DownloadStatus.Queued,
+    ];
 
     private readonly ILogger _log;
     private readonly IReaparrDbContextFactory _dbContextFactory;
@@ -206,13 +216,8 @@ public class DownloadQueue : IDownloadQueue
                 );
         }
 
-        var downloadTasks = await dbContext.GetAllDownloadTasksByServerAsync(
-            plexServerId,
-            cancellationToken: cancellationToken
-        );
-
         var activeDownloadTaskKeys = await _downloadTaskScheduler.GetCurrentlyDownloadingKeysByServer(plexServerId);
-        if (HasActivePreDownloadTask(downloadTasks, activeDownloadTaskKeys))
+        if (await HasActivePreDownloadTaskAsync(dbContext, plexServerId, activeDownloadTaskKeys, cancellationToken))
         {
             return Result
                 .Fail("Cannot select the next download task because server is already downloading one")
@@ -225,6 +230,11 @@ public class DownloadQueue : IDownloadQueue
                 nameof(PlexServer),
                 plexServerName
             );
+        var downloadTasks = await dbContext.GetDownloadQueueCandidatesAsync(
+            plexServerId,
+            _candidateStatuses,
+            cancellationToken
+        );
         var nextDownloadTaskResult = GetNextDownloadTask(downloadTasks, out var nextRetryAt);
         if (nextDownloadTaskResult.IsFailed)
         {
@@ -264,46 +274,22 @@ public class DownloadQueue : IDownloadQueue
         return Result.Ok(nextDownloadTask);
     }
 
-    private static bool HasActivePreDownloadTask(
-        ICollection<DownloadTaskGeneric> downloadTasks,
-        IReadOnlyCollection<DownloadTaskKey> activeDownloadTaskKeys
+    private static async Task<bool> HasActivePreDownloadTaskAsync(
+        IReaparrDbContext dbContext,
+        int serverId,
+        IReadOnlyList<DownloadTaskKey> activeKeys,
+        CancellationToken cancellationToken
     )
     {
-        if (activeDownloadTaskKeys.Count == 0)
+        if (activeKeys.Count == 0)
             return false;
 
-        var activeDownloadTaskIds = activeDownloadTaskKeys.Select(x => x.Id).ToHashSet();
-        var matchedTaskIds = new HashSet<Guid>();
-        foreach (var downloadTask in downloadTasks)
-        {
-            if (HasActivePreDownloadTask(downloadTask, activeDownloadTaskIds, matchedTaskIds))
-                return true;
-        }
-
-        // An active Quartz job without a corresponding persisted task cannot be identified as cleanup.
-        return matchedTaskIds.Count != activeDownloadTaskIds.Count;
-    }
-
-    private static bool HasActivePreDownloadTask(
-        DownloadTaskGeneric downloadTask,
-        HashSet<Guid> activeDownloadTaskIds,
-        HashSet<Guid> matchedTaskIds
-    )
-    {
-        if (activeDownloadTaskIds.Contains(downloadTask.Id))
-        {
-            matchedTaskIds.Add(downloadTask.Id);
-            if (downloadTask.DownloadStatus != DownloadStatus.DownloadFinished)
-                return true;
-        }
-
-        foreach (var child in downloadTask.Children)
-        {
-            if (HasActivePreDownloadTask(child, activeDownloadTaskIds, matchedTaskIds))
-                return true;
-        }
-
-        return false;
+        var files = await dbContext.GetDownloadTaskFilesAsync(activeKeys, cancellationToken);
+        // Missing or moved files are not evidence that an active job is only cleaning up.
+        return files.Count != activeKeys.Count
+            || files.Any(file =>
+                file.PlexServerId != serverId || file.DownloadStatus != DownloadStatus.DownloadFinished
+            );
     }
 
     private bool IsInRetryCooldown(DownloadTaskGeneric task, ref DateTimeOffset? nextRetryAt)
@@ -333,39 +319,19 @@ public class DownloadQueue : IDownloadQueue
     )
     {
         nextRetryAt = null;
-        var downloadingTask = FindFirstLeafByStatus(downloadTasks, DownloadStatus.Downloading, ref nextRetryAt, false);
-        if (downloadingTask is not null)
-            return Result.Fail("There is already a downloadTask downloading").LogDebug();
-
-        var autoPausedTask = FindFirstLeafByStatus(downloadTasks, DownloadStatus.AutoPaused, ref nextRetryAt, true);
-        if (autoPausedTask is not null)
-            return Result.Ok(autoPausedTask);
-
-        var serverUnreachableTask = FindFirstLeafByStatus(
-            downloadTasks,
-            DownloadStatus.ServerUnreachable,
-            ref nextRetryAt,
-            true
-        );
-        if (serverUnreachableTask is not null)
-            return Result.Ok(serverUnreachableTask);
-
-        var downloadClientErrorTask = FindFirstLeafByStatus(
-            downloadTasks,
-            DownloadStatus.DownloadClientError,
-            ref nextRetryAt,
-            true
-        );
-        if (downloadClientErrorTask is not null)
-            return Result.Ok(downloadClientErrorTask);
-
-        var errorTask = FindFirstLeafByStatus(downloadTasks, DownloadStatus.Error, ref nextRetryAt, true);
-        if (errorTask is not null)
-            return Result.Ok(errorTask);
-
-        var queuedTask = FindFirstLeafByStatus(downloadTasks, DownloadStatus.Queued, ref nextRetryAt, true);
-        if (queuedTask is not null)
-            return Result.Ok(queuedTask);
+        foreach (var status in _candidateStatuses)
+        {
+            var task = FindFirstLeafByStatus(
+                downloadTasks,
+                status,
+                ref nextRetryAt,
+                status != DownloadStatus.Downloading
+            );
+            if (task is not null)
+                return status == DownloadStatus.Downloading
+                    ? Result.Fail("There is already a downloadTask downloading").LogDebug()
+                    : Result.Ok(task);
+        }
 
         return Result.Fail("There were no downloadTasks left to download").LogDebug();
     }
@@ -389,7 +355,8 @@ public class DownloadQueue : IDownloadQueue
             }
 
             if (
-                downloadTask.DownloadStatus == status
+                downloadTask.IsDownloadable
+                && downloadTask.DownloadStatus == status
                 && (!skipCooldown || !IsInRetryCooldown(downloadTask, ref nextRetryAt))
             )
                 return downloadTask;

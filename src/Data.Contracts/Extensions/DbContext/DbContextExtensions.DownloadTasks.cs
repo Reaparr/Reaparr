@@ -3,6 +3,59 @@ namespace Reaparr.Data.Contracts;
 // TODO Look for performance improvements in these extensions and or to clean it up. There are a lot of queries that could be optimized and reduced in number, especially when retrieving download tasks by server or getting download task keys.
 public static partial class DbContextExtensions
 {
+    public static Task<bool> HasUnfinishedDownloadsAsync(
+        this IReaparrDbContext dbContext,
+        int plexServerId,
+        int plexLibraryId = 0,
+        CancellationToken cancellationToken = default
+    ) =>
+        dbContext
+            .DownloadTaskMovieFile.Select(x => new
+            {
+                x.PlexServerId,
+                x.PlexLibraryId,
+                x.DownloadStatus,
+            })
+            .Concat(
+                dbContext.DownloadTaskTvShowEpisodeFile.Select(x => new
+                {
+                    x.PlexServerId,
+                    x.PlexLibraryId,
+                    x.DownloadStatus,
+                })
+            )
+            .Concat(
+                dbContext.DownloadTaskMusicTrackFiles.Select(x => new
+                {
+                    x.PlexServerId,
+                    x.PlexLibraryId,
+                    x.DownloadStatus,
+                })
+            )
+            .Concat(
+                dbContext.DownloadTaskPhotoImageFiles.Select(x => new
+                {
+                    x.PlexServerId,
+                    x.PlexLibraryId,
+                    x.DownloadStatus,
+                })
+            )
+            .Concat(
+                dbContext.DownloadTaskOtherVideoFiles.Select(x => new
+                {
+                    x.PlexServerId,
+                    x.PlexLibraryId,
+                    x.DownloadStatus,
+                })
+            )
+            .AnyAsync(
+                x =>
+                    x.PlexServerId == plexServerId
+                    && (plexLibraryId == 0 || x.PlexLibraryId == plexLibraryId)
+                    && x.DownloadStatus != DownloadStatus.Completed,
+                cancellationToken
+            );
+
     public static async Task<Result<string>> GetDownloadUrl(
         this IReaparrDbContext dbContext,
         int plexServerId,
@@ -804,6 +857,131 @@ public static partial class DbContextExtensions
                     .ToListAsync(cancellationToken)
             );
         }
+    }
+
+    /// <summary>Loads only branches relevant to queue selection, in the same order as the full download tree.</summary>
+    public static async Task<List<DownloadTaskGeneric>> GetDownloadQueueCandidatesAsync(
+        this IReaparrDbContext dbContext,
+        int serverId,
+        DownloadStatus[] statuses,
+        CancellationToken cancellationToken
+    )
+    {
+        var movies = await dbContext
+            .DownloadTaskMovie.AsNoTracking()
+            .Where(x => x.PlexServerId == serverId && x.Children.Any(file => statuses.Contains(file.DownloadStatus)))
+            .Include(x =>
+                x.Children.Where(file => statuses.Contains(file.DownloadStatus)).OrderBy(file => file.CreatedAt)
+            )
+            .ToListAsync(cancellationToken);
+        var shows = await dbContext
+            .DownloadTaskTvShow.AsNoTracking()
+            .Where(x =>
+                x.PlexServerId == serverId
+                && x.Children.Any(season =>
+                    season.Children.Any(episode => episode.Children.Any(file => statuses.Contains(file.DownloadStatus)))
+                )
+            )
+            .Include(x =>
+                x.Children.Where(season =>
+                        season.Children.Any(episode =>
+                            episode.Children.Any(file => statuses.Contains(file.DownloadStatus))
+                        )
+                    )
+                    .OrderBy(season => season.CreatedAt)
+            )
+                .ThenInclude(season =>
+                    season
+                        .Children.Where(episode => episode.Children.Any(file => statuses.Contains(file.DownloadStatus)))
+                        .OrderBy(episode => episode.CreatedAt)
+                )
+                    .ThenInclude(episode =>
+                        episode
+                            .Children.Where(file => statuses.Contains(file.DownloadStatus))
+                            .OrderBy(file => file.CreatedAt)
+                    )
+            .ToListAsync(cancellationToken);
+        var artists = await dbContext
+            .DownloadTaskMusicArtists.AsNoTracking()
+            .Where(x =>
+                x.PlexServerId == serverId
+                && x.Children.Any(album =>
+                    album.Children.Any(track => track.Children.Any(file => statuses.Contains(file.DownloadStatus)))
+                )
+            )
+            .Include(x =>
+                x.Children.Where(album =>
+                        album.Children.Any(track => track.Children.Any(file => statuses.Contains(file.DownloadStatus)))
+                    )
+                    .OrderBy(album => album.CreatedAt)
+            )
+                .ThenInclude(album =>
+                    album
+                        .Children.Where(track => track.Children.Any(file => statuses.Contains(file.DownloadStatus)))
+                        .OrderBy(track => track.CreatedAt)
+                )
+                    .ThenInclude(track =>
+                        track
+                            .Children.Where(file => statuses.Contains(file.DownloadStatus))
+                            .OrderBy(file => file.CreatedAt)
+                    )
+            .ToListAsync(cancellationToken);
+        var photos = await GetPhotoQueueCandidatesAsync(dbContext, serverId, statuses, cancellationToken);
+        var videos = await dbContext
+            .DownloadTaskOtherVideos.AsNoTracking()
+            .Where(x => x.PlexServerId == serverId && x.Children.Any(file => statuses.Contains(file.DownloadStatus)))
+            .Include(x =>
+                x.Children.Where(file => statuses.Contains(file.DownloadStatus)).OrderBy(file => file.CreatedAt)
+            )
+            .ToListAsync(cancellationToken);
+
+        var candidates = new List<DownloadTaskGeneric>(
+            movies.Count + shows.Count + artists.Count + photos.Count + videos.Count
+        );
+        candidates.AddRange(movies.Select(x => x.ToGeneric()));
+        candidates.AddRange(shows.Select(x => x.ToGeneric()));
+        candidates.AddRange(artists.Select(x => x.ToGeneric()));
+        candidates.AddRange(photos.Select(x => x.ToGeneric()));
+        candidates.AddRange(videos.Select(x => x.ToGeneric()));
+        candidates.Sort((x, y) => DateTime.Compare(x.CreatedAt, y.CreatedAt));
+        return candidates;
+    }
+
+    private static async Task<List<DownloadTaskPhotoFolder>> GetPhotoQueueCandidatesAsync(
+        IReaparrDbContext dbContext,
+        int serverId,
+        DownloadStatus[] statuses,
+        CancellationToken cancellationToken
+    )
+    {
+        var files = await dbContext
+            .DownloadTaskPhotoImageFiles.IgnoreQueryFilters(["IsEnabled"])
+            .AsNoTracking()
+            .Where(x => x.PlexServerId == serverId && statuses.Contains(x.DownloadStatus))
+            .ToListAsync(cancellationToken);
+        if (files.Count == 0)
+            return [];
+
+        var folderSet = dbContext
+            .DownloadTaskPhotoFolders.IgnoreQueryFilters(["IsEnabled"])
+            .AsNoTracking()
+            .Where(x => x.PlexServerId == serverId);
+        var parents = await folderSet
+            .Select(x => new { x.Id, x.ParentId })
+            .ToDictionaryAsync(x => x.Id, x => x.ParentId, cancellationToken);
+        var candidateFolders = new HashSet<Guid>();
+        foreach (var file in files)
+        {
+            Guid? id = file.ParentId;
+            while (
+                id is { } folderId && parents.TryGetValue(folderId, out var parentId) && candidateFolders.Add(folderId)
+            )
+                id = parentId;
+        }
+
+        var folders = await folderSet.Where(x => candidateFolders.Contains(x.Id)).ToListAsync(cancellationToken);
+        AttachPhotoFolderGraph(folders, files);
+        return folders.Where(x => x.ParentId is null).OrderBy(x => x.CreatedAt).ToList();
     }
 
     public static async Task<List<DownloadTaskGeneric>> GetAllDownloadTasksByServerAsync(

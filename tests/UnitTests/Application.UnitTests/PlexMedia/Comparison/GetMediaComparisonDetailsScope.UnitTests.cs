@@ -5,67 +5,137 @@ namespace Reaparr.Application.UnitTests;
 public class GetMediaComparisonDetailsScopeUnitTests : BaseUnitTest
 {
     [Test]
-    [Arguments(PlexMediaType.Movie, false, 0)]
-    [Arguments(PlexMediaType.Movie, true, 0)]
-    [Arguments(PlexMediaType.TvShow, false, 0)]
-    [Arguments(PlexMediaType.TvShow, true, 0)]
-    [Arguments(PlexMediaType.Movie, false, 1)]
-    [Arguments(PlexMediaType.Movie, true, 1)]
-    [Arguments(PlexMediaType.TvShow, false, 1)]
-    [Arguments(PlexMediaType.TvShow, true, 1)]
-    [Arguments(PlexMediaType.Movie, false, 2)]
-    [Arguments(PlexMediaType.Movie, true, 2)]
-    [Arguments(PlexMediaType.TvShow, false, 2)]
-    [Arguments(PlexMediaType.TvShow, true, 2)]
-    public async Task ShouldReturnNotCompared_WhenNoCurrentScopeExists(
+    [Arguments(PlexMediaType.Movie, false, true)]
+    [Arguments(PlexMediaType.Movie, true, true)]
+    [Arguments(PlexMediaType.TvShow, false, true)]
+    [Arguments(PlexMediaType.TvShow, true, true)]
+    [Arguments(PlexMediaType.Movie, false, false)]
+    [Arguments(PlexMediaType.Movie, true, false)]
+    [Arguments(PlexMediaType.TvShow, false, false)]
+    [Arguments(PlexMediaType.TvShow, true, false)]
+    public async Task ShouldReturnStoredUpgradesEvenWhenEitherLibraryIsOutdated(
         PlexMediaType mediaType,
         bool isOwned,
-        int outdatedSide
+        bool sourceIsOutdated
     )
     {
         // Arrange
         var (remote, owned) = await SetupLibrariesAsync(mediaType);
         var library = isOwned ? owned : remote;
-        var opposite = isOwned ? remote : owned;
-        if (outdatedSide != 0)
+        var dbContext = IDbContext;
+        await AddCurrentScopeAsync(remote, owned, mediaType);
+        int expectedUpgradeId;
+        if (mediaType == PlexMediaType.Movie)
         {
-            await AddCurrentScopeAsync(remote, owned, mediaType);
-            var outdatedId = outdatedSide == 1 ? library.Id : opposite.Id;
-            await IDbContext
-                .PlexLibraries.Where(x => x.Id == outdatedId)
-                .ExecuteUpdateAsync(x => x.SetProperty(y => y.Outdated, true), CancellationToken);
-        }
-        var scheduler = Mock.Mock<IScheduler>();
-        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns("test-scheduler");
-        scheduler
-            .Setup(x => x.QueryFireInstances(It.IsAny<FireInstanceQuery>(), CancellationToken))
-            .ReturnsAsync(new PagedResult<FireInstance>([], false));
-        scheduler
-            .Setup(x => x.QueryJobs(It.IsAny<JobQuery>(), CancellationToken))
-            .ReturnsAsync(
-                new PagedResult<JobHeader>(
-                    [
-                        new JobHeader(
-                            PlexLibraryComparisonJob.GetJobKey(90001, 90002),
-                            null,
-                            typeof(PlexLibraryComparisonJob).FullName!,
-                            false,
-                            true,
-                            false,
-                            true
-                        ),
-                    ],
-                    false
+            var remoteMovie = await GetLibraryMovieAsync(remote.Id);
+            var ownedMovie = await GetLibraryMovieAsync(owned.Id);
+            expectedUpgradeId = remoteMovie.Id;
+            dbContext.PlexMovieComparisons.Add(
+                CreateMovieComparison(
+                    remote.Id,
+                    owned.Id,
+                    remoteMovie.Id,
+                    ownedMovie.Id,
+                    PlexMediaComparisonHitState.HigherQuality,
+                    VideoQuality.SD
                 )
             );
+        }
+        else
+        {
+            var remoteShow = await GetLibraryTvShowAsync(remote.Id);
+            var ownedShow = await GetLibraryTvShowAsync(owned.Id);
+            var remoteEpisode = await dbContext.PlexTvShowEpisodes.SingleAsync(
+                x => x.PlexLibraryId == remote.Id,
+                CancellationToken
+            );
+            var ownedEpisode = await dbContext.PlexTvShowEpisodes.SingleAsync(
+                x => x.PlexLibraryId == owned.Id,
+                CancellationToken
+            );
+            expectedUpgradeId = remoteEpisode.Id;
+            dbContext.PlexTvShowComparisons.Add(
+                CreateTvShowComparison(remote.Id, owned.Id, remoteShow.Id, ownedShow.Id)
+            );
+            dbContext.PlexEpisodeComparisons.Add(
+                CreateEpisodeComparison(
+                    remote.Id,
+                    owned.Id,
+                    remoteEpisode.Id,
+                    ownedEpisode.Id,
+                    PlexMediaComparisonHitState.HigherQuality,
+                    VideoQuality.SD
+                )
+            );
+        }
+        await dbContext.SaveChangesAsync(CancellationToken);
+        var outdatedId = sourceIsOutdated == isOwned ? owned.Id : remote.Id;
+        var updated = await dbContext
+            .PlexLibraries.Where(x => x.Id == outdatedId)
+            .ExecuteUpdateAsync(x => x.SetProperty(y => y.Outdated, true), CancellationToken);
+        updated.ShouldBe(1);
+        var scheduler = Mock.Mock<IScheduler>();
 
         // Act
         var result = await GetDetailsAsync(mediaType, library.Id);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        result.Value.Type.ShouldBe(mediaType);
+
+        result.Value.State.ShouldBe(PlexMediaComparisonState.HigherQuality);
+        var row = result.Value.Rows.Single();
+        if (mediaType == PlexMediaType.TvShow)
+        {
+            row.Type.ShouldBe(PlexMediaType.Season);
+            row = row.Children.Single();
+        }
+        row.PlexMediaId.ShouldBe(expectedUpgradeId);
+        row.Type.ShouldBe(mediaType == PlexMediaType.Movie ? PlexMediaType.Movie : PlexMediaType.Episode);
+        row.State.ShouldBe(PlexMediaComparisonState.HigherQuality);
+        row.RemoteQuality.ShouldBe(VideoQuality.FullHD);
+        row.OwnedQuality.ShouldBe(VideoQuality.SD);
+        row.PlexLibraryId.ShouldBe(remote.Id);
+        row.PlexServerId.ShouldBe(remote.PlexServerId);
+        row.Children.ShouldBeEmpty();
+        scheduler.Verify(
+            x => x.QueryFireInstances(It.IsAny<FireInstanceQuery>(), It.IsAny<CancellationToken>()),
+            Times.Never()
+        );
+        scheduler.Verify(x => x.QueryJobs(It.IsAny<JobQuery>(), It.IsAny<CancellationToken>()), Times.Never());
+    }
+
+    [Test]
+    [Arguments(PlexMediaType.Movie, false)]
+    [Arguments(PlexMediaType.Movie, true)]
+    [Arguments(PlexMediaType.TvShow, false)]
+    [Arguments(PlexMediaType.TvShow, true)]
+    public async Task ShouldReturnNotCompared_WhenNoScopeOrJobExists(PlexMediaType mediaType, bool isOwned)
+    {
+        // Arrange
+        var (remote, owned) = await SetupLibrariesAsync(mediaType);
+        var scheduler = Mock.Mock<IScheduler>();
+        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns("test-scheduler");
+        scheduler
+            .Setup(x => x.QueryFireInstances(It.IsAny<FireInstanceQuery>(), CancellationToken))
+            .ReturnsAsync(new PagedResult<FireInstance>([], false))
+            .Verifiable(Times.Once());
+        scheduler
+            .Setup(x => x.QueryJobs(It.IsAny<JobQuery>(), CancellationToken))
+            .ReturnsAsync(new PagedResult<JobHeader>([], false))
+            .Verifiable(Times.Once());
+
+        // Act
+        var result = await GetDetailsAsync(mediaType, isOwned ? owned.Id : remote.Id);
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        result.Value.Type.ShouldBe(mediaType);
         result.Value.State.ShouldBe(PlexMediaComparisonState.NotCompared);
         result.Value.Rows.ShouldBeEmpty();
+        scheduler.Verify();
     }
 
     [Test]

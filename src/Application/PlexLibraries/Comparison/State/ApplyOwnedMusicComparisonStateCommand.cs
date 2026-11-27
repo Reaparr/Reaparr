@@ -36,7 +36,7 @@ public class ApplyOwnedMusicComparisonStateCommandHandler
 
         var ownedLibraryExists = await _dbContext
             .PlexLibraries.WhereIsOwned()
-            .AnyAsync(x => x.Id == command.OwnedLibraryId && x.Type == PlexMediaType.MusicArtist && !x.Outdated, ct);
+            .AnyAsync(x => x.Id == command.OwnedLibraryId && x.Type == PlexMediaType.MusicArtist, ct);
 
         if (!ownedLibraryExists)
             return Result.Ok();

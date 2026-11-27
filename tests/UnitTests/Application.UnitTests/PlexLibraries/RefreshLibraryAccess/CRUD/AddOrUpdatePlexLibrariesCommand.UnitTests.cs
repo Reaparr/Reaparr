@@ -168,30 +168,55 @@ public class AddOrUpdatePlexLibrariesCommandUnitTests : BaseUnitTest<AddOrUpdate
     }
 
     [Test]
-    public async Task ShouldEmitAccessChangedTelemetryForGrantedAndRevokedRows_WhenReconciliationCommits()
+    public async Task ShouldCancelOnlyRevokedLibraryWithoutEnabledAccountAccess_WhenLibrariesAreReconciled()
     {
         // Arrange
         await SetupDatabase(62615, config =>
         {
             config.PlexServerCount = 1;
             config.PlexMovieLibraryCount = 3;
-            config.PlexAccountCount = 1;
+            config.PlexAccountCount = 2;
         });
         var dbContext = IDbContext;
-        var plexAccount = await dbContext.PlexAccounts.SingleAsync(CancellationToken);
+        var accounts = await dbContext.PlexAccounts.OrderBy(x => x.Id).ToListAsync(CancellationToken);
+        var plexAccount = accounts[0];
+        var otherAccount = accounts[1];
         var libraries = await dbContext.PlexLibraries.AsTracking().OrderBy(x => x.Id).ToListAsync(CancellationToken);
-        var revokedLibrary = libraries[^1];
-        var grantedLibrary = libraries[0];
-        var updatedLibrary = libraries[1];
+        var retainedLibrary = libraries[0];
+        var retainedByOtherAccountLibrary = libraries[1];
+        var revokedLibrary = libraries[2];
+        var accessBefore = await dbContext
+            .PlexAccountLibraries.Where(x => x.PlexAccountId == plexAccount.Id || x.PlexAccountId == otherAccount.Id)
+            .OrderBy(x => x.PlexAccountId)
+            .ThenBy(x => x.PlexLibraryId)
+            .Select(x => new { x.PlexAccountId, x.PlexLibraryId })
+            .ToListAsync(CancellationToken);
+        accessBefore.ShouldBe([
+            new { PlexAccountId = plexAccount.Id, PlexLibraryId = retainedLibrary.Id },
+            new { PlexAccountId = plexAccount.Id, PlexLibraryId = retainedByOtherAccountLibrary.Id },
+            new { PlexAccountId = plexAccount.Id, PlexLibraryId = revokedLibrary.Id },
+            new { PlexAccountId = otherAccount.Id, PlexLibraryId = retainedLibrary.Id },
+            new { PlexAccountId = otherAccount.Id, PlexLibraryId = retainedByOtherAccountLibrary.Id },
+            new { PlexAccountId = otherAccount.Id, PlexLibraryId = revokedLibrary.Id },
+        ]);
         await dbContext
-            .PlexAccountLibraries.Where(x => x.PlexAccountId == plexAccount.Id && x.PlexLibraryId == grantedLibrary.Id)
+            .PlexAccountLibraries.Where(x => x.PlexAccountId == otherAccount.Id && x.PlexLibraryId == revokedLibrary.Id)
             .ExecuteDeleteAsync(CancellationToken);
-        var incomingLibraries = new List<PlexLibrary> { grantedLibrary, updatedLibrary };
         var request = new AddOrUpdatePlexLibrariesCommand
         {
             PlexAccountId = plexAccount.Id,
-            PlexLibraries = incomingLibraries.ToApiLibraries(DateTime.UtcNow),
+            PlexLibraries = new List<PlexLibrary> { retainedLibrary }.ToApiLibraries(DateTime.UtcNow),
         };
+        var commandExecutor = Mock.Mock<ICommandExecutor>();
+        commandExecutor
+            .Setup(x =>
+                x.Send(
+                    It.Is<CancelLibrarySyncJobCommand>(command => command.PlexLibraryId == revokedLibrary.Id),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
         Mock.Mock<ITelemetry>()
             .Setup(x =>
                 x.LibraryAccessChanged(
@@ -201,16 +226,15 @@ public class AddOrUpdatePlexLibrariesCommandUnitTests : BaseUnitTest<AddOrUpdate
                         reports.Count == 1
                         && reports
                             .Single()
-                            .GetGranted.Select(row => row.PlexLibraryId)
-                            .SequenceEqual(new[] { grantedLibrary.Id })
-                        && reports
-                            .Single()
                             .GetUpdated.Select(row => row.PlexLibraryId)
-                            .SequenceEqual(new[] { updatedLibrary.Id })
+                            .SequenceEqual(new[] { retainedLibrary.Id })
                         && reports
                             .Single()
                             .GetRevoked.Select(row => row.PlexLibraryId)
-                            .SequenceEqual(new[] { revokedLibrary.Id })
+                            .OrderBy(id => id)
+                            .SequenceEqual(
+                                new[] { retainedByOtherAccountLibrary.Id, revokedLibrary.Id }.OrderBy(id => id)
+                            )
                     )
                 )
             )
@@ -222,12 +246,98 @@ public class AddOrUpdatePlexLibrariesCommandUnitTests : BaseUnitTest<AddOrUpdate
         // Assert
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
-        var access = await dbContext
-            .PlexAccountLibraries.OrderBy(x => x.PlexLibraryId)
-            .Select(x => x.PlexLibraryId)
+        var accessAfter = await dbContext
+            .PlexAccountLibraries.OrderBy(x => x.PlexAccountId)
+            .ThenBy(x => x.PlexLibraryId)
+            .Select(x => new { x.PlexAccountId, x.PlexLibraryId })
             .ToListAsync(CancellationToken);
-        access.ShouldBe(incomingLibraries.Select(x => x.Id).Order());
+        accessAfter.ShouldBe([
+            new { PlexAccountId = plexAccount.Id, PlexLibraryId = retainedLibrary.Id },
+            new { PlexAccountId = otherAccount.Id, PlexLibraryId = retainedLibrary.Id },
+            new { PlexAccountId = otherAccount.Id, PlexLibraryId = retainedByOtherAccountLibrary.Id },
+        ]);
         Mock.Mock<ITelemetry>().Verify();
+        commandExecutor.Verify();
+        foreach (var library in libraries)
+            commandExecutor.Verify(
+                x =>
+                    x.Send(
+                        It.Is<CancelLibrarySyncJobCommand>(command => command.PlexLibraryId == library.Id),
+                        It.IsAny<CancellationToken>()
+                    ),
+                library.Id == revokedLibrary.Id ? Times.Once() : Times.Never()
+            );
+    }
+
+    [Test]
+    public async Task ShouldFinishRevocationBookkeeping_WhenSyncCancellationFails()
+    {
+        // Arrange
+        await SetupDatabase(62616, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 2;
+            config.PlexAccountCount = 1;
+        });
+        var dbContext = IDbContext;
+        var account = await dbContext.PlexAccounts.SingleAsync(CancellationToken);
+        var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
+        var retained = libraries[0];
+        var revoked = libraries[1];
+        var links = dbContext.PlexAccountLibraries.Where(x => x.PlexAccountId == account.Id);
+        (
+            await links.OrderBy(x => x.PlexLibraryId).Select(x => x.PlexLibraryId).ToListAsync(CancellationToken)
+        ).ShouldBe([retained.Id, revoked.Id]);
+        var request = new AddOrUpdatePlexLibrariesCommand
+        {
+            PlexAccountId = account.Id,
+            PlexLibraries = new List<PlexLibrary> { retained }.ToApiLibraries(DateTime.UtcNow),
+        };
+        var cancellationError = new Error("Sync interruption failed");
+        Mock.SetupCommand(() => new CancelLibrarySyncJobCommand(revoked.Id))
+            .ReturnsAsync(Result.Fail(cancellationError))
+            .Verifiable(Times.Once());
+        var executor = Mock.Mock<ICommandExecutor>();
+        executor
+            .Setup(x =>
+                x.Send(
+                    It.Is<InvalidateLibraryComparisonJobsCommand>(c =>
+                        c.PlexLibraryIds.SequenceEqual(new[] { revoked.Id })
+                    ),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
+        Mock.SetupCommand(() => new ScheduleAffectedLibraryComparisonJobsCommand(revoked.Id))
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
+
+        // Act
+        var result = await Sut.ExecuteAsync(request, CancellationToken);
+
+        // Assert
+        result.IsFailed.ShouldBeTrue();
+        result.Errors.Single().ShouldBeSameAs(cancellationError);
+        (await links.Select(x => x.PlexLibraryId).ToListAsync(CancellationToken)).ShouldBe([retained.Id]);
+        var history = await dbContext
+            .PlexLibraryAccessHistoryEvents.Where(x => x.State == PlexAccessState.Revoked)
+            .Select(x => new
+            {
+                x.PlexAccountId,
+                x.PlexServerId,
+                x.PlexLibraryId,
+            })
+            .SingleAsync(CancellationToken);
+        history.ShouldBe(
+            new
+            {
+                PlexAccountId = account.Id,
+                PlexServerId = (int?)revoked.PlexServerId,
+                PlexLibraryId = (int?)revoked.Id,
+            }
+        );
+        executor.Verify();
     }
 
     [Test]
@@ -391,12 +501,16 @@ public class AddOrUpdatePlexLibrariesCommandUnitTests : BaseUnitTest<AddOrUpdate
         };
 
         Mock.SetupCommand(It.IsAny<ScheduleAffectedLibraryComparisonJobsCommand>).ReturnsAsync(Result.Ok());
+        Mock.SetupCommand(() => new CancelLibrarySyncJobCommand(removedLibrary.Id))
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
 
         // Act
         var result = await Sut.ExecuteAsync(request, CancellationToken);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
+        Mock.Mock<ICommandExecutor>().Verify();
         var historyEvents = await dbContext.PlexLibraryAccessHistoryEvents.ToListAsync(CancellationToken);
 
         historyEvents.Count.ShouldBe(3);
@@ -825,6 +939,7 @@ public class AddOrUpdatePlexLibrariesCommandUnitTests : BaseUnitTest<AddOrUpdate
         var plexAccount = dbContext.PlexAccounts.FirstOrDefault();
         plexAccount.ShouldNotBeNull();
         var plexLibraries = dbContext.PlexLibraries.AsTracking().ToList();
+        var removedLibraryIds = plexLibraries.Where((_, index) => index % 2 == 0).Select(x => x.Id).ToArray();
 
         // Remove even numbered plexLibraries
         for (var i = plexLibraries.Count - 1; i >= 0; i--)
@@ -839,12 +954,17 @@ public class AddOrUpdatePlexLibrariesCommandUnitTests : BaseUnitTest<AddOrUpdate
         };
 
         Mock.SetupCommand(It.IsAny<ScheduleAffectedLibraryComparisonJobsCommand>).ReturnsAsync(Result.Ok());
+        foreach (var libraryId in removedLibraryIds)
+            Mock.SetupCommand(() => new CancelLibrarySyncJobCommand(libraryId))
+                .ReturnsAsync(Result.Ok())
+                .Verifiable(Times.Once());
 
         // Act
         var result = await Sut.ExecuteAsync(request, CancellationToken);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
+        Mock.Mock<ICommandExecutor>().Verify();
         result.Value.Count.ShouldBe(serverCount);
         foreach (var rapport in result.Value)
         {

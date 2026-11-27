@@ -3,6 +3,7 @@
 		v-model="showDrawer"
 		:width="drawerWidth"
 		:breakpoint="1023"
+		:behavior="$q.screen.gt.sm ? 'desktop' : 'mobile'"
 		side="right"
 		overlay
 		class="notification-drawer">
@@ -113,60 +114,46 @@ function clearAllNotifications() {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  position: absolute;
-  top: calc($app-bar-height + 2px);
-  right: 0;
-  bottom: 0;
-  left: auto;
-  height: auto !important;
 
   .notification-container {
-    overflow-y: auto;
-    overflow-x: hidden;
-    flex-grow: 3;
+    min-height: 0;
+    overflow: hidden;
+    flex: 1 1 auto;
   }
 
   .clear-notifications-container {
-    flex-grow: 0;
+    flex: 0 0 auto;
   }
 }
 
-.q-drawer {
-  background-color: transparent;
+.body--dark .notification-drawer {
+  background-color: var(--q-dark-page, #121212);
+  color: #fff;
 }
 
-@media (max-width: 1023px) {
-  .notification-drawer {
-    width: min(450px, 92vw) !important;
-    max-width: 92vw;
+.body--light .notification-drawer {
+  background-color: var(--q-light-page, #fff);
+  color: #000;
+}
 
-    .notification-container {
-      min-height: 0;
-      overflow: hidden;
-      flex: 1 1 auto;
+.q-drawer--mobile:has(> .notification-drawer),
+.q-drawer-container:has(> .q-drawer--mobile > .notification-drawer) > .q-drawer__backdrop {
+  top: calc($app-bar-height + 2px + env(safe-area-inset-top, 0px));
+  height: auto;
+}
 
-      .q-scrollarea__content,
-      .q-alert,
-      .q-list {
-        width: 100%;
-        min-width: 0;
-        max-width: 100%;
-      }
-    }
+.q-drawer--mobile > .notification-drawer {
 
-    .clear-notifications-container {
-      flex: 0 0 auto;
-    }
+  .q-scrollarea__content,
+  .q-alert,
+  .q-list {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
   }
+}
 
-  .body--dark .notification-drawer {
-    background-color: var(--q-dark-page, #121212) !important;
-    color: #fff;
-  }
-
-  .body--light .notification-drawer {
-    background-color: var(--q-light-page, #fff) !important;
-    color: #000;
-  }
+body.q-ios-padding .q-layout--standard .q-drawer--mobile > .notification-drawer {
+  padding-top: 0;
 }
 </style>

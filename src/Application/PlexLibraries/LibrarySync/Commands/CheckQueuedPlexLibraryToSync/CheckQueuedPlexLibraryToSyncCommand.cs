@@ -108,18 +108,30 @@ public class CheckQueuedPlexLibraryToSyncCommandHandler : ICommandHandler<CheckQ
 
             var nextLibrary = serverGroup.OrderBy(x => x.Priority).First();
 
-            await ScheduleLibrarySyncJob(
-                serverId,
-                nextLibrary.PlexLibraryId,
-                nextLibrary.ForceMediaRefresh,
-                cancellationToken
-            );
+            if (
+                await ScheduleLibrarySyncJob(
+                    serverId,
+                    nextLibrary.PlexLibraryId,
+                    nextLibrary.ForceMediaRefresh,
+                    cancellationToken
+                )
+            )
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                await ScheduleLibrarySyncJob(
+                    serverId,
+                    nextLibrary.PlexLibraryId,
+                    nextLibrary.ForceMediaRefresh,
+                    cancellationToken
+                );
+            }
         }
 
         return Result.Ok();
     }
 
-    private async Task ScheduleLibrarySyncJob(
+    // True means scheduling failed and the claim was released, so a fresh claim can be attempted.
+    private async Task<bool> ScheduleLibrarySyncJob(
         int serverId,
         int libraryId,
         bool forceMediaRefresh,
@@ -140,7 +152,7 @@ public class CheckQueuedPlexLibraryToSyncCommandHandler : ICommandHandler<CheckQ
                     libraryName,
                     libraryId
                 );
-            return;
+            return false;
         }
 
         var claimed = await _dbContext
@@ -164,7 +176,7 @@ public class CheckQueuedPlexLibraryToSyncCommandHandler : ICommandHandler<CheckQ
                 cancellationToken
             );
         if (claimed != 1)
-            return;
+            return false;
 
         var scheduleResult = await Result.Try(() =>
             _scheduler.ExecuteJob<LibrarySyncJob, LibrarySyncJobPayload>(
@@ -190,10 +202,11 @@ public class CheckQueuedPlexLibraryToSyncCommandHandler : ICommandHandler<CheckQ
                     CancellationToken.None
                 );
             scheduleResult.LogIfFailed();
-            return;
+            return scheduleResult.IsFailed && !scheduleResult.IsCancelled;
         }
 
         _log.Here()
             .Debug("Scheduled library sync job for server {ServerId} and library {LibraryId}", serverId, libraryId);
+        return false;
     }
 }

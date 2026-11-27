@@ -4,6 +4,78 @@ public class SetServerEnabledEndpointUnitTests
     : BaseEndpointUnitTest<SetServerEnabledEndpoint, SetServerEnabledRequest, ResultDTO<PlexServerDTO>>
 {
     [Test]
+    [Arguments(DownloadStatus.Queued)]
+    [Arguments(DownloadStatus.Downloading)]
+    [Arguments(DownloadStatus.Paused)]
+    [Arguments(DownloadStatus.Error)]
+    [Arguments(DownloadStatus.DownloadFinished)]
+    [Arguments(DownloadStatus.Moving)]
+    public async Task ShouldRejectDisablingWithoutSideEffects_WhenDownloadsAreUnfinished(DownloadStatus status)
+    {
+        // Arrange
+        await SetupDatabase(91220, config => config.MovieDownloadTasksCount = 1);
+        var dbContext = IDbContext;
+        var file = await dbContext.DownloadTaskMovieFile.SingleAsync(CancellationToken);
+        await dbContext.DownloadTaskMovieFile.ExecuteUpdateAsync(
+            x => x.SetProperty(p => p.DownloadStatus, status),
+            CancellationToken
+        );
+
+        // Act
+        var result = await TestEndpointHandleAsync(
+            new SetServerEnabledRequest { PlexServerId = file.PlexServerId, IsEnabled = false }
+        );
+
+        // Assert
+        result.StatusCode.ShouldBe(409);
+        result.Response.ShouldNotBeNull();
+        result.Response.IsSuccess.ShouldBeFalse();
+        result.Response.Errors.Count.ShouldBe(1);
+        (await dbContext.PlexServers.IgnoreIsEnabledFilter().SingleAsync(CancellationToken)).IsEnabled.ShouldBeTrue();
+        (await dbContext.DownloadTaskMovieFile.Select(x => x.DownloadStatus).SingleAsync(CancellationToken)).ShouldBe(
+            status
+        );
+        Mock.Mock<ICommandExecutor>()
+            .Verify(x => x.Send(It.IsAny<CancelLibrarySyncJobCommand>(), It.IsAny<CancellationToken>()), Times.Never());
+        Mock.Mock<ICommandExecutor>()
+            .Verify(
+                x => x.Send(It.IsAny<QueueMediaOverviewRebuildCommand>(), It.IsAny<CancellationToken>()),
+                Times.Never()
+            );
+    }
+
+    [Test]
+    public async Task ShouldAllowDisabling_WhenDownloadsAreCompleted()
+    {
+        // Arrange
+        await SetupDatabase(91221, config => config.MovieDownloadTasksCount = 1);
+        var dbContext = IDbContext;
+        var file = await dbContext.DownloadTaskMovieFile.SingleAsync(CancellationToken);
+        await dbContext.DownloadTaskMovieFile.ExecuteUpdateAsync(
+            x => x.SetProperty(p => p.DownloadStatus, DownloadStatus.Completed),
+            CancellationToken
+        );
+        Mock.SetupCommand(() => new CancelLibrarySyncJobCommand(file.PlexLibraryId))
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
+
+        // Act
+        var result = await TestEndpointHandleAsync(
+            new SetServerEnabledRequest { PlexServerId = file.PlexServerId, IsEnabled = false }
+        );
+
+        // Assert
+        result.StatusCode.ShouldBe(200);
+        result.Response.ShouldNotBeNull().IsSuccess.ShouldBeTrue();
+        result.Response.Errors.Count.ShouldBe(0);
+        (await dbContext.PlexServers.IgnoreIsEnabledFilter().SingleAsync(CancellationToken)).IsEnabled.ShouldBeFalse();
+        Mock.Mock<ICommandExecutor>().Verify();
+    }
+
+    [Test]
     public async Task ShouldEnableServer_WhenServerIsDisabled()
     {
         // Arrange
@@ -60,6 +132,95 @@ public class SetServerEnabledEndpointUnitTests
             .PlexServers.IgnoreIsEnabledFilter()
             .FirstAsync(x => x.Id == server.Id, CancellationToken);
         updated.IsEnabled.ShouldBeFalse();
+    }
+
+    [Test]
+    public async Task ShouldCancelEveryTargetServerLibraryBeforeDisabling_WhenServerHasLibraries()
+    {
+        // Arrange
+        await SetupDatabase(91212, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 2;
+            config.PlexTvShowLibraryCount = 1;
+        });
+
+        var dbContext = IDbContext;
+        var servers = await dbContext
+            .PlexServers.IgnoreIsEnabledFilter()
+            .OrderBy(x => x.Id)
+            .ToListAsync(CancellationToken);
+        var targetServerId = servers[0].Id;
+        var targetLibraryIds = await dbContext
+            .PlexLibraries.IgnoreIsEnabledFilter()
+            .Where(x => x.PlexServerId == targetServerId)
+            .Select(x => x.Id)
+            .OrderBy(x => x)
+            .ToListAsync(CancellationToken);
+        var otherLibraryIds = await dbContext
+            .PlexLibraries.IgnoreIsEnabledFilter()
+            .Where(x => x.PlexServerId != targetServerId)
+            .Select(x => x.Id)
+            .OrderBy(x => x)
+            .ToListAsync(CancellationToken);
+        targetLibraryIds.ShouldNotBeEmpty();
+        otherLibraryIds.ShouldNotBeEmpty();
+
+        var commandExecutor = Mock.Mock<ICommandExecutor>();
+        foreach (var libraryId in targetLibraryIds)
+        {
+            commandExecutor
+                .Setup(x =>
+                    x.Send(
+                        It.Is<CancelLibrarySyncJobCommand>(c => c.PlexLibraryId == libraryId),
+                        It.IsAny<CancellationToken>()
+                    )
+                )
+                .ReturnsAsync(Result.Ok())
+                .Verifiable(Times.Once());
+        }
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
+
+        // Act
+        var endpointResult = await TestEndpointHandleAsync(
+            new SetServerEnabledRequest { PlexServerId = targetServerId, IsEnabled = false }
+        );
+
+        // Assert
+        endpointResult.Response.ShouldNotBeNull();
+        endpointResult.Response.IsSuccess.ShouldBeTrue();
+        endpointResult.Response.Errors.Count.ShouldBe(0);
+        var updatedServers = await dbContext
+            .PlexServers.IgnoreIsEnabledFilter()
+            .OrderBy(x => x.Id)
+            .Select(x => new { x.Id, x.IsEnabled })
+            .ToListAsync(CancellationToken);
+        updatedServers.ShouldBe([
+            new { Id = targetServerId, IsEnabled = false },
+            new { Id = servers[1].Id, IsEnabled = true },
+        ]);
+
+        foreach (var libraryId in targetLibraryIds)
+            commandExecutor.Verify(
+                x =>
+                    x.Send(
+                        It.Is<CancelLibrarySyncJobCommand>(c => c.PlexLibraryId == libraryId),
+                        It.IsAny<CancellationToken>()
+                    ),
+                Times.Once()
+            );
+        foreach (var libraryId in otherLibraryIds)
+            commandExecutor.Verify(
+                x =>
+                    x.Send(
+                        It.Is<CancelLibrarySyncJobCommand>(c => c.PlexLibraryId == libraryId),
+                        It.IsAny<CancellationToken>()
+                    ),
+                Times.Never()
+            );
+        commandExecutor.Verify();
     }
 
     [Test]
@@ -298,6 +459,16 @@ public class SetServerEnabledEndpointUnitTests
             .PlexServers.IgnoreIsEnabledFilter()
             .OrderBy(x => x.Id)
             .FirstAsync(CancellationToken);
+        var libraryIds = await dbContext
+            .PlexLibraries.IgnoreIsEnabledFilter()
+            .Where(x => x.PlexServerId == server.Id)
+            .Select(x => x.Id)
+            .ToListAsync(CancellationToken);
+        libraryIds.Count.ShouldBe(4);
+        foreach (var libraryId in libraryIds)
+            Mock.SetupCommand(() => new CancelLibrarySyncJobCommand(libraryId))
+                .ReturnsAsync(Result.Ok())
+                .Verifiable(Times.Once());
         Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand()).ReturnsAsync(Result.Ok());
 
         // Act
@@ -308,6 +479,7 @@ public class SetServerEnabledEndpointUnitTests
         // Assert
         endpointResult.Response.ShouldNotBeNull();
         endpointResult.Response.IsSuccess.ShouldBe(true);
+        Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<ICommandExecutor>()
             .Verify(
                 x => x.Send(It.IsAny<QueueMediaOverviewRebuildCommand>(), It.IsAny<CancellationToken>()),

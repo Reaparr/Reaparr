@@ -82,14 +82,6 @@ public static class DownloadTaskActions
                 actions.Add(DownloadActions.Restart);
                 actions.Add(DownloadActions.Delete);
                 break;
-            case DownloadStatus.AuthError:
-                actions.Add(DownloadActions.Start);
-                actions.Add(DownloadActions.Delete);
-                break;
-            case DownloadStatus.StorageError:
-                actions.Add(DownloadActions.Start);
-                actions.Add(DownloadActions.Delete);
-                break;
             case DownloadStatus.SourceUnavailable:
                 actions.Add(DownloadActions.Delete);
                 break;
@@ -98,6 +90,8 @@ public static class DownloadTaskActions
                 actions.Add(DownloadActions.Restart);
                 actions.Add(DownloadActions.Delete);
                 break;
+            case DownloadStatus.AuthError:
+            case DownloadStatus.StorageError:
             case DownloadStatus.MoveError:
                 actions.Add(DownloadActions.Start);
                 actions.Add(DownloadActions.Restart);

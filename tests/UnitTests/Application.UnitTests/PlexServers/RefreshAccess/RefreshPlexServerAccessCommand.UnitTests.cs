@@ -32,6 +32,15 @@ public class RefreshPlexServerAccessCommandUnitTests : BaseCommandUnitTest<Refre
             )
             .ReturnsAsync(Result.Ok(new List<PlexServerAccessDTO>()))
             .Verifiable(Times.Once());
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x =>
+                x.Send(
+                    It.Is<CancelLibrarySyncJobCommand>(command => command.PlexLibraryId == libraryId),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
         Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
@@ -52,6 +61,15 @@ public class RefreshPlexServerAccessCommandUnitTests : BaseCommandUnitTest<Refre
             await dbContext.PlexAccountLibraries.AnyAsync(x => x.PlexAccountId == plexAccount.Id, CancellationToken)
         ).ShouldBeFalse();
         (await dbContext.PlexLibraries.CountAsync(CancellationToken)).ShouldBe(1);
+        Mock.Mock<ICommandExecutor>()
+            .Verify(
+                x =>
+                    x.Send(
+                        It.Is<CancelLibrarySyncJobCommand>(command => command.PlexLibraryId == libraryId),
+                        It.IsAny<CancellationToken>()
+                    ),
+                Times.Once()
+            );
         Mock.Mock<ICommandExecutor>().Verify();
     }
 
@@ -112,7 +130,8 @@ public class RefreshPlexServerAccessCommandUnitTests : BaseCommandUnitTest<Refre
         (
             await dbContext.PlexAccountLibraries.AnyAsync(x => x.PlexAccountId == retainedAccount.Id, CancellationToken)
         ).ShouldBeTrue();
-        Mock.Mock<ICommandExecutor>().Verify();
+        Mock.Mock<ICommandExecutor>()
+            .Verify(x => x.Send(It.IsAny<CancelLibrarySyncJobCommand>(), It.IsAny<CancellationToken>()), Times.Never());
     }
 
     [Test]
@@ -129,11 +148,15 @@ public class RefreshPlexServerAccessCommandUnitTests : BaseCommandUnitTest<Refre
 
         var dbContext = IDbContext;
         var plexAccount = await dbContext.PlexAccounts.FirstAsync(CancellationToken);
-        (
-            await dbContext.PlexAccountLibraries.AnyAsync(x => x.PlexAccountId == plexAccount.Id, CancellationToken)
-        ).ShouldBeTrue();
+        var targetLibraryIds = await dbContext
+            .PlexAccountLibraries.Where(x => x.PlexAccountId == plexAccount.Id)
+            .Select(x => x.PlexLibraryId)
+            .OrderBy(x => x)
+            .ToListAsync(CancellationToken);
+        targetLibraryIds.Count.ShouldBe(8);
 
-        Mock.Mock<ICommandExecutor>()
+        var commandExecutor = Mock.Mock<ICommandExecutor>();
+        commandExecutor
             .Setup(x =>
                 x.Send(
                     It.Is<GetAccessiblePlexServersCommand>(command => command.PlexAccountId == plexAccount.Id),
@@ -142,6 +165,18 @@ public class RefreshPlexServerAccessCommandUnitTests : BaseCommandUnitTest<Refre
             )
             .ReturnsAsync(Result.Fail<List<PlexServerAccessDTO>>("Unauthorized").AddPlex401UnauthorizedError())
             .Verifiable(Times.Once());
+        foreach (var libraryId in targetLibraryIds)
+        {
+            commandExecutor
+                .Setup(x =>
+                    x.Send(
+                        It.Is<CancelLibrarySyncJobCommand>(command => command.PlexLibraryId == libraryId),
+                        It.IsAny<CancellationToken>()
+                    )
+                )
+                .ReturnsAsync(Result.Ok())
+                .Verifiable(Times.Once());
+        }
         Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
@@ -156,12 +191,21 @@ public class RefreshPlexServerAccessCommandUnitTests : BaseCommandUnitTest<Refre
         result.Errors.Count.ShouldBe(0);
         result.Value.Access.Count.ShouldBe(2);
         (
-            await dbContext.PlexAccountServers.AnyAsync(x => x.PlexAccountId == plexAccount.Id, CancellationToken)
-        ).ShouldBeFalse();
+            await dbContext.PlexAccountServers.CountAsync(x => x.PlexAccountId == plexAccount.Id, CancellationToken)
+        ).ShouldBe(0);
         (
-            await dbContext.PlexAccountLibraries.AnyAsync(x => x.PlexAccountId == plexAccount.Id, CancellationToken)
-        ).ShouldBeFalse();
-        Mock.Mock<ICommandExecutor>().Verify();
+            await dbContext.PlexAccountLibraries.CountAsync(x => x.PlexAccountId == plexAccount.Id, CancellationToken)
+        ).ShouldBe(0);
+        foreach (var libraryId in targetLibraryIds)
+            commandExecutor.Verify(
+                x =>
+                    x.Send(
+                        It.Is<CancelLibrarySyncJobCommand>(command => command.PlexLibraryId == libraryId),
+                        It.IsAny<CancellationToken>()
+                    ),
+                Times.Once()
+            );
+        commandExecutor.Verify();
     }
 
     [Test]

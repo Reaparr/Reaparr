@@ -53,6 +53,7 @@ public class AddOrUpdatePlexLibrariesCommandHandler
         List<PlexLibrary> newPlexLibraries = [];
         HashSet<int> changedPlexLibraryIds = [];
         var refreshRunId = Guid.NewGuid();
+        List<IError> revocationErrors = [];
 
         var plexAccountId = command.PlexAccountId;
 
@@ -206,6 +207,22 @@ public class AddOrUpdatePlexLibrariesCommandHandler
                     )
                     .ExecuteDeleteAsync(cancellationToken);
 
+                var remainingEnabledLibraryIds = await _dbContext
+                    .PlexAccountLibraries.Where(x =>
+                        lostLibraryIds.Contains(x.PlexLibraryId) && x.PlexAccount!.IsEnabled
+                    )
+                    .Select(x => x.PlexLibraryId)
+                    .Distinct()
+                    .ToListAsync(cancellationToken);
+                foreach (var lostLibraryId in lostLibraryIds.Except(remainingEnabledLibraryIds))
+                {
+                    var cancelResult = await _commandExecutor.Send(
+                        new CancelLibrarySyncJobCommand(lostLibraryId),
+                        cancellationToken
+                    );
+                    if (cancelResult.IsCancelledOrFailed)
+                        revocationErrors.AddRange(cancelResult.Errors);
+                }
                 foreach (var lostLibraryId in lostLibraryIds)
                 {
                     var libraryName = await _dbContext.GetPlexLibraryNameById(lostLibraryId);
@@ -214,9 +231,13 @@ public class AddOrUpdatePlexLibrariesCommandHandler
             }
         }
 
-        await AddHistoryEventsAsync(rapportList, plexAccount, refreshRunId, cancellationToken);
+        // Cancellation failed after the access links were deleted. Finish the revocation bookkeeping before returning it.
+        using var cleanup = revocationErrors.Count > 0 ? new CancellationTokenSource(TimeSpan.FromSeconds(10)) : null;
+        var bookkeepingToken = cleanup?.Token ?? cancellationToken;
 
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        await AddHistoryEventsAsync(rapportList, plexAccount, refreshRunId, bookkeepingToken);
+
+        await _dbContext.SaveChangesAsync(bookkeepingToken);
         _telemetry.LibraryAccessChanged(plexAccountId, refreshRunId, rapportList);
 
         foreach (var rapport in rapportList)
@@ -225,7 +246,7 @@ public class AddOrUpdatePlexLibrariesCommandHandler
 
         var libraryIdsToSync = newPlexLibraries.Select(x => x.Id).Concat(changedPlexLibraryIds).Distinct().ToList();
 
-        if (libraryIdsToSync.Count > 0)
+        if (libraryIdsToSync.Count > 0 && revocationErrors.Count == 0)
         {
             var queueResult = await _commandExecutor.Send(
                 new QueueLibrarySyncJobCommand(libraryIdsToSync),
@@ -247,21 +268,28 @@ public class AddOrUpdatePlexLibrariesCommandHandler
         {
             var invalidationResult = await _commandExecutor.Send(
                 new InvalidateLibraryComparisonJobsCommand(affectedLibraryIds),
-                cancellationToken
+                bookkeepingToken
             );
             if (invalidationResult.IsCancelledOrFailed)
-                return invalidationResult.LogIfFailed().ToResult<List<PlexLibraryAccessRapport>>();
+                return Result
+                    .Fail<List<PlexLibraryAccessRapport>>(revocationErrors.Concat(invalidationResult.Errors))
+                    .LogIfFailed();
         }
 
         foreach (var libraryId in affectedLibraryIds)
         {
             var comparisonResult = await _commandExecutor.Send(
                 new ScheduleAffectedLibraryComparisonJobsCommand(libraryId),
-                cancellationToken
+                bookkeepingToken
             );
             if (comparisonResult.IsCancelledOrFailed)
-                return comparisonResult.LogIfFailed().ToResult<List<PlexLibraryAccessRapport>>();
+                return Result
+                    .Fail<List<PlexLibraryAccessRapport>>(revocationErrors.Concat(comparisonResult.Errors))
+                    .LogIfFailed();
         }
+
+        if (revocationErrors.Count > 0)
+            return Result.Fail<List<PlexLibraryAccessRapport>>(revocationErrors).LogIfFailed();
 
         return Result.Ok(rapportList);
     }

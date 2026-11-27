@@ -41,6 +41,39 @@ describe('Notification action recovery', () => {
 		});
 	});
 
+	it('Should keep the mobile drawer below the app bar and dismiss it with the bell or backdrop', { viewportWidth: 599, viewportHeight: 800 }, () => {
+		const backdrop = '.q-drawer-container:has(.notification-drawer) > .q-drawer__backdrop';
+		cy.get('.notification-drawer').should(($drawer) => {
+			const content = $drawer[0]!;
+			const panel = content.closest('aside')!;
+			const rect = panel.getBoundingClientRect();
+			const header = content.ownerDocument.querySelector('.q-header')!.getBoundingClientRect();
+			const backdropRect = content.ownerDocument.querySelector(backdrop)!.getBoundingClientRect();
+
+			expect(rect.top, 'panel starts below the app bar').to.be.closeTo(header.bottom, 1);
+			expect(content.getBoundingClientRect().top, 'content starts at the top of the panel').to.be.closeTo(rect.top, 1);
+			expect(rect.bottom, 'panel reaches the viewport bottom').to.be.closeTo(800, 1);
+			expect(backdropRect.top, 'backdrop leaves the app bar uncovered').to.be.closeTo(header.bottom, 1);
+			expect(content.ownerDocument.defaultView!.getComputedStyle(content).backdropFilter, 'panel does not blur the page').to.equal('none');
+		});
+
+		cy.getCy('notifications-button').click();
+		cy.get('.notification-drawer').should('not.be.visible');
+		cy.get(backdrop).should('not.be.visible');
+
+		cy.getCy('notifications-button').click();
+		cy.get('.notification-drawer').should('be.visible');
+		cy.get(backdrop).should(($backdrop) => {
+			const element = $backdrop[0]!;
+			const rect = element.getBoundingClientRect();
+			expect(element.ownerDocument.elementFromPoint(rect.left + 10, rect.top + 20)).to.equal(element);
+		});
+		// Cypress checks visibility at the center, which is intentionally covered by the drawer.
+		cy.get(backdrop).click(10, 20, { force: true });
+		cy.get('.notification-drawer').should('not.be.visible');
+		cy.get(backdrop).should('not.be.visible');
+	});
+
 	it('Should retain a failed hide for retry and remove only the successful row', () => {
 		let calls = 0;
 		cy.intercept('PATCH', NotificationPaths.setNotificationVisibilityEndpoint(), (request) => {

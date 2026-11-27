@@ -92,4 +92,15 @@ describe('toDownloadActions()', () => {
 		expect(stopped).toEqual(expectedStopped);
 		expect(paused).toEqual(expectedPaused);
 	});
+
+	test.each([DownloadStatus.AuthError, DownloadStatus.StorageError, DownloadStatus.MoveError])('Should offer Start and Restart for %s', (status) => {
+		// Arrange
+		const expected = [DownloadActions.Details, DownloadActions.Start, DownloadActions.Restart, DownloadActions.Delete];
+
+		// Act
+		const actions = toDownloadActions(status);
+
+		// Assert
+		expect(actions).toEqual(expected);
+	});
 });

@@ -1,7 +1,6 @@
 import { acceptHMRUpdate, defineStore } from 'pinia';
 import { reactive, toRefs } from 'vue';
-import { forkJoin, type Observable } from 'rxjs';
-import { of } from 'rxjs';
+import { defer, forkJoin, type Observable, of } from 'rxjs';
 import { concatMap, map, switchMap, tap, catchError } from 'rxjs/operators';
 import { get } from '@vueuse/core';
 import {
@@ -17,6 +16,7 @@ import { plexLibraryApi } from '@api';
 import { RefreshDataType, SortDirection } from '@dto';
 import { LibrarySyncWaitingReason } from '@enums';
 import {
+	useAlertStore,
 	useBackgroundJobsStore,
 	useMediaOverviewStore,
 	useServerConnectionStore,
@@ -48,6 +48,9 @@ export const useLibraryStore = defineStore(StoreNames.LibraryStore, () => {
 	const backgroundJobsStore = useBackgroundJobsStore();
 
 	const telemetry = useTelemetry();
+	let syncQueueRevision = 0;
+	let appliedSyncQueueRevision = 0;
+	const localSyncQueueRevisions = new Map<number, number>();
 	const actions = {
 		setup(): Observable<ISetupResult> {
 			// Listen for refresh notifications
@@ -70,6 +73,9 @@ export const useLibraryStore = defineStore(StoreNames.LibraryStore, () => {
 			})));
 		},
 		updateSyncQueue(queue: LibrarySyncJobQueueDTO): void {
+			const revision = ++syncQueueRevision;
+			localSyncQueueRevisions.set(queue.plexLibraryId, revision);
+			// A local update protects only its library; other snapshot rows may still advance.
 			const index = state.syncQueues.findIndex((x) => x.plexLibraryId === queue.plexLibraryId);
 			if (index > -1) {
 				state.syncQueues.splice(index, 1, queue);
@@ -101,18 +107,35 @@ export const useLibraryStore = defineStore(StoreNames.LibraryStore, () => {
 			}), tap((library) => actions.updateLibrary(library)));
 		},
 		refreshLibrarySyncStatus(): Observable<LibrarySyncJobQueueDTO[]> {
-			return plexLibraryApi.getLibrarySyncStatusEndpoint().pipe(
-				tap(({ isSuccess, value }) => {
-					if (isSuccess) {
-						state.syncQueues = value ?? [];
-					}
-				}),
-				map(({ isSuccess, value }) => isSuccess ? value ?? [] : [...state.syncQueues]),
-				catchError((error) => {
-					Log.error('Failed to refresh library sync status', error);
-					return of([...state.syncQueues]);
-				}),
-			);
+			return defer(() => {
+				const revision = ++syncQueueRevision;
+				return plexLibraryApi.getLibrarySyncStatusEndpoint().pipe(
+					map(({ isSuccess, value }) => {
+						if (isSuccess && revision > appliedSyncQueueRevision) {
+							appliedSyncQueueRevision = revision;
+							const snapshot = value ?? [];
+							const newerLocalLibraryIds = new Set<number>();
+							for (const [libraryId, localRevision] of localSyncQueueRevisions) {
+								if (localRevision > revision)
+									newerLocalLibraryIds.add(libraryId);
+							}
+							state.syncQueues = [
+								...snapshot.filter((queue) => !newerLocalLibraryIds.has(queue.plexLibraryId)),
+								...state.syncQueues.filter((queue) => newerLocalLibraryIds.has(queue.plexLibraryId)),
+							];
+							for (const [libraryId, localRevision] of localSyncQueueRevisions) {
+								if (localRevision <= revision)
+									localSyncQueueRevisions.delete(libraryId);
+							}
+						}
+						return [...state.syncQueues];
+					}),
+					catchError((error) => {
+						Log.error('Failed to refresh library sync status', error);
+						return of([...state.syncQueues]);
+					}),
+				);
+			});
 		},
 		/**
      * Re-syncs a library by re-requesting all media from the Plex server.
@@ -136,6 +159,12 @@ export const useLibraryStore = defineStore(StoreNames.LibraryStore, () => {
 		cancelLibrarySync(libraryId: number) {
 			telemetry.librarySyncCancelRequested(libraryId);
 			return plexLibraryApi.cancelLibrarySyncEndpoint(libraryId).pipe(
+				tap(({ isSuccess }) => {
+					const queue = isSuccess ? getters.getLibrarySyncQueue(libraryId) : null;
+					if (queue?.status === LibrarySyncJobStatus.Queued) {
+						actions.updateSyncQueue({ ...queue, status: LibrarySyncJobStatus.Cancelled });
+					}
+				}),
 				switchMap((response) =>
 					response.isSuccess
 						? actions.refreshLibrarySyncStatus().pipe(map(() => response))
@@ -159,8 +188,15 @@ export const useLibraryStore = defineStore(StoreNames.LibraryStore, () => {
 		},
 		setLibraryEnabled(libraryId: number, isEnabled: boolean): Observable<PlexLibraryDTO | null> {
 			telemetry.libraryEnabledChanged(libraryId, isEnabled);
-			return plexLibraryApi.setLibraryEnabledEndpoint(libraryId, { isEnabled }).pipe(
+			return plexLibraryApi.setLibraryEnabledEndpoint(libraryId, { isEnabled }, { handleErrorsLocally: true }).pipe(
 				switchMap((response) => {
+					if (!response.isSuccess) {
+						useAlertStore().showAlert({
+							id: 0,
+							title: 'Unable to change library availability',
+							text: response.errors.map((error) => error.message).join('\n'),
+						});
+					}
 					if (response.isSuccess && response.value) {
 						const mediaOverviewStore = useMediaOverviewStore();
 						actions.updateLibrary(response.value);
@@ -200,6 +236,8 @@ export const useLibraryStore = defineStore(StoreNames.LibraryStore, () => {
 			}
 			state.libraries.push(Object.freeze(library));
 		}, $reset() {
+			appliedSyncQueueRevision = ++syncQueueRevision;
+			localSyncQueueRevisions.clear();
 			Object.assign(state, cloneDeep(defaultState));
 		},
 	};
