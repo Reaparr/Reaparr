@@ -497,7 +497,9 @@ public class DownloadTaskUpdateDispatcherMovieUnitTests : BaseUnitTest<DownloadT
     }
 
     [Test]
-    public async Task ShouldPersistBufferedProgressBeforeStatusBecomesPaused()
+    [Arguments(DownloadStatus.Paused, 750, 75)]
+    [Arguments(DownloadStatus.DownloadFinished, 1000, 100)]
+    public async Task ShouldPersistBufferedProgressBeforeStatusChanges(DownloadStatus status, long received, int percentage)
     {
         await SetupDatabase(84327, config => config.MovieDownloadTasksCount = 1);
         var movieFile = await IDbContext.DownloadTaskMovieFile.AsNoTracking().FirstAsync(CancellationToken);
@@ -514,17 +516,17 @@ public class DownloadTaskUpdateDispatcherMovieUnitTests : BaseUnitTest<DownloadT
             new DownloadTaskProgress
             {
                 DataTotal = 1000,
-                DataReceived = 750,
-                Percentage = 75,
-                DownloadSpeed = 10,
+                DataReceived = received,
+                Percentage = percentage,
+                DownloadSpeed = status == DownloadStatus.Paused ? 10 : 0,
             }
         );
 
-        await sut.OnStatusChangedAsync(movieFile.ToKey(), DownloadStatus.Paused, CancellationToken);
+        await sut.OnStatusChangedAsync(movieFile.ToKey(), status, CancellationToken);
 
         var updatedMovieFile = await IDbContext.DownloadTaskMovieFile.AsNoTracking().FirstAsync(CancellationToken);
-        updatedMovieFile.DownloadStatus.ShouldBe(DownloadStatus.Paused);
-        updatedMovieFile.DataReceived.ShouldBe(750);
+        updatedMovieFile.DownloadStatus.ShouldBe(status);
+        updatedMovieFile.DataReceived.ShouldBe(received);
         updatedMovieFile.DataTotal.ShouldBe(1000);
         updatedMovieFile.DownloadSpeed.ShouldBe(0);
     }

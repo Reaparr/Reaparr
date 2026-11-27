@@ -125,8 +125,8 @@ public class DownloadTaskUpdateDispatcher : BackgroundService, IDownloadTaskUpda
                 {
                     try
                     {
-                        if (newStatus is DownloadStatus.Paused or DownloadStatus.AutoPaused)
-                            await PersistBufferedProgressBeforePauseAsync(dbContext, key, cancellationToken);
+                        if (newStatus is DownloadStatus.Paused or DownloadStatus.AutoPaused or DownloadStatus.DownloadFinished)
+                            await PersistBufferedProgressAsync(dbContext, key, cancellationToken);
 
                         await dbContext.SetDownloadStatus(key, newStatus);
                     }
@@ -803,7 +803,7 @@ public class DownloadTaskUpdateDispatcher : BackgroundService, IDownloadTaskUpda
         return shouldLog;
     }
 
-    private async Task PersistBufferedProgressBeforePauseAsync(
+    private async Task PersistBufferedProgressAsync(
         IReaparrDbContext dbContext,
         DownloadTaskKey key,
         CancellationToken cancellationToken
