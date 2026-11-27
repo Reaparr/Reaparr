@@ -313,6 +313,8 @@ describe('Change Folder Paths', () => {
 				isDefault: true,
 			});
 			cy.getCy(`default-${type}-input`).should('have.value', `/${family.directory}`);
+			// Wait for the previous picker to finish closing before reopening it.
+			cy.getCy('directory-browser-confirm-button').should('not.exist');
 			cy.getCy(`${type}-add-button`).click();
 			chooseRootDirectory(family.directory);
 			cy.wait('@createFolderPath').then(({ request, response }) => {
@@ -327,6 +329,7 @@ describe('Change Folder Paths', () => {
 				expect(response?.body.value.id).to.equal(11 + index);
 			});
 			cy.get('@createFolderPath.all').should('have.length', index + 1);
+			cy.getCy('directory-browser-confirm-button').should('not.exist');
 			cy.getCy(`custom-${type}-row`).should('be.visible');
 			cy.getCy(`custom-${type}-input`).should('have.value', `/${family.directory}`);
 

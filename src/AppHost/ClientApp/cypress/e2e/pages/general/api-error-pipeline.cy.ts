@@ -304,8 +304,10 @@ describe('Global API error pipeline', () => {
 		cy.intercept('POST', AuthenticationPaths.appUserLoginEndpoint(), { forceNetworkError: true }).as('networkFailure');
 		cy.getCy('login-submit-button').click();
 		cy.wait('@networkFailure').should('have.property', 'error');
+		cy.getCy('login-submit-button').should('not.be.disabled');
+		// Connectivity notices are debug-only; the normal login flow must remain retryable.
 		cy.contains('[role="alert"]', 'Cannot reach the Reaparr backend. Check your connection and try again.')
-			.should('be.visible');
+			.should('not.exist');
 		cy.getCy('alert-dialog').should('not.exist');
 		cy.getCy('login-locked-out-alert').should('not.exist');
 
