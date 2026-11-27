@@ -162,7 +162,7 @@ describe('MediaOverviewRefresh queued presentation', () => {
 		const queuedQueue = generateLibrarySyncJobQueue({ plexLibraryId: queuedLibrary.id, plexServerId: 7, status: LibrarySyncJobStatus.Queued });
 		const processingQueue = generateLibrarySyncJobQueue({ plexLibraryId: processingLibrary.id, plexServerId: 7, status: LibrarySyncJobStatus.Processing });
 		libraryStore.syncQueues = [queuedQueue, processingQueue];
-		serverStore.servers = [generatePlexServer({ seed: new Seed(1810), id: 7 })];
+		serverStore.servers = [generatePlexServer({ config: { seed: 1810 }, id: 7 })];
 		vi.spyOn(serverStore, 'getServerName').mockReturnValue('My Plex Server');
 		vi.spyOn(libraryStore, 'getLibrarySyncWaitingReason').mockReturnValue(LibrarySyncWaitingReason.Busy);
 		vi.spyOn(libraryStore, 'getProcessingLibrarySyncQueue').mockReturnValue(libraryStore.syncQueues[1]!);
