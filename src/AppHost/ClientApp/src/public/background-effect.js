@@ -36,7 +36,7 @@ export function setupBackgroundEffect() {
 	if (effect?.camera) {
 		effect.onResize = () => {
 			// Keep the decorative drawing buffer at or below 1080p; CSS still fills the viewport.
-			effect.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1920 / effect.width, 1080 / effect.height));
+			effect.renderer?.setPixelRatio(Math.min(window.devicePixelRatio, 1920 / effect.width, 1080 / effect.height));
 		};
 		effect.onResize();
 	}
