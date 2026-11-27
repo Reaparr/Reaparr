@@ -32,6 +32,31 @@ report_graphql_errors() {
     return 1
 }
 
+resolve_image_config_digest() {
+    local ref="$1"
+    local manifest
+    local child_digest
+    manifest="$(docker buildx imagetools inspect --raw "${ref}")" || return 1
+
+    if jq -e '.manifests | type == "array"' >/dev/null <<<"${manifest}"; then
+        # Buildx can publish an index even for one platform when provenance is enabled.
+        child_digest="$(jq -er '
+            [.manifests[] | select(
+                .platform.os == "linux" and .platform.architecture == "amd64"
+                and .annotations["vnd.docker.reference.type"] != "attestation-manifest"
+            )] | select(length == 1) | .[0].digest | strings | select(startswith("sha256:"))
+        ' <<<"${manifest}")" || {
+            echo "Expected exactly one runnable linux/amd64 manifest for ${ref}" >&2
+            return 1
+        }
+        ref="${ref%%@*}"
+        if [[ "${ref##*/}" == *:* ]]; then ref="${ref%:*}"; fi
+        manifest="$(docker buildx imagetools inspect --raw "${ref}@${child_digest}")" || return 1
+    fi
+
+    jq -er '.config.digest | strings | select(startswith("sha256:"))' <<<"${manifest}"
+}
+
 update_unraid_container() {
     local graphql_url="${REAPARR_UNRAID_URL%/}/graphql"
     local container_name="${REAPARR_UNRAID_CONTAINER:-Reaparr}"
@@ -63,7 +88,7 @@ update_unraid_container() {
         return 1
     }
 
-    expected_image_id="$(docker buildx imagetools inspect --raw "${expected_image}" | jq -er '.config.digest | select(startswith("sha256:"))')"
+    expected_image_id="$(resolve_image_config_digest "${expected_image}")"
 
     response="$(
         jq -cn --arg query "${containers_query}" '{query: $query}' |
