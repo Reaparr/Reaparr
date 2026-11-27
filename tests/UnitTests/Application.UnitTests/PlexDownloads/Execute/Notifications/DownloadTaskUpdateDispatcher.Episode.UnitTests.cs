@@ -333,8 +333,6 @@ public class DownloadTaskUpdateDispatcherEpisodeUnitTests : BaseUnitTest<Downloa
 
         var sut = Sut;
 
-        await sut.StartAsync(CancellationToken.None);
-
         await sut.OnStatusChangedAsync(completedEpisodeFile.ToKey(), DownloadStatus.Downloading, CancellationToken);
         await sut.OnStatusChangedAsync(siblingEpisodeFile.ToKey(), DownloadStatus.Downloading, CancellationToken);
 
@@ -360,6 +358,8 @@ public class DownloadTaskUpdateDispatcherEpisodeUnitTests : BaseUnitTest<Downloa
                 TimeRemaining = 20,
             }
         );
+
+        await sut.StartAsync(CancellationToken.None);
 
         await WaitUntilAsync(() =>
             Task.FromResult(
