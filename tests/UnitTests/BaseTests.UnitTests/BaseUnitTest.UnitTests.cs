@@ -1,4 +1,5 @@
 using Autofac;
+using Reaparr.Data;
 using Reaparr.Environment;
 using Reaparr.Logging;
 using Serilog.Events;
@@ -52,6 +53,32 @@ public class BaseUnitTestUnitTests
             .ShouldBe(["Before fixture disposal", "After fixture disposal"]);
     }
 
+    [Test]
+    public async Task ShouldCloseOnlyItsOwnConnections_WhenFixtureIsDisposed()
+    {
+        // Arrange
+        using var first = new Fixture();
+        using var second = new Fixture();
+        await first.SeedDatabase();
+        await second.SeedDatabase();
+        var firstContext = first.OpenContext();
+        var firstAuth = first.OpenAuthContext();
+        var secondContext = second.OpenContext();
+        await firstContext.Database.OpenConnectionAsync();
+        await firstAuth.Database.OpenConnectionAsync();
+        await secondContext.Database.OpenConnectionAsync();
+        var firstConnection = firstContext.Database.GetDbConnection();
+        var firstAuthConnection = firstAuth.Database.GetDbConnection();
+
+        // Act
+        first.Dispose();
+
+        // Assert
+        firstConnection.State.ShouldBe(System.Data.ConnectionState.Closed);
+        firstAuthConnection.State.ShouldBe(System.Data.ConnectionState.Closed);
+        await secondContext.PlexServers.SingleAsync();
+    }
+
     private sealed class Fixture : BaseUnitTest
     {
         public Fixture()
@@ -62,6 +89,12 @@ public class BaseUnitTestUnitTests
         public Probe ResolveProbe() => Mock.Container.Resolve<Probe>();
 
         public Serilog.ILogger ResolveLogger() => Mock.Container.Resolve<Serilog.ILogger>();
+
+        public Task<Seed> SeedDatabase() => SetupDatabase(421);
+
+        public ReaparrDbContext OpenContext() => (ReaparrDbContext)IDbContext;
+
+        public Reaparr.Identity.AuthDbContext OpenAuthContext() => (Reaparr.Identity.AuthDbContext)AuthDbContext;
 
         public void UseDesktopMode() => SetAppBuildInfo(info => info.RuntimeMode = "desktop");
     }
