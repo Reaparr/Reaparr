@@ -5,7 +5,7 @@ namespace Reaparr.BaseTests;
 public static class GlobalTestHooks
 {
     [Before(TestSession)]
-    public static async Task SetupTestSession()
+    public static void SetupTestSession()
     {
         CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
         CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
@@ -16,7 +16,6 @@ public static class GlobalTestHooks
 
         LogFactory.SetupLogging(testLogConfig, appRuntimeInfo, LogEventLevel.Verbose);
         BogusExtensions.Setup();
-        await MockDatabase.InitializeDatabaseTemplateAsync(pathProvider, appRuntimeInfo);
     }
 
     [After(TestSession)]

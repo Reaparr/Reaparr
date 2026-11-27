@@ -20,16 +20,28 @@ public partial class BaseUnitTest
         CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
 
         Log = LogFactory.Create<BaseUnitTest>();
-        Mock = AutoMock.GetStrict(SetDefaultBuilder);
     }
 
     public virtual void Dispose()
     {
-        if (IsDatabaseSetup)
+        try
         {
-            _setupReaparrDbContext?.EnsureDeleted();
-            _setupReaparrDbContext?.Dispose();
-            _setupAuthDbContext?.Dispose();
+            DisposeMocks();
+        }
+        finally
+        {
+            try
+            {
+                if (IsDatabaseSetup)
+                    _setupReaparrDbContext?.EnsureDeleted();
+            }
+            finally
+            {
+                _setupReaparrDbContext?.Dispose();
+                _setupAuthDbContext?.Dispose();
+                _setupReaparrDbContext = null;
+                _setupAuthDbContext = null;
+            }
         }
     }
 }
@@ -38,10 +50,4 @@ public class BaseUnitTest<TUnitTestClass> : BaseUnitTest
     where TUnitTestClass : class
 {
     protected TUnitTestClass Sut => Mock.Create<TUnitTestClass>();
-
-    public override void Dispose()
-    {
-        base.Dispose();
-        Mock.Dispose();
-    }
 }

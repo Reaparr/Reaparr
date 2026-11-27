@@ -429,21 +429,22 @@ public static partial class MockDatabase
             return;
         }
 
-        if (_databaseTemplateConnection is null)
-            throw new InvalidOperationException("The test database template has not been initialized.");
+        // This runs under _setupLock. Only tests that clone the schema need a template.
+        await InitializeDatabaseTemplateAsync();
 
         await CloneDatabaseTemplateAsync(reaparrContext, pathProvider);
     }
 
-    public static async Task InitializeDatabaseTemplateAsync(IPathProvider pathProvider, IAppRuntimeInfo appRuntimeInfo)
+    private static async Task InitializeDatabaseTemplateAsync()
     {
         if (_databaseTemplateConnection is not null)
             return;
 
+        var pathProvider = new MockPathProvider(_databaseTemplateName);
+        var appRuntimeInfo = new MockAppRuntimeInfo { IsUnmasked = true };
         var templateConnection = new SqliteConnection(
             DbContextConnections.GetConnectionString(_databaseTemplateName, SqliteOpenMode.Memory)
         );
-        await templateConnection.OpenAsync();
 
         await using var templateReaparrContext = GetMemoryReaparrDbContext(
             _log,
@@ -460,6 +461,7 @@ public static partial class MockDatabase
 
         try
         {
+            await templateConnection.OpenAsync();
             var migrationResult = Result.Merge(templateReaparrContext.Migrate(), templateAuthContext.Migrate());
             migrationResult.IsSuccess.ShouldBeTrue(migrationResult.ToString());
             _databaseTemplateConnection = templateConnection;
@@ -473,11 +475,12 @@ public static partial class MockDatabase
 
     public static async Task DisposeDatabaseTemplateAsync()
     {
-        if (_databaseTemplateConnection is null)
-            return;
+        if (_databaseTemplateConnection is not null)
+        {
+            await _databaseTemplateConnection.DisposeAsync();
+            _databaseTemplateConnection = null;
+        }
 
-        await _databaseTemplateConnection.DisposeAsync();
-        _databaseTemplateConnection = null;
         SqliteConnection.ClearAllPools();
     }
 

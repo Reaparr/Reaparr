@@ -75,10 +75,4 @@ public abstract class BaseCommandUnitTest<TCommand> : BaseUnitTest
         Result<TResponse> result = await dynHandler.ExecuteAsync(command, CancellationToken);
         return result;
     }
-
-    public override void Dispose()
-    {
-        base.Dispose();
-        Mock.Dispose();
-    }
 }
