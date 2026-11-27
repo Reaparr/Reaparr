@@ -142,6 +142,9 @@ public class IntegrationTestFileSystemIsolationIntegrationTests : BaseIntegratio
         {
             databaseName = container.DatabaseName;
             (await container.DbContext.PlexServers.CountAsync(CancellationToken)).ShouldBe(2);
+            using var database = await container.Resolve<IReaparrDbContextFactory>().CreateAsync();
+            var expectedIds = await container.DbContext.PlexServers.OrderBy(x => x.Id).Select(x => x.Id).ToListAsync(CancellationToken);
+            (await database.PlexServers.OrderBy(x => x.Id).Select(x => x.Id).ToListAsync(CancellationToken)).ShouldBe(expectedIds);
         }
 
         // Assert

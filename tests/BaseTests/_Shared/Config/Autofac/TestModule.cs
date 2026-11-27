@@ -17,6 +17,19 @@ public class TestModule : Module
     protected override void Load(ContainerBuilder builder)
     {
         // Database context can be setup once and then retrieved by its DB name.
+        if (!RuntimeInfo.IsIntegrationTestMode)
+        {
+            builder
+                .Register(ctx => new MemoryDatabaseContextFactory(
+                    ctx.Resolve<ILogger>(),
+                    ctx.Resolve<IPathProvider>(),
+                    ctx.Resolve<IAppRuntimeInfo>(),
+                    MemoryDbName
+                ))
+                .As<IReaparrDbContextFactory>()
+                .As<IAuthDbContextFactory>();
+        }
+
         builder
             .Register(
                 (ctx, _) =>
@@ -156,5 +169,25 @@ public class TestModule : Module
         var client = new HttpClient(handler.Object, disposeHandler: false);
         client.DefaultRequestHeaders.Add("User-Agent", "MockHttpClient");
         return client;
+    }
+
+    private sealed class MemoryDatabaseContextFactory(
+        ILogger log,
+        IPathProvider pathProvider,
+        IAppRuntimeInfo runtimeInfo,
+        string databaseName
+    ) : IReaparrDbContextFactory, IAuthDbContextFactory
+    {
+        public IReaparrDbContext Create() =>
+            MockDatabase.GetMemoryReaparrDbContext(log, pathProvider, runtimeInfo, databaseName);
+
+        public Task<IReaparrDbContext> CreateAsync() =>
+            Task.FromResult<IReaparrDbContext>(MockDatabase.GetMemoryReaparrDbContext(log, pathProvider, runtimeInfo, databaseName));
+
+        IAuthDbContext IAuthDbContextFactory.Create() =>
+            MockDatabase.GetMemoryAuthDbContext(log, pathProvider, runtimeInfo, databaseName);
+
+        Task<IAuthDbContext> IAuthDbContextFactory.CreateAsync() =>
+            Task.FromResult<IAuthDbContext>(MockDatabase.GetMemoryAuthDbContext(log, pathProvider, runtimeInfo, databaseName));
     }
 }
