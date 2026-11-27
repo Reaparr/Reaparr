@@ -72,7 +72,7 @@ public class Program
 
             builder.Host.ConfigureAutofacBuilder(logBuffer);
             builder.Services.ConfigureServices(builder.Environment, _appRuntimeInfo, _appBuildInfo);
-            var app = builder.Build();
+            await using var app = builder.Build();
 
             if (!_appRuntimeInfo.IsIntegrationTestMode)
                 signalRLogConfig.AttachSignalR(app, LogFactory.MinimumLogLevel);
