@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 
 namespace Reaparr.Application.UnitTests;
 
@@ -258,6 +259,84 @@ public class DownloadTaskUpdateDispatcherMovieUnitTests : BaseUnitTest<DownloadT
     }
 
     [Test]
+    [Arguments(false)]
+    [Arguments(true)]
+    public async Task ShouldLogOnlyCurrentLifecycleProgress_WhenHubSendIsBlocked(bool pauseAndResume)
+    {
+        // Arrange
+        await SetupDatabase(84350, config => config.MovieDownloadTasksCount = 1);
+        var file = await IDbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
+        var key = file.ToKey();
+        var hubEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseHub = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        Mock.Mock<IDownloadTaskScheduler>().Setup(x => x.IsServerDownloading(file.PlexServerId)).ReturnsAsync(true);
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x => x.Send(It.IsAny<UpdateScheduledDownloadLimitsCommand>(), CancellationToken.None))
+            .ReturnsAsync(Result.Ok());
+        var hub = Mock.Mock<IDownloadHubService>();
+        hub.Setup(x =>
+                x.SendDownloadPatchAsync(
+                    file.PlexServerId,
+                    It.IsAny<long>(),
+                    It.Is<IReadOnlyCollection<DownloadPatchDTO>>(patch =>
+                        patch.Any(node => node.Id == file.Id && node.DataReceived == 500)
+                    ),
+                    It.IsAny<IReadOnlyCollection<Guid>?>(),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .Returns(() =>
+            {
+                hubEntered.TrySetResult();
+                return releaseHub.Task;
+            })
+            .Verifiable(Times.Once());
+        var sut = Sut;
+        await sut.OnStatusChangedAsync(key, DownloadStatus.Downloading, CancellationToken);
+        sut.OnProgressUpdated(
+            key,
+            new DownloadTaskProgress
+            {
+                DataTotal = 1_000,
+                DataReceived = 500,
+                Percentage = 50,
+            }
+        );
+
+        // Act: run one flush and hold the hub send after progress has been persisted.
+        var flush = (Task)
+            typeof(DownloadTaskUpdateDispatcher)
+                .GetMethod(
+                    "FlushProgressAsync",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic
+                )!
+                .Invoke(sut, [CancellationToken])!;
+        try
+        {
+            await hubEntered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            if (pauseAndResume)
+            {
+                await sut.OnStatusChangedAsync(key, DownloadStatus.Paused, CancellationToken);
+                await sut.OnStatusChangedAsync(key, DownloadStatus.Downloading, CancellationToken);
+            }
+        }
+        finally
+        {
+            releaseHub.TrySetResult();
+            await flush.WaitAsync(TimeSpan.FromSeconds(5));
+        }
+
+        // Assert: resuming does not make the old progress eligible for a new journey log.
+        (await IDbContext.GetDownloadStatusAsync(key)).ShouldBe(DownloadStatus.Downloading);
+        var logs = await IDbContext.DownloadTaskMovieFileLogs.CountAsync(
+            x => x.DownloadTaskFileId == file.Id && x.Message.StartsWith("[DownloadTaskProgress "),
+            CancellationToken
+        );
+        logs.ShouldBe(pauseAndResume ? 0 : 1);
+        hub.Verify();
+    }
+
+    [Test]
     public async Task ShouldKeepAcceptingProgress_WhenPauseIsCancelledBeforeGateAcquisition()
     {
         await SetupDatabase(84345, config => config.MovieDownloadTasksCount = 1);
@@ -496,7 +575,13 @@ public class DownloadTaskUpdateDispatcherMovieUnitTests : BaseUnitTest<DownloadT
     }
 
     [Test]
-    public async Task ShouldPersistBufferedProgressBeforeStatusBecomesPaused()
+    [Arguments(DownloadStatus.Paused, 750, 75)]
+    [Arguments(DownloadStatus.DownloadFinished, 1000, 100)]
+    public async Task ShouldPersistBufferedProgressBeforeStatusChanges(
+        DownloadStatus status,
+        long received,
+        int percentage
+    )
     {
         await SetupDatabase(84327, config => config.MovieDownloadTasksCount = 1);
         var movieFile = await IDbContext.DownloadTaskMovieFile.AsNoTracking().FirstAsync(CancellationToken);
@@ -513,17 +598,17 @@ public class DownloadTaskUpdateDispatcherMovieUnitTests : BaseUnitTest<DownloadT
             new DownloadTaskProgress
             {
                 DataTotal = 1000,
-                DataReceived = 750,
-                Percentage = 75,
-                DownloadSpeed = 10,
+                DataReceived = received,
+                Percentage = percentage,
+                DownloadSpeed = status == DownloadStatus.Paused ? 10 : 0,
             }
         );
 
-        await sut.OnStatusChangedAsync(movieFile.ToKey(), DownloadStatus.Paused, CancellationToken);
+        await sut.OnStatusChangedAsync(movieFile.ToKey(), status, CancellationToken);
 
         var updatedMovieFile = await IDbContext.DownloadTaskMovieFile.AsNoTracking().FirstAsync(CancellationToken);
-        updatedMovieFile.DownloadStatus.ShouldBe(DownloadStatus.Paused);
-        updatedMovieFile.DataReceived.ShouldBe(750);
+        updatedMovieFile.DownloadStatus.ShouldBe(status);
+        updatedMovieFile.DataReceived.ShouldBe(received);
         updatedMovieFile.DataTotal.ShouldBe(1000);
         updatedMovieFile.DownloadSpeed.ShouldBe(0);
     }
@@ -762,5 +847,90 @@ public class DownloadTaskUpdateDispatcherMovieUnitTests : BaseUnitTest<DownloadT
         var orderedSequences = sequences.OrderBy(x => x).ToList();
         orderedSequences.Count.ShouldBeGreaterThanOrEqualTo(2);
         orderedSequences[1].ShouldBeGreaterThan(orderedSequences[0]);
+    }
+
+    [Test]
+    public async Task ShouldPublishLatestProgressForBothRootsInOnePatch_OnTheOneSecondTick()
+    {
+        // Arrange
+        await SetupDatabase(84346, config =>
+        {
+            config.PlexServerCount = 1;
+            config.MovieDownloadTasksCount = 2;
+        });
+        var files = await IDbContext.DownloadTaskMovieFile.ToListAsync(CancellationToken);
+        var serverId = files.Select(file => file.PlexServerId).Distinct().Single();
+        var expectedIds = files.SelectMany(file => new[] { file.Id, file.ParentId }).Order().ToArray();
+        expectedIds.Length.ShouldBe(4);
+        var published = new TaskCompletionSource<(IReadOnlyCollection<DownloadPatchDTO> Patch, TimeSpan Elapsed)>(
+            TaskCreationOptions.RunContinuationsAsynchronously
+        );
+        var stopwatch = new Stopwatch();
+        var hub = Mock.Mock<IDownloadHubService>();
+        hub.Setup(x =>
+                x.SendDownloadPatchAsync(
+                    serverId,
+                    1,
+                    It.IsAny<IReadOnlyCollection<DownloadPatchDTO>>(),
+                    null,
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .Callback<int, long, IReadOnlyCollection<DownloadPatchDTO>, IReadOnlyCollection<Guid>?, CancellationToken>(
+                (_, _, upserts, _, _) => published.TrySetResult((upserts, stopwatch.Elapsed))
+            )
+            .Returns(Task.CompletedTask)
+            .Verifiable(Times.Once());
+        using var sut = Sut;
+
+        // Act
+        foreach (var file in files)
+        {
+            var progress = new DownloadTaskProgress
+            {
+                DataReceived = 250,
+                DataTotal = 1000,
+                Percentage = 25,
+            };
+            sut.OnProgressUpdated(file.ToKey(), progress);
+            sut.OnProgressUpdated(
+                file.ToKey(),
+                new DownloadTaskProgress
+                {
+                    DataReceived = 500,
+                    DataTotal = 1000,
+                    Percentage = 50,
+                }
+            );
+        }
+        stopwatch.Start();
+        await sut.StartAsync(CancellationToken);
+        (IReadOnlyCollection<DownloadPatchDTO> Patch, TimeSpan Elapsed) publication;
+        try
+        {
+            publication = await published.Task.WaitAsync(TimeSpan.FromSeconds(4), CancellationToken);
+        }
+        finally
+        {
+            await sut.StopAsync(CancellationToken.None);
+        }
+
+        // Assert
+        publication.Elapsed.ShouldBeGreaterThanOrEqualTo(TimeSpan.FromMilliseconds(950));
+        publication.Patch.Select(node => node.Id).Order().ToArray().ShouldBe(expectedIds);
+        foreach (var file in files)
+            publication.Patch.Single(node => node.Id == file.Id).DataReceived.ShouldBe(500);
+        hub.Verify(
+            x =>
+                x.SendDownloadPatchAsync(
+                    serverId,
+                    It.IsAny<long>(),
+                    It.IsAny<IReadOnlyCollection<DownloadPatchDTO>>(),
+                    null,
+                    It.IsAny<CancellationToken>()
+                ),
+            Times.Once()
+        );
+        hub.Verify();
     }
 }

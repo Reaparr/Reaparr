@@ -36,7 +36,7 @@ public class ApplyRemoteMusicComparisonStateCommandHandler
 
         var remoteLibraryExists = await _dbContext
             .PlexLibraries.WhereIsNotOwned()
-            .AnyAsync(x => x.Id == command.RemoteLibraryId && x.Type == PlexMediaType.MusicArtist && !x.Outdated, ct);
+            .AnyAsync(x => x.Id == command.RemoteLibraryId && x.Type == PlexMediaType.MusicArtist, ct);
 
         if (!remoteLibraryExists)
             return Result.Ok();

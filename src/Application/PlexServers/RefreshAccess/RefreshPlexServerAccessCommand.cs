@@ -120,12 +120,17 @@ public class RefreshPlexServerAccessCommandHandler
             .PlexAccountServers.Include(x => x.PlexServer)
             .Where(x => x.PlexAccountId == plexAccountId)
             .Select(x => new { x.PlexServerId, x.PlexServer!.Name })
-            .ToListAsync();
+            .ToListAsync(CancellationToken.None);
+        var affectedLibraryIds = await _dbContext
+            .PlexAccountLibraries.Where(x => x.PlexAccountId == plexAccountId)
+            .Select(x => x.PlexLibraryId)
+            .Distinct()
+            .ToListAsync(CancellationToken.None);
 
         var plexAccountName = await _dbContext.GetPlexAccountDisplayName(plexAccountId, CancellationToken.None);
         var rapport = new RefreshPlexServerAccessRapport(plexAccountId, plexAccountName);
 
-        if (!plexServers.Any())
+        if (!plexServers.Any() && affectedLibraryIds.Count == 0)
             return Result.Ok(rapport);
 
         foreach (var plexServer in plexServers)
@@ -141,6 +146,27 @@ public class RefreshPlexServerAccessCommandHandler
         await _dbContext
             .PlexAccountLibraries.Where(x => x.PlexAccountId == plexAccountId)
             .ExecuteDeleteAsync(CancellationToken.None);
+
+        if (affectedLibraryIds.Count > 0)
+        {
+            var remainingEnabledLibraryIds = await _dbContext
+                .PlexAccountLibraries.Where(x =>
+                    affectedLibraryIds.Contains(x.PlexLibraryId) && x.PlexAccount!.IsEnabled
+                )
+                .Select(x => x.PlexLibraryId)
+                .Distinct()
+                .ToListAsync(CancellationToken.None);
+
+            foreach (var libraryId in affectedLibraryIds.Except(remainingEnabledLibraryIds))
+            {
+                var cancelResult = await _commandExecutor.Send(
+                    new CancelLibrarySyncJobCommand(libraryId),
+                    CancellationToken.None
+                );
+                if (cancelResult.IsCancelledOrFailed)
+                    return cancelResult.LogIfFailed().ToResult<RefreshPlexServerAccessRapport>();
+            }
+        }
 
         // TODO should return a RefreshPlexLibraryAccessRapport because those get changed with this command as well
 

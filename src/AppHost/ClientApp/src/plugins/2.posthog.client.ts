@@ -196,6 +196,13 @@ export default defineNuxtPlugin({
 		// Native collectors remain opt-out until the public startup bootstrap supplies the existing UUID.
 		// Keep captured DOM text/attributes masked while retaining structural interaction metadata.
 		client.set_config({
+			// Install in the browser: Nuxt serializes the module's clientConfig as runtime data.
+			rewriteRequestPath: (url) => {
+				url.pathname = url.pathname
+					.replace(/\/e\/i\/v0\/e\/$/, '/e/submit/')
+					.replace(/\/e\/e\/$/, '/e/submit-batch/');
+				return url;
+			},
 			before_send: sanitizeCapture,
 			mask_all_text: true,
 			mask_all_element_attributes: true,

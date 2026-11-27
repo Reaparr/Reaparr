@@ -3,11 +3,11 @@ import { fireEvent, getByRole } from '@testing-library/dom';
 import { defineComponent, h, nextTick, reactive, render, type AppContext } from 'vue';
 import { afterEach, describe, expect, test } from 'vitest';
 import DownloadScheduleGrid from '@components/Views/Settings/DownloadScheduleGrid.vue';
-import { getDownloadScheduleSlots, type DownloadScheduleRange } from '@composables/download-schedule';
+import { getDownloadScheduleSlots, type DownloadScheduleDays, type DownloadScheduleRange } from '@composables/download-schedule';
 
 interface GridHarness {
 	container: HTMLElement;
-	props: { limits: (number | null)[]; selection: number[]; previewLimit?: number | null; timeFormat: string; timeZone: string };
+	props: { limits: (number | null)[]; changePoints: DownloadScheduleDays; selection: number[]; previewLimit?: number | null; timeFormat: string; timeZone: string };
 	unmount: () => void;
 }
 
@@ -16,6 +16,7 @@ async function mountGrid(): Promise<GridHarness> {
 	document.body.append(container);
 	const props = reactive({
 		limits: Array<number | null>(336).fill(null),
+		changePoints: {} as DownloadScheduleDays,
 		selection: [18],
 		previewLimit: undefined,
 		days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
@@ -48,6 +49,31 @@ async function mountGrid(): Promise<GridHarness> {
 describe('DownloadScheduleGrid selection gestures', () => {
 	let harness: GridHarness | undefined;
 	afterEach(() => harness?.unmount());
+
+	test('Should separate saved equal-rate zones and live rate transitions without splitting on selection alone', async () => {
+		// Arrange
+		harness = await mountGrid();
+		harness.props.selection = [];
+		harness.props.limits.fill(5000);
+		harness.props.changePoints = { Monday: { '00:00': 5000, '09:00': 5000 } };
+		harness.props.limits.fill(10000, 24, 48);
+
+		// Act
+		await nextTick();
+
+		// Assert
+		expect([...harness.container.querySelectorAll('.schedule-zone-start')].map((band) => (band as HTMLElement).style.insetInlineStart))
+			.toEqual(['37.5%', '50%']);
+		expect(harness.container.querySelectorAll('.schedule-zone-start')[0]?.textContent?.trim()).toBe('5,000 kB/s');
+
+		// Act
+		harness.props.selection = [20];
+		await nextTick();
+
+		// Assert
+		expect(harness.container.querySelectorAll('.schedule-zone-start')).toHaveLength(2);
+		expect(harness.container.querySelector('[data-cy="schedule-cell-0-20"]')?.getAttribute('aria-selected')).toBe('true');
+	});
 
 	test('Should show kB/s on confirmed rate bands before and after changing the selection', async () => {
 		// Arrange

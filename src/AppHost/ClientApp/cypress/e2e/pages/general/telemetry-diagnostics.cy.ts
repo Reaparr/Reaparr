@@ -186,6 +186,9 @@ function installNativeReceiver(): NativeCapture[] {
 	cy.intercept('POST', '**/e/**', async (request) => {
 		const events = await decodeNativeCaptures(request.body);
 		events.forEach((event) => expect(event.properties.token, 'isolated native project').to.equal('phc_cypress'));
+		if (events.some((event) => event.event === '$pageview')) {
+			expect(new URL(request.url).pathname, 'first-party pageview capture path').to.be.oneOf(['/e/submit/', '/e/submit-batch/']);
+		}
 		captures.push(...events);
 		request.reply({
 			body: { status: 1 },

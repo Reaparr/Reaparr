@@ -497,6 +497,20 @@ describe('MediaOverviewStore - Request Contracts', () => {
 		expect(lastMediaRequest().params.page).toBe(2);
 	});
 
+	test('Should not request an empty page after the last result at an exact page boundary', async () => {
+		// Arrange
+		const store = useMediaOverviewStore();
+		const first = { ...createMediaStatistics(1, 'range-query'), page: 1, pageSize: 100, mediaCount: 200, totalCount: 200 };
+		store.addMediaPage(first);
+		mock.onGet(new RegExp('/api/PlexMedia')).reply(200, generateResultDTO({ ...first, page: 2 }));
+
+		// Act
+		await subscribeSpyTo(store.requestRange(99, 200)).onComplete();
+
+		// Assert
+		expect(mock.history.get.filter((request) => request.url === '/api/PlexMedia').map((request) => request.params.page)).toEqual([2]);
+	});
+
 	test('Should not emit a scroll command for an out-of-bounds scroll index', async () => {
 		// Arrange
 		const store = useMediaOverviewStore();

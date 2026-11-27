@@ -365,28 +365,38 @@ public class CompareTvShowPlexLibraryCommandHandler : ICommandHandler<CompareTvS
                 Id = x.Id,
                 TvShowId = x.TvShowId,
                 SeasonNumber = x.SeasonNumber,
-                VideoQuality = x.VideoQuality,
+                VideoQuality = x.Qualities.OrderByDescending(q =>
+                        q.VideoQuality == VideoQuality.Unknown ? -2 : (int)q.VideoQuality
+                    )
+                    .Select(q => (VideoQuality?)q.VideoQuality)
+                    .FirstOrDefault()
+                    ?? VideoQuality.Unknown,
             })
             .ToListAsync(cancellationToken);
     }
 
-    private static async Task<List<EpisodeProjection>> LoadEpisodesAsync(
+    private static Task<List<EpisodeProjection>> LoadEpisodesAsync(
         IReaparrDbContext context,
         IReadOnlyCollection<int> seasonIds,
         CancellationToken cancellationToken
     )
     {
         if (seasonIds.Count == 0)
-            return [];
+            return Task.FromResult<List<EpisodeProjection>>([]);
 
-        return await context
+        return context
             .PlexTvShowEpisodes.Where(x => seasonIds.Contains(x.TvShowSeasonId))
             .Select(x => new EpisodeProjection
             {
                 Id = x.Id,
                 TvShowSeasonId = x.TvShowSeasonId,
                 EpisodeNumber = x.EpisodeNumber,
-                VideoQuality = x.VideoQuality,
+                VideoQuality = x.MediaDataList.OrderByDescending(q =>
+                        q.VideoQuality == VideoQuality.Unknown ? -2 : (int)q.VideoQuality
+                    )
+                    .Select(q => (VideoQuality?)q.VideoQuality)
+                    .FirstOrDefault()
+                    ?? VideoQuality.Unknown,
             })
             .ToListAsync(cancellationToken);
     }

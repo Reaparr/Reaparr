@@ -182,6 +182,36 @@ describe('DownloadStore.updateDownloadPatch()', () => {
 		expect(downloads[0]!.children[0]).toBe(survivingNode);
 	});
 
+	test.each([false, true])('Should prune all newly empty ancestors after deleting the last leaf (mixed patch: %s)', (mixedPatch) => {
+		// Arrange
+		const downloadStore = useDownloadStore();
+		const emptyBranch = createDownload('empty-show', [createDownload('season', [
+			createDownload('episode', [createDownload('last-file')]),
+		])]);
+		const retainedBranch = createDownload('retained-show', [createDownload('retained-file')]);
+		downloadStore.serverDownloads = [{ id: 7, downloadableTasksCount: 2, downloads: [emptyBranch, retainedBranch] }];
+		const downloads = downloadStore.getDownloadsByServerId(7);
+		const retainedNode = downloads[1]!;
+		const progress = {
+			status: DownloadStatus.Downloading, percentage: 25, dataReceived: 25, dataTotal: 100, downloadSpeed: 5, timeRemaining: 15,
+		};
+
+		// Act
+		downloadStore.updateDownloadPatch(createPatch({
+			deletedIds: ['last-file'],
+			upserts: mixedPatch
+				? [{ id: 'empty-show', parentId: '', ...progress }, { id: 'retained-file', parentId: 'retained-show', ...progress }]
+				: [],
+		}));
+
+		// Assert
+		expect(downloadStore.getDownloadsByServerId(7)).toBe(downloads);
+		expect(downloads.map((node) => node.id)).toEqual(['retained-show']);
+		expect(downloads[0]).toBe(retainedNode);
+		expect(retainedNode.children.map((node) => node.id)).toEqual(['retained-file']);
+		expect(retainedNode.children[0]!.status).toBe(mixedPatch ? DownloadStatus.Downloading : DownloadStatus.Queued);
+	});
+
 	test('Should update a surviving node when deleting a sibling in the same patch', () => {
 		// Arrange
 		const downloadStore = useDownloadStore();

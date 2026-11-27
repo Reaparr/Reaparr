@@ -43,6 +43,7 @@ public class SetServerEnabledEndpoint : Endpoint<SetServerEnabledRequest, Result
         Description(x =>
             x.Accepts<SetServerEnabledRequest>()
                 .Produces(StatusCodes.Status200OK, typeof(ResultDTO<PlexServerDTO>))
+                .Produces(StatusCodes.Status409Conflict, typeof(BaseResultDTO))
                 .Produces(StatusCodes.Status404NotFound, typeof(BaseResultDTO))
                 .Produces(StatusCodes.Status500InternalServerError, typeof(BaseResultDTO))
         );
@@ -57,11 +58,42 @@ public class SetServerEnabledEndpoint : Endpoint<SetServerEnabledRequest, Result
             await Send.FluentResult(ResultExtensions.EntityNotFound(nameof(PlexServer), req.PlexServerId), ct);
             return;
         }
+        if (!req.IsEnabled && await _dbContext.HasUnfinishedDownloadsAsync(req.PlexServerId, cancellationToken: ct))
+        {
+            await Send.FluentResult(
+                Result.Fail(
+                    new Error("Complete or remove all downloads before disabling this server.").WithMetadata(
+                        ResultExtensions.StatusCodeName,
+                        StatusCodes.Status409Conflict
+                    )
+                ),
+                ct
+            );
+            return;
+        }
         var previousIsEnabled = await _dbContext
             .PlexServers.IgnoreIsEnabledFilter()
             .Where(x => x.Id == req.PlexServerId)
             .Select(x => (bool?)x.IsEnabled)
             .FirstOrDefaultAsync(ct);
+        if (previousIsEnabled == true && !req.IsEnabled)
+        {
+            var libraryIds = await _dbContext
+                .PlexLibraries.IgnoreIsEnabledFilter()
+                .Where(x => x.PlexServerId == req.PlexServerId)
+                .Select(x => x.Id)
+                .ToListAsync(ct);
+
+            foreach (var libraryId in libraryIds)
+            {
+                var cancelResult = await _commandExecutor.Send(new CancelLibrarySyncJobCommand(libraryId), ct);
+                if (cancelResult.IsCancelledOrFailed)
+                {
+                    await Send.FluentResult(cancelResult.LogIfFailed(), ct);
+                    return;
+                }
+            }
+        }
 
         var updateCount = await _dbContext
             .PlexServers.IgnoreIsEnabledFilter()

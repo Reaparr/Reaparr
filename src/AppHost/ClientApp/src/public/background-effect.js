@@ -24,12 +24,22 @@ export function setupBackgroundEffect() {
 		minWidth: 0,
 		scale: 1.0,
 		scaleMobile: 1.0,
+		// The wave mesh may not fill a wide camera view. Show the static artwork through its edges.
+		backgroundAlpha: 0,
 		color: 0x880000,
 		shininess: 43.0,
 		waveHeight: 4.0,
 		waveSpeed: 1.25,
 		zoom: 0.65,
 	});
+	const effect = window.waveEffect;
+	if (effect?.camera) {
+		effect.onResize = () => {
+			// Keep the decorative drawing buffer at or below 1080p; CSS still fills the viewport.
+			effect.renderer?.setPixelRatio(Math.min(window.devicePixelRatio, 1920 / effect.width, 1080 / effect.height));
+		};
+		effect.onResize();
+	}
 }
 
 export function destroyBackgroundEffect() {

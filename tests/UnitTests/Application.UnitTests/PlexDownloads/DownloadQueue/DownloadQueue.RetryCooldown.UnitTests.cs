@@ -47,7 +47,11 @@ public class DownloadQueueRetryCooldownUnitTests : BaseUnitTest<DownloadQueue>
     }
 
     [Test]
-    public async Task ShouldSkipRecentlyAttemptedErrorTask_AndPickNextErrorTaskBeforeQueuedTask()
+    [Arguments(DownloadStatus.Error)]
+    [Arguments(DownloadStatus.StorageError)]
+    public async Task ShouldSkipRecentlyAttemptedErrorTask_AndPickNextErrorTaskBeforeQueuedTask(
+        DownloadStatus errorStatus
+    )
     {
         // Arrange
         await SetupDatabase(58120, config =>
@@ -67,43 +71,47 @@ public class DownloadQueueRetryCooldownUnitTests : BaseUnitTest<DownloadQueue>
         var secondErrorTask = downloadTasks[1].Children[0];
         var queuedTask = downloadTasks[2].Children[0];
 
-        firstErrorTask.SetDownloadStatus(DownloadStatus.Error);
-        downloadTasks[0].SetDownloadStatus(DownloadStatus.Error);
+        firstErrorTask.SetDownloadStatus(errorStatus);
+        downloadTasks[0].SetDownloadStatus(errorStatus);
 
-        secondErrorTask.SetDownloadStatus(DownloadStatus.Error);
-        downloadTasks[1].SetDownloadStatus(DownloadStatus.Error);
+        secondErrorTask.SetDownloadStatus(errorStatus);
+        downloadTasks[1].SetDownloadStatus(errorStatus);
 
         queuedTask.SetDownloadStatus(DownloadStatus.Queued);
         downloadTasks[2].SetDownloadStatus(DownloadStatus.Queued);
 
         await IDbContext.SaveChangesAsync(CancellationToken);
 
-        Mock.Mock<IDownloadTaskScheduler>()
+        var started = new List<DownloadTaskKey>();
+        var scheduler = Mock.Mock<IDownloadTaskScheduler>();
+        scheduler
+            .Setup(x => x.GetCurrentlyDownloadingKeysByServer(firstErrorTask.PlexServerId))
+            .ReturnsAsync([])
+            .Verifiable(Times.Exactly(3));
+        scheduler
             .Setup(x => x.StartDownloadTaskJob(It.IsAny<DownloadTaskKey>(), It.IsAny<CancellationToken>()))
-            .ReturnOk();
-        Mock.Mock<IDownloadTaskScheduler>()
-            .Setup(x => x.GetCurrentlyDownloadingKeysByServer(It.IsAny<int>()))
-            .ReturnsAsync([]);
+            .Callback((DownloadTaskKey key, CancellationToken _) => started.Add(key))
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Exactly(3));
 
         // Act
-        var firstPick = await Sut.CheckDownloadQueueServer(1);
-        var secondPick = await Sut.CheckDownloadQueueServer(1);
+        var firstPick = await Sut.CheckDownloadQueueServer(firstErrorTask.PlexServerId, CancellationToken);
+        var secondPick = await Sut.CheckDownloadQueueServer(firstErrorTask.PlexServerId, CancellationToken);
+        var thirdPick = await Sut.CheckDownloadQueueServer(firstErrorTask.PlexServerId, CancellationToken);
 
         // Assert
         firstPick.IsSuccess.ShouldBeTrue();
-        firstPick.Value.ShouldNotBeNull();
+        firstPick.Errors.Count.ShouldBe(0);
         firstPick.Value.Id.ShouldBe(firstErrorTask.Id);
 
         secondPick.IsSuccess.ShouldBeTrue();
-        secondPick.Value.ShouldNotBeNull();
+        secondPick.Errors.Count.ShouldBe(0);
         secondPick.Value.Id.ShouldBe(secondErrorTask.Id);
-        secondPick.Value.Id.ShouldNotBe(queuedTask.Id);
-
-        Mock.Mock<IDownloadTaskScheduler>()
-            .Verify(
-                x => x.StartDownloadTaskJob(It.IsAny<DownloadTaskKey>(), It.IsAny<CancellationToken>()),
-                Times.Exactly(2)
-            );
+        thirdPick.IsSuccess.ShouldBeTrue();
+        thirdPick.Errors.Count.ShouldBe(0);
+        thirdPick.Value.Id.ShouldBe(queuedTask.Id);
+        started.ShouldBe([firstErrorTask.ToKey(), secondErrorTask.ToKey(), queuedTask.ToKey()]);
+        scheduler.Verify();
     }
 
     [Test]
@@ -210,6 +218,7 @@ public class DownloadQueueRetryCooldownUnitTests : BaseUnitTest<DownloadQueue>
     [Arguments(DownloadStatus.ServerUnreachable)]
     [Arguments(DownloadStatus.DownloadClientError)]
     [Arguments(DownloadStatus.Error)]
+    [Arguments(DownloadStatus.StorageError)]
     public async Task ShouldResumeExactFileWithoutAnotherEvent_WhenRetryCooldownExpires(DownloadStatus retryStatus)
     {
         // Arrange
@@ -245,6 +254,7 @@ public class DownloadQueueRetryCooldownUnitTests : BaseUnitTest<DownloadQueue>
         first.Errors.Count.ShouldBe(0);
         first.Value.Id.ShouldBe(file.Id);
         await IDbContext.SetDownloadStatus(file.ToKey(), retryStatus);
+        (await IDbContext.GetDownloadTaskStatusAsync(file.ToKey(), CancellationToken)).ShouldBe(retryStatus);
         for (var repeat = 0; repeat < 3; repeat++)
         {
             var suppressed = await queue.CheckDownloadQueueServer(root.PlexServerId, CancellationToken);
@@ -284,8 +294,9 @@ public class DownloadQueueRetryCooldownUnitTests : BaseUnitTest<DownloadQueue>
     [Test]
     [Arguments("paused")]
     [Arguments("disabled")]
+    [Arguments("task stopped")]
     [Arguments("shutdown")]
-    public async Task ShouldNotResumeFile_WhenServerOrWorkerStopsBeforeCooldownExpires(string stopReason)
+    public async Task ShouldNotRetryStorageError_WhenTaskOrServerIsStoppedBeforeCooldownExpires(string stopReason)
     {
         // Arrange
         await SetupDatabase(58126, config =>
@@ -310,6 +321,7 @@ public class DownloadQueueRetryCooldownUnitTests : BaseUnitTest<DownloadQueue>
         first.IsSuccess.ShouldBeTrue();
         first.Errors.Count.ShouldBe(0);
         first.Value.Id.ShouldBe(file.Id);
+        await IDbContext.SetDownloadStatus(file.ToKey(), DownloadStatus.StorageError);
         var suppressed = await queue.CheckDownloadQueueServer(file.PlexServerId, CancellationToken);
         suppressed.IsSuccess.ShouldBeTrue();
         suppressed.Errors.Count.ShouldBe(0);
@@ -327,6 +339,8 @@ public class DownloadQueueRetryCooldownUnitTests : BaseUnitTest<DownloadQueue>
                 update => update.SetProperty(x => x.IsEnabled, false),
                 CancellationToken
             );
+        if (stopReason == "task stopped")
+            await IDbContext.SetDownloadStatus(file.ToKey(), DownloadStatus.Stopped);
         _clock.DrainTimeReads();
 
         // Act

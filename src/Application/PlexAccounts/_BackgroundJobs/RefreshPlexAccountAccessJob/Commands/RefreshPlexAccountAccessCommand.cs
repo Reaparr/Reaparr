@@ -139,13 +139,25 @@ public class RefreshPlexAccountAccessCommandHandler
                 .Select(x => x.PlexServerId)
                 .ToList();
 
-            if (lostServerIds.Count > 0)
+            var lostLibraryIds = await _dbContext
+                .PlexAccountLibraries.Where(x =>
+                    x.PlexAccountId == plexAccount.Id && lostServerIds.Contains(x.PlexServerId)
+                )
+                .Select(x => x.PlexLibraryId)
+                .Distinct()
+                .ToListAsync(cancellationToken);
+
+            await _dbContext
+                .PlexAccountLibraries.Where(x =>
+                    x.PlexAccountId == plexAccount.Id && lostServerIds.Contains(x.PlexServerId)
+                )
+                .ExecuteDeleteAsync(cancellationToken);
+
+            var cancelResult = await CancelSyncJobsWithoutEnabledAccess(lostLibraryIds, cancellationToken);
+            if (cancelResult.IsCancelledOrFailed)
             {
-                await _dbContext
-                    .PlexAccountLibraries.Where(x =>
-                        x.PlexAccountId == plexAccount.Id && lostServerIds.Contains(x.PlexServerId)
-                    )
-                    .ExecuteDeleteAsync(cancellationToken);
+                _telemetry.PlexAccessRefreshFinished(plexAccount.Id, command.Trigger, cancelResult);
+                return cancelResult.LogIfFailed().ToResult<List<RefreshPlexAccountAccessRapportDTO>>();
             }
 
             var libraryAccessResult = await _commandExecutor.Send(
@@ -226,10 +238,43 @@ public class RefreshPlexAccountAccessCommandHandler
             },
             cancellationToken
         );
-        if (transactionResult.IsFailed)
-            return Result.Fail(transactionResult.Errors);
+        if (transactionResult.IsCancelledOrFailed)
+            return transactionResult.LogIfFailed().ToResult<RefreshPlexAccountAccessRapportDTO>();
+
+        var cancelResult = await CancelSyncJobsWithoutEnabledAccess(
+            libraryAccess.AffectedLibraryIds,
+            cancellationToken
+        );
+        if (cancelResult.IsCancelledOrFailed)
+            return cancelResult.LogIfFailed().ToResult<RefreshPlexAccountAccessRapportDTO>();
 
         return Result.Ok(ToDTO(serverAccessRapport, libraryAccess.Response));
+    }
+
+    private async Task<Result> CancelSyncJobsWithoutEnabledAccess(
+        IReadOnlyCollection<int> affectedLibraryIds,
+        CancellationToken cancellationToken
+    )
+    {
+        if (affectedLibraryIds.Count == 0)
+            return Result.Ok();
+
+        var remainingEnabledLibraryIds = await _dbContext
+            .PlexAccountLibraries.Where(x => affectedLibraryIds.Contains(x.PlexLibraryId) && x.PlexAccount!.IsEnabled)
+            .Select(x => x.PlexLibraryId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        foreach (var libraryId in affectedLibraryIds.Except(remainingEnabledLibraryIds))
+        {
+            var cancelResult = await _commandExecutor.Send(
+                new CancelLibrarySyncJobCommand(libraryId),
+                cancellationToken
+            );
+            if (cancelResult.IsCancelledOrFailed)
+                return cancelResult.LogIfFailed();
+        }
+        return Result.Ok();
     }
 
     private async Task<(

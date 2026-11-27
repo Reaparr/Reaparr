@@ -124,7 +124,6 @@
 </template>
 
 <script lang="ts" setup>
-import Log from 'consola';
 import type { QTreeViewTableHeader } from '@props';
 import type { PlexMediaSlimDTO } from '@dto';
 import Convert from '@class/Convert';
@@ -134,7 +133,6 @@ import {
 	sendMediaOverviewDownloadCommand,
 } from '@composables/event-bus';
 import { toDownloadMedia } from '@composables/conversion';
-import { useMediaOverviewStore } from '@store';
 
 const props = withDefaults(
 	defineProps<{
@@ -154,8 +152,6 @@ const props = withDefaults(
 	},
 );
 
-const router = useRouter();
-const mediaOverviewStore = useMediaOverviewStore();
 const { t, n } = useI18n();
 
 function onRowAction(action: IMediaOverviewCommands) {
@@ -164,20 +160,15 @@ function onRowAction(action: IMediaOverviewCommands) {
 			sendMediaOverviewDownloadCommand(toDownloadMedia(props.row));
 			break;
 		case 'open-details':
-			{
-				const path = Convert.mediaTypeToDetailsPath(props.row);
-				if (!path)
-					return;
-				mediaOverviewStore.setPendingMediaHighlight(props.row.id, mediaOverviewStore.libraryId);
-				router.push(path).catch((error) => Log.error('Failed to navigate to media details', error));
-			}
+			emit('open-details', props.row);
 			break;
 		default:
 			throw new Error(`Unknown action: ${action.command} in MediaTableRow.vue`);
 	}
 }
 
-defineEmits<{
+const emit = defineEmits<{
+	(e: 'open-details', row: PlexMediaSlimDTO): void;
 	(e: 'selected', state: boolean): void;
 }>();
 </script>

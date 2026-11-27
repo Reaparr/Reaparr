@@ -1,4 +1,5 @@
 import {
+	Dark,
 	type ComponentConstructor,
 	QCircularProgress,
 	QLinearProgress,
@@ -14,6 +15,9 @@ import {
 import { defineNuxtPlugin } from '#imports';
 
 export default defineNuxtPlugin(() => {
+	// Reaparr is dark-only, including calls to Dark.toggle() and Dark.set('auto').
+	Dark.set = Dark.set.bind(Dark, true);
+	Dark.set(true);
 	setQuasarComponentDefaultPropValues(QInput, {
 		outlined: true,
 	});

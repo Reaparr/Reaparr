@@ -8,7 +8,7 @@
 @use 'primevue/overwrite.scss';
 
 :root {
-  color-scheme: dark !important;
+  color-scheme: only dark !important;
 }
 
 /*
@@ -25,8 +25,14 @@ body {
 }
 
 body.body--dark {
-  background-image: url('/img/background/background.png');
-  background-size: cover;
+  background: #2a0909 url('/img/background/background.png') center / cover no-repeat fixed;
+}
+
+body > .vanta-canvas {
+  position: fixed !important;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
 }
 
 

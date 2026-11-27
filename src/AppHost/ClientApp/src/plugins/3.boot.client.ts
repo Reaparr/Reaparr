@@ -1,6 +1,6 @@
 import Log from 'consola';
 import Axios, { type AxiosError, type AxiosRequestConfig } from 'axios';
-import { useAlertStore, useAuthenticationStore, useGlobalStore, useLocalizationStore } from '@store';
+import { useAlertStore, useAuthenticationStore, useGlobalStore, useLocalizationStore, useSettingsStore } from '@store';
 import { showErrorNotification } from '@composables/notification';
 import { canSendDesktopMessage, sendDesktopMessage } from '@composables/desktop-message-hub';
 import { DesktopMessageType } from '@dto';
@@ -123,7 +123,10 @@ export function setupAxios(appConfig: IAppConfig, router: Router, t: (key: strin
 					const url = backendApiUrl(error.config, backendUrl);
 					if (url) {
 						if (isConnectivityError) {
-							showErrorNotification(t('components.alert-dialog.connection-failed'));
+							const isTimeout = error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT';
+							if (!isTimeout && useSettingsStore().debugMode) {
+								showErrorNotification(t('components.alert-dialog.connection-failed'));
+							}
 						} else {
 							const data = error.response?.data;
 							const backendMessage = Array.isArray(data?.errors)

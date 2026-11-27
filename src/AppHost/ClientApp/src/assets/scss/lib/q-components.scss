@@ -1,26 +1,5 @@
-@use '../mixins';
 @use "../variables";
 @use "quasar/src/css/variables.sass" as quasar;
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-// * Notification Drawer
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-
-body {
-  &.body--dark {
-    .notification-drawer {
-      @extend .blur;
-      background-color: variables.$dark-sm-background-color;
-    }
-  }
-
-  &.body--light {
-    .notification-drawer {
-      @extend .blur;
-      background-color: variables.$light-sm-background-color;
-    }
-  }
-}
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 // * Background

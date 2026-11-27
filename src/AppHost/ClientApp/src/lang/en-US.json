@@ -574,8 +574,7 @@
                 "queued-waiting": "Queued — waiting to start.",
                 "processing": "Processing",
                 "completed": "Completed",
-                "failed": "Failed",
-                "cancelled": "Cancelled"
+                "failed": "Failed"
             }
         },
         "authentication-overview": {

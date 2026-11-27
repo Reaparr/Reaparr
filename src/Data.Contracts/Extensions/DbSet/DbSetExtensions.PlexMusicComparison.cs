@@ -38,18 +38,24 @@ public sealed class MusicArtistComparisonCandidateRow
 public static class DbSetExtensionsPlexMusicComparison
 {
     /// <summary>
-    /// Returns completed, current music comparison scopes. A scope is current only when
-    /// both libraries still have the same media type, ownership role, and non-stale data.
+    /// Returns completed, current music comparison scopes for scheduling. A scope is current only when
+    /// both libraries still have non-stale data; ownership and media type are applied by the shared query.
     /// </summary>
-    public static IQueryable<PlexComparisonState> QueryCurrentMusicComparisonScopes(this IReaparrDbContext dbContext)
+    public static IQueryable<PlexComparisonState> QueryCurrentMusicComparisonScopes(this IReaparrDbContext dbContext) =>
+        QueryMusicComparisonScopes(dbContext, requireCurrent: true);
+
+    private static IQueryable<PlexComparisonState> QueryMusicComparisonScopes(
+        IReaparrDbContext dbContext,
+        bool requireCurrent
+    )
     {
         var ownedLibraries =
             from library in dbContext.PlexLibraries.WhereIsOwned()
-            where library.Type == PlexMediaType.MusicArtist && !library.Outdated
+            where library.Type == PlexMediaType.MusicArtist && (!requireCurrent || !library.Outdated)
             select library;
         var remoteLibraries =
             from library in dbContext.PlexLibraries.WhereIsNotOwned()
-            where library.Type == PlexMediaType.MusicArtist && !library.Outdated
+            where library.Type == PlexMediaType.MusicArtist && (!requireCurrent || !library.Outdated)
             select library;
 
         return from scope in dbContext.PlexComparisonScopes
@@ -68,7 +74,7 @@ public static class DbSetExtensionsPlexMusicComparison
         IQueryable<PlexMusicArtist> source
     )
     {
-        var currentScopes = dbContext.QueryCurrentMusicComparisonScopes();
+        var currentScopes = QueryMusicComparisonScopes(dbContext, requireCurrent: false);
         var partialArtistIds = QueryOwnedArtistsWithPartialChildren(dbContext, currentScopes);
         var higherQualityArtistIds = QueryOwnedArtistsWithHigherQuality(dbContext, currentScopes);
 
@@ -87,16 +93,15 @@ public static class DbSetExtensionsPlexMusicComparison
     }
 
     /// <summary>
-    /// Projects the state of artists in remote libraries using the same current-scope,
-    /// missing-child, partial-child and higher-quality precedence used by
-    /// <c>ApplyComparisonState</c>.
+    /// Projects the state of artists in remote libraries using the same persisted-scope,
+    /// missing-child, partial-child and higher-quality precedence used by <c>ApplyComparisonState</c>.
     /// </summary>
     public static IQueryable<MusicArtistComparisonStateRow> ProjectRemoteMusicArtistComparisonStates(
         this IReaparrDbContext dbContext,
         IQueryable<PlexMusicArtist> source
     )
     {
-        var currentScopes = dbContext.QueryCurrentMusicComparisonScopes();
+        var currentScopes = QueryMusicComparisonScopes(dbContext, requireCurrent: false);
         var matchedArtistIds = (
             from comparison in QueryCurrentMusicArtistComparisons(dbContext, currentScopes)
             select comparison.RemotePlexMediaId

@@ -43,6 +43,34 @@ describe('sign-in-process', () => {
 		releasePending = undefined;
 	});
 
+	it('Should keep the login background covering the viewport after resizing', () => {
+		cy.viewport(3840, 2160);
+		cy.basePageSetup({ isLoggedIn: false });
+		cy.visit(route('/login'));
+		cy.getCy('login-submit-button').should('be.visible');
+		// Exercise the CSS with the inline size Vanta leaves on its canvas between resize frames.
+		cy.document().then((document) => {
+			const canvas = document.querySelector('body > .vanta-canvas') ?? document.createElement('canvas');
+			canvas.classList.add('vanta-canvas');
+			canvas.setAttribute('style', 'position:absolute;top:0;left:0;width:1024px;height:768px;');
+			if (!canvas.isConnected) document.body.appendChild(canvas);
+		});
+
+		for (const [width, height] of [[3840, 2160], [3440, 1440], [390, 844]] as const) {
+			cy.viewport(width, height);
+			cy.document().should((document) => {
+				const style = document.defaultView!.getComputedStyle(document.body);
+				expect(style.backgroundImage).to.contain('/img/background/background.png');
+				expect(style.backgroundSize).to.equal('cover');
+				expect(style.backgroundAttachment).to.equal('fixed');
+				const canvas = document.querySelector('body > .vanta-canvas')!;
+				const rect = canvas.getBoundingClientRect();
+				expect([rect.left, rect.top, rect.width, rect.height]).to.deep.equal([0, 0, width, height]);
+			});
+		}
+		cy.getCy('login-submit-button').should('be.visible');
+	});
+
 	it('Should redirect to the login page when not logged in and then to the home page when logged in', () => {
 		cy.basePageSetup({
 			plexServerCount: 1,

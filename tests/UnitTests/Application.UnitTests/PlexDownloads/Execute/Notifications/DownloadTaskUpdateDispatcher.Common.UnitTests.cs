@@ -80,7 +80,6 @@ public class DownloadTaskUpdateDispatcherCommonUnitTests : BaseUnitTest<Download
                 "_statusByNodeId",
                 "_finalizedProgressNodes",
                 "_lastProgressLogByNodeId",
-                "_seenProgressNodes",
             }
         )
         {
@@ -470,7 +469,7 @@ public class DownloadTaskUpdateDispatcherCommonUnitTests : BaseUnitTest<Download
     }
 
     [Test]
-    public async Task ShouldIncludePatchWatermark_WhenPatchCompletesBeforeSnapshot()
+    public async Task ShouldReadCommittedProgressWhilePatchSendIsBlocked()
     {
         // Arrange
         await SetupDatabase(84334, config => config.MovieDownloadTasksCount = 1);
@@ -511,10 +510,9 @@ public class DownloadTaskUpdateDispatcherCommonUnitTests : BaseUnitTest<Download
         {
             await patchEntered.Task.WaitAsync(TimeSpan.FromSeconds(10), CancellationToken);
             snapshotTask = sut.GetSnapshotAsync(CancellationToken.None);
-            snapshotTask.IsCompleted.ShouldBeFalse();
+            var snapshot = await snapshotTask.WaitAsync(TimeSpan.FromSeconds(1), CancellationToken);
             releasePatch.TrySetResult();
             var persistResult = await persistTask.WaitAsync(TimeSpan.FromSeconds(10), CancellationToken);
-            var snapshot = await snapshotTask.WaitAsync(TimeSpan.FromSeconds(10), CancellationToken);
 
             // Assert
             persistResult.IsSuccess.ShouldBeTrue();
@@ -542,7 +540,7 @@ public class DownloadTaskUpdateDispatcherCommonUnitTests : BaseUnitTest<Download
     }
 
     [Test]
-    public async Task ShouldPublishPatchAfterSnapshot_WhenSnapshotAcquiresPublicationGateFirst()
+    public async Task ShouldPublishPatchWhileSnapshotIsReading_WithReplayableSequence()
     {
         // Arrange
         await SetupDatabase(84335, config => config.MovieDownloadTasksCount = 1);
@@ -658,15 +656,14 @@ public class DownloadTaskUpdateDispatcherCommonUnitTests : BaseUnitTest<Download
                 () => sut.PersistProgressAsync(key, progress, cancellationToken: CancellationToken.None),
                 CancellationToken
             );
+            await patchRootReadEntered.Task.WaitAsync(TimeSpan.FromSeconds(1), CancellationToken);
+            releasePatchRootRead.TrySetResult();
+            var patchResult = await patchTask.WaitAsync(TimeSpan.FromSeconds(1), CancellationToken);
+            snapshotTask.IsCompleted.ShouldBeFalse();
             releaseSnapshotRead.TrySetResult();
             await snapshotDisposed.Task.WaitAsync(TimeSpan.FromSeconds(10), CancellationToken);
-            patchRootReadEntered.Task.IsCompleted.ShouldBeFalse();
-            publicationOrder.ToArray().ShouldBe(["snapshot"]);
             releaseSnapshotDispose.TrySetResult();
             var snapshot = await snapshotTask.WaitAsync(TimeSpan.FromSeconds(10), CancellationToken);
-            await patchRootReadEntered.Task.WaitAsync(TimeSpan.FromSeconds(10), CancellationToken);
-            releasePatchRootRead.TrySetResult();
-            var patchResult = await patchTask.WaitAsync(TimeSpan.FromSeconds(10), CancellationToken);
 
             // Assert
             snapshot.PatchSequenceByServer.ShouldBeEmpty();
@@ -676,7 +673,7 @@ public class DownloadTaskUpdateDispatcherCommonUnitTests : BaseUnitTest<Download
             published.Count.ShouldBe(1);
             published[0].Sequence.ShouldBe(1);
             published[0].Upserts.ShouldContain(key.Id);
-            publicationOrder.ToArray().ShouldBe(["snapshot", "patch-root-read", "patch"]);
+            publicationOrder.ToArray().ShouldBe(["patch-root-read", "patch", "snapshot"]);
             Mock.Mock<IDownloadHubService>().Verify();
         }
         finally
@@ -736,10 +733,9 @@ public class DownloadTaskUpdateDispatcherCommonUnitTests : BaseUnitTest<Download
             deletionTask = sut.OnStatusChangedAsync(key, DownloadStatus.Deleted, CancellationToken.None);
             await deletionEntered.Task.WaitAsync(TimeSpan.FromSeconds(10), CancellationToken);
             snapshotTask = sut.GetSnapshotAsync(CancellationToken.None);
-            snapshotTask.IsCompleted.ShouldBeFalse();
+            var snapshot = await snapshotTask.WaitAsync(TimeSpan.FromSeconds(1), CancellationToken);
             releaseDeletion.TrySetResult();
             await deletionTask.WaitAsync(TimeSpan.FromSeconds(10), CancellationToken);
-            var snapshot = await snapshotTask.WaitAsync(TimeSpan.FromSeconds(10), CancellationToken);
 
             // Assert
             snapshot.Downloads.ShouldBeEmpty();

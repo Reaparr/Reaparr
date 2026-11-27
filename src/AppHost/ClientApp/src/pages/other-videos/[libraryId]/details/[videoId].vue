@@ -149,7 +149,14 @@ listenMediaOverviewDownloadCommand((command) => {
 });
 
 function backToVideos(): void {
-	router.push(get(libraryId) > 0 ? `/other-videos/${get(libraryId)}` : '/other-videos').catch((error) => Log.error('Failed to return to other videos', error));
+	const overview = get(libraryId) > 0 ? `/other-videos/${get(libraryId)}` : '/other-videos';
+	const previous = router.options.history.state.back;
+	const previousPath = typeof previous === 'string' ? router.resolve(previous).path : null;
+	if (previousPath === overview || previousPath === '/other-videos' || previousPath === '/') {
+		router.back();
+		return;
+	}
+	router.push(overview).catch((error) => Log.error('Failed to return to other videos', error));
 }
 function onAction(action: IMediaOverviewBarActions): void {
 	if (action === 'back')

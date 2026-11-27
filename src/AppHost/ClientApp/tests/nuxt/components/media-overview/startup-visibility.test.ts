@@ -5,9 +5,9 @@ import { flushPromises, type VueWrapper } from '@vue/test-utils';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
 import { createI18n } from 'vue-i18n';
 import { baseSetup, baseVars, getAxiosMock, subscribeSpyTo } from '@services-test-base';
-import { generatePlexMediaSlims, generatePlexMediaStatisticsDTO, generateResultDTO, generateSettingsModel, generateSupportedSorts } from '@mock';
+import { generatePlexLibrary, generatePlexMediaSlims, generatePlexMediaStatisticsDTO, generateResultDTO, generateSettingsModel, generateSupportedSorts, Seed } from '@mock';
 import { PlexMediaType, ViewMode, type SettingsModelDTO } from '@dto';
-import { useGlobalStore, useMediaOverviewStore, useSettingsStore } from '@store';
+import { useAccountStore, useGlobalStore, useLibraryStore, useMediaOverviewStore, useSettingsStore } from '@store';
 import type { ResultDTO } from '@interfaces';
 import MediaOverview from '@/components/MediaOverview/MediaOverview.vue';
 import messages from '@/lang/en-US.json';
@@ -97,5 +97,33 @@ describe('MediaOverview startup visibility', () => {
 		expect(mediaStore.metadataList.genres).toEqual([{ id: 33, name: 'Visible genre' }]);
 		expect(mediaStore.availableGenreIds).toEqual([33]);
 		expect(wrapper.find('[data-cy="ready-media-table"]').exists()).toBe(true);
+	});
+	test('renders the inaccessible-library banner between the overview bar and media content', async () => {
+		// Arrange
+		const library = generatePlexLibrary({ seed: new Seed(45047), plexServerId: 1, type: PlexMediaType.Movie, partialData: { id: 45047 } });
+		useLibraryStore().updateLibrary(library);
+		useGlobalStore().pageReadyObservable.next(false);
+		const accountStore = useAccountStore();
+		accountStore.accounts = [];
+		const mediaStore = useMediaOverviewStore();
+		mediaStore.libraryId = library.id;
+		mediaStore.itemsLength = 1;
+		mediaStore.loading = false;
+		const layout = defineComponent({ template: '<div><header><slot name="header" /></header><main><slot /></main></div>' });
+		const wrapperStubs = { ...stubs, MediaOverviewLayout: layout, MediaOverviewBar: { template: '<div data-cy="overview-bar" />' } };
+
+		// Act
+		wrapper = await mountSuspended(MediaOverview, { props: { libraryId: library.id }, global: {
+			plugins: [pinia, createI18n({ legacy: false, locale: 'en-US', messages: { 'en-US': messages } })], stubs: wrapperStubs,
+		} });
+		await flushPromises();
+
+		// Assert
+		const bar = wrapper.get('[data-cy="overview-bar"]');
+		const banner = wrapper.get('[data-cy="media-overview-inaccessible-library-banner"]');
+		const content = wrapper.get('main');
+		expect(banner.element.closest('.media-overview-bar')).toBeNull();
+		expect(bar.element.compareDocumentPosition(banner.element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+		expect(banner.element.compareDocumentPosition(content.element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 	});
 });

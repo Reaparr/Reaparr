@@ -99,6 +99,8 @@ public class RefreshPlexAccountAccessCommandUnitTests : BaseCommandUnitTest<Refr
             );
         Mock.Mock<ICommandExecutor>()
             .Verify(x => x.Send(It.IsAny<RefreshLibraryAccessCommand>(), It.IsAny<CancellationToken>()), Times.Never());
+        Mock.Mock<ICommandExecutor>()
+            .Verify(x => x.Send(It.IsAny<CancelLibrarySyncJobCommand>(), It.IsAny<CancellationToken>()), Times.Never());
     }
 
     [Test]
@@ -451,52 +453,42 @@ public class RefreshPlexAccountAccessCommandUnitTests : BaseCommandUnitTest<Refr
     }
 
     [Test]
-    public async Task ShouldRemoveLibraryAccessForRevokedServer_WhenOtherServerAccessRemains()
+    public async Task ShouldPreserveRevokedLibrarySync_WhenAnotherEnabledAccountRetainsAccess()
     {
         // Arrange
         await SetupDatabase(77603, config =>
         {
-            config.PlexAccountCount = 1;
+            config.PlexAccountCount = 2;
             config.PlexServerCount = 2;
             config.PlexMovieLibraryCount = 1;
         });
 
-        var plexAccount = await IDbContext.PlexAccounts.FirstAsync(CancellationToken);
+        var plexAccounts = await IDbContext.PlexAccounts.OrderBy(x => x.Id).ToListAsync(CancellationToken);
+        var plexAccount = plexAccounts[0];
+        var otherAccount = plexAccounts[1];
         var plexServers = await IDbContext.PlexServers.OrderBy(x => x.Id).Take(2).ToListAsync(CancellationToken);
         var retainedServer = plexServers[0];
         var revokedServer = plexServers[1];
         var revokedLibrary = await IDbContext
             .PlexLibraries.IgnoreQueryFilters()
             .FirstAsync(x => x.PlexServerId == revokedServer.Id, CancellationToken);
-
-        IDbContext.PlexAccountServers.AddRange(
-            new PlexAccountServer
+        var retainedAccessBefore = await IDbContext
+            .PlexAccountLibraries.Where(x => x.PlexAccountId == otherAccount.Id && x.PlexLibraryId == revokedLibrary.Id)
+            .Select(x => new
             {
-                PlexAccountId = plexAccount.Id,
-                PlexServerId = retainedServer.Id,
-                AuthToken = "retained-token",
-                AuthTokenCreationDate = DateTime.UtcNow,
-                IsServerOwned = false,
-            },
-            new PlexAccountServer
+                x.PlexAccountId,
+                x.PlexServerId,
+                x.PlexLibraryId,
+            })
+            .ToListAsync(CancellationToken);
+        retainedAccessBefore.ShouldBe([
+            new
             {
-                PlexAccountId = plexAccount.Id,
-                PlexServerId = revokedServer.Id,
-                AuthToken = "revoked-token",
-                AuthTokenCreationDate = DateTime.UtcNow,
-                IsServerOwned = false,
-            }
-        );
-        IDbContext.PlexAccountLibraries.Add(
-            new PlexAccountLibrary
-            {
-                PlexAccountId = plexAccount.Id,
+                PlexAccountId = otherAccount.Id,
                 PlexServerId = revokedServer.Id,
                 PlexLibraryId = revokedLibrary.Id,
-                IsLibraryOwned = false,
-            }
-        );
-        await IDbContext.SaveChangesAsync(CancellationToken);
+            },
+        ]);
 
         var serverRapport = new RefreshPlexServerAccessRapport(plexAccount.Id, plexAccount.DisplayName);
         serverRapport.AddUpdated(retainedServer.Id, retainedServer.Name);
@@ -527,6 +519,16 @@ public class RefreshPlexAccountAccessCommandUnitTests : BaseCommandUnitTest<Refr
         Mock.Mock<INotificationHubService>()
             .Setup(x => x.SendRefreshNotificationAsync(It.IsAny<List<RefreshDataType>>()))
             .Returns(Task.CompletedTask);
+        var commandExecutor = Mock.Mock<ICommandExecutor>();
+        commandExecutor
+            .Setup(x =>
+                x.Send(
+                    It.Is<CancelLibrarySyncJobCommand>(command => command.PlexLibraryId == revokedLibrary.Id),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Never());
         Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
@@ -536,35 +538,82 @@ public class RefreshPlexAccountAccessCommandUnitTests : BaseCommandUnitTest<Refr
             new RefreshPlexAccountAccessCommand(plexAccount.Id)
         );
 
-        // Assert
         result.IsSuccess.ShouldBeTrue();
-        (
-            await IDbContext.PlexAccountLibraries.AnyAsync(
-                x => x.PlexAccountId == plexAccount.Id && x.PlexServerId == revokedServer.Id,
-                CancellationToken
-            )
-        ).ShouldBeFalse();
+        result.Errors.Count.ShouldBe(0);
+        var accessAfter = await IDbContext
+            .PlexAccountLibraries.Where(x => x.PlexLibraryId == revokedLibrary.Id)
+            .OrderBy(x => x.PlexAccountId)
+            .Select(x => new { x.PlexAccountId, x.PlexLibraryId })
+            .ToListAsync(CancellationToken);
+        accessAfter.ShouldBe([new { PlexAccountId = otherAccount.Id, PlexLibraryId = revokedLibrary.Id }]);
         result
             .Value.Single()
             .Access.Single(x => x.PlexServerId == revokedServer.Id)
             .State.ShouldBe(PlexAccessState.Revoked);
+        Mock.Mock<ICommandExecutor>().Verify();
+        commandExecutor.Verify();
+        commandExecutor.Verify(
+            x => x.Send(It.IsAny<CancelLibrarySyncJobCommand>(), It.IsAny<CancellationToken>()),
+            Times.Never()
+        );
     }
 
     [Test]
-    public async Task ShouldMarkAccountInvalidAndKeepEnabled_WhenTokenIsUnauthorized()
+    public async Task ShouldRevokeLibraryAndCancelSync_WhenTokenIsUnauthorized()
     {
         // Arrange
-        await SetupDatabase(77602, config => config.PlexAccountCount = 1);
-        var plexAccount = await IDbContext.PlexAccounts.AsTracking().FirstAsync(CancellationToken);
+        await SetupDatabase(77602, config =>
+        {
+            config.PlexAccountCount = 1;
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
+        var dbContext = IDbContext;
+        var plexAccount = await dbContext.PlexAccounts.AsTracking().SingleAsync(CancellationToken);
+        var library = await dbContext.PlexLibraries.SingleAsync(CancellationToken);
+        var beforeAccess = await dbContext
+            .PlexAccountLibraries.Select(x => new
+            {
+                x.PlexAccountId,
+                x.PlexServerId,
+                x.PlexLibraryId,
+            })
+            .ToListAsync(CancellationToken);
+        beforeAccess.ShouldBe([
+            new
+            {
+                PlexAccountId = plexAccount.Id,
+                PlexServerId = library.PlexServerId,
+                PlexLibraryId = library.Id,
+            },
+        ]);
         plexAccount.IsValidated = true;
         plexAccount.ValidatedAt = DateTime.UtcNow;
-        await IDbContext.SaveChangesAsync(CancellationToken);
+        await dbContext.SaveChangesAsync(CancellationToken);
 
-        Mock.SetupCommand(It.IsAny<ValidatePlexTokenCommand>)
-            .ReturnsAsync(Result.Fail<ValidatePlexTokenCommandResult>("Unauthorized").AddPlex401UnauthorizedError());
+        var commandExecutor = Mock.Mock<ICommandExecutor>();
+        commandExecutor
+            .Setup(x =>
+                x.Send(
+                    It.Is<CancelLibrarySyncJobCommand>(command => command.PlexLibraryId == library.Id),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x =>
+                x.Send(
+                    It.Is<ValidatePlexTokenCommand>(command => command.AuthenticationToken == plexAccount.GetAuthToken),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync(Result.Fail<ValidatePlexTokenCommandResult>("Unauthorized").AddPlex401UnauthorizedError())
+            .Verifiable(Times.Once());
         Mock.Mock<INotificationHubService>()
             .Setup(x => x.SendRefreshNotificationAsync(It.IsAny<List<RefreshDataType>>()))
-            .Returns(Task.CompletedTask);
+            .Returns(Task.CompletedTask)
+            .Verifiable(Times.Once());
         Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
@@ -576,11 +625,44 @@ public class RefreshPlexAccountAccessCommandUnitTests : BaseCommandUnitTest<Refr
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
         IDbContext.ClearChangeTracker();
-        var updatedAccount = await IDbContext.PlexAccounts.AsNoTracking().FirstAsync(CancellationToken);
+        var updatedAccount = await IDbContext.PlexAccounts.AsNoTracking().SingleAsync(CancellationToken);
         updatedAccount.IsValidated.ShouldBeFalse();
         updatedAccount.ValidatedAt.ShouldBeNull();
         updatedAccount.IsEnabled.ShouldBeTrue();
+        (
+            await IDbContext
+                .PlexAccountLibraries.Select(x => new
+                {
+                    x.PlexAccountId,
+                    x.PlexServerId,
+                    x.PlexLibraryId,
+                })
+                .ToListAsync(CancellationToken)
+        ).ShouldBeEmpty();
+        var serverName = await dbContext.GetPlexServerNameById(library.PlexServerId);
+        var accountReport = result.Value.Single();
+        (accountReport.PlexAccountId, accountReport.PlexAccountName).ShouldBe(
+            (plexAccount.Id, plexAccount.DisplayName)
+        );
+        var serverReport = accountReport.Access.Single();
+        (
+            serverReport.PlexServerId,
+            serverReport.PlexServerName,
+            serverReport.State,
+            serverReport.IsServerOffline
+        ).ShouldBe((library.PlexServerId, serverName, PlexAccessState.Revoked, false));
+        var libraryReport = serverReport.LibraryAccess.Single();
+        (
+            libraryReport.PlexLibraryId,
+            libraryReport.PlexServerId,
+            libraryReport.PlexLibraryName,
+            libraryReport.State
+        ).ShouldBe((library.Id, library.PlexServerId, library.Name, PlexAccessState.Revoked));
+        Mock.Mock<INotificationHubService>().Verify();
+        Mock.Mock<ICommandExecutor>().Verify();
+        commandExecutor.Verify();
         Mock.Mock<ICommandExecutor>()
             .Verify(
                 x => x.Send(It.IsAny<RefreshPlexServerAccessCommand>(), It.IsAny<CancellationToken>()),

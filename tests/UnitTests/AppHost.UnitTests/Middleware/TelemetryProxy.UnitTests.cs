@@ -17,10 +17,14 @@ namespace Reaparr.AppHost.UnitTests;
 public class TelemetryProxyUnitTests : BaseUnitTest
 {
     [Test]
-    [Arguments("X-Trusted-Proxy")]
-    [Arguments("Authorization")]
+    [Arguments("X-Trusted-Proxy", "/i/v1/e//evil.example.test", "/i/v1/e//evil.example.test")]
+    [Arguments("Authorization", "/i/v1/e//evil.example.test", "/i/v1/e//evil.example.test")]
+    [Arguments("X-Trusted-Proxy", "/submit/", "/i/v0/e/")]
+    [Arguments("X-Trusted-Proxy", "/submit-batch/", "/e/")]
     public async Task ShouldStreamNativeIngestion_AndPreserveBodyStatusEncodingQueryAndSafeHeaders(
-        string trustedHeaderName
+        string trustedHeaderName,
+        string requestPath,
+        string expectedUpstreamPath
     )
     {
         // Arrange
@@ -56,7 +60,7 @@ public class TelemetryProxyUnitTests : BaseUnitTest
             appBuildInfo,
             appRuntimeInfo
         );
-        var context = CreateContext(HttpMethods.Post, "/i/v1/e//evil.example.test", requestBytes);
+        var context = CreateContext(HttpMethods.Post, requestPath, requestBytes);
         context.Request.PathBase = "/client/e";
         context.Request.QueryString = new QueryString("?batch=1&compression=gzip&next=https%3A%2F%2Fevil.example.test");
         context.Connection.RemoteIpAddress = IPAddress.Parse("192.0.2.15");
@@ -80,7 +84,7 @@ public class TelemetryProxyUnitTests : BaseUnitTest
         handler.CallCount.ShouldBe(1);
         handler.Request.ShouldNotBeNull();
         handler.Request!.RequestUri!.AbsoluteUri.ShouldBe(
-            "https://telemetry.example.test/i/v1/e//evil.example.test?batch=1&compression=gzip&next=https%3A%2F%2Fevil.example.test"
+            $"https://telemetry.example.test{expectedUpstreamPath}?batch=1&compression=gzip&next=https%3A%2F%2Fevil.example.test"
         );
         capturedRequestBody.ShouldBe(requestBytes);
         handler.Request.Headers.GetValues("PostHog-Session-Id").Single().ShouldBe("native-session");
@@ -384,7 +388,7 @@ public class TelemetryProxyUnitTests : BaseUnitTest
             });
             var pipeline = application.Build();
 
-            var proxyContext = CreateContext(HttpMethods.Get, "/e/native");
+            var proxyContext = CreateContext(HttpMethods.Post, "/e/submit/", [1, 2, 3]);
             proxyContext.RequestServices = services;
             proxyContext.Request.PathBase = "/client";
             var ordinaryContext = CreateContext(HttpMethods.Get, "/api/work");
@@ -396,7 +400,7 @@ public class TelemetryProxyUnitTests : BaseUnitTest
 
             // Assert
             handler.CallCount.ShouldBe(1);
-            handler.Request!.RequestUri!.AbsoluteUri.ShouldBe("https://telemetry.example.test/native");
+            handler.Request!.RequestUri!.AbsoluteUri.ShouldBe("https://telemetry.example.test/i/v0/e/");
             ordinaryPathReached.ShouldBeTrue();
             telemetry.Verify();
         }

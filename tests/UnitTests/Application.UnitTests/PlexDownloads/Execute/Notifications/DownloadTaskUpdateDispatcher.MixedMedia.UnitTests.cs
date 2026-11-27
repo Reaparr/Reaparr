@@ -16,9 +16,20 @@ public class DownloadTaskUpdateDispatcherMixedMediaUnitTests : BaseUnitTest<Down
         using var arrangeContext = IDbContext;
         var movie = await arrangeContext.DownloadTaskMovieFile.SingleAsync(CancellationToken);
         var episode = await arrangeContext.DownloadTaskTvShowEpisodeFile.SingleAsync(CancellationToken);
+        await arrangeContext
+            .DownloadTaskMovieFile.Where(x => x.Id == movie.Id)
+            .ExecuteUpdateAsync(
+                x => x.SetProperty(y => y.DownloadStatus, DownloadStatus.Downloading),
+                CancellationToken
+            );
+        await arrangeContext
+            .DownloadTaskTvShowEpisodeFile.Where(x => x.Id == episode.Id)
+            .ExecuteUpdateAsync(
+                x => x.SetProperty(y => y.DownloadStatus, DownloadStatus.Downloading),
+                CancellationToken
+            );
         (await arrangeContext.DownloadTaskMovieFileLogs.ToListAsync(CancellationToken)).ShouldBeEmpty();
         (await arrangeContext.DownloadTaskTvShowEpisodeFileLogs.ToListAsync(CancellationToken)).ShouldBeEmpty();
-        var logsPersisted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         Mock.Mock<IDownloadHubService>()
             .Setup(x =>
                 x.SendDownloadPatchAsync(
@@ -29,7 +40,7 @@ public class DownloadTaskUpdateDispatcherMixedMediaUnitTests : BaseUnitTest<Down
                     It.IsAny<CancellationToken>()
                 )
             )
-            .Returns(() => SignalWhenLogsPersistedAsync(logsPersisted))
+            .Returns(Task.CompletedTask)
             .Verifiable(Times.AtLeastOnce());
         var sut = Sut;
 
@@ -46,7 +57,14 @@ public class DownloadTaskUpdateDispatcherMixedMediaUnitTests : BaseUnitTest<Down
         await sut.StartAsync(CancellationToken.None);
         try
         {
-            await logsPersisted.Task.WaitAsync(TimeSpan.FromSeconds(5), CancellationToken);
+            using var readContext = IDbContext;
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(CancellationToken);
+            timeout.CancelAfter(TimeSpan.FromSeconds(5));
+            while (
+                !await readContext.DownloadTaskMovieFileLogs.AnyAsync(timeout.Token)
+                || !await readContext.DownloadTaskTvShowEpisodeFileLogs.AnyAsync(timeout.Token)
+            )
+                await Task.Delay(25, timeout.Token);
         }
         finally
         {
@@ -78,15 +96,5 @@ public class DownloadTaskUpdateDispatcherMixedMediaUnitTests : BaseUnitTest<Down
             persistedEpisode.DownloadSpeed
         ).ShouldBe((1000L, 250L, 25m, 100L));
         Mock.Mock<IDownloadHubService>().Verify();
-    }
-
-    private async Task SignalWhenLogsPersistedAsync(TaskCompletionSource signal)
-    {
-        using var context = IDbContext;
-        if (
-            await context.DownloadTaskMovieFileLogs.CountAsync(CancellationToken) == 1
-            && await context.DownloadTaskTvShowEpisodeFileLogs.CountAsync(CancellationToken) == 1
-        )
-            signal.TrySetResult();
     }
 }
