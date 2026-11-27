@@ -51,7 +51,7 @@
     "html-to-image": "^1.11.13",
     "jsgantt-improved": "^3.0.0",
     "pinia": "^3.0.4",
-    "posthog-js": "1.447.12",
+    "posthog-js": "1.455.4",
     "pretty-bytes": "^7.1.0",
     "primevue": "^4.5.4",
     "quasar": "^2.18.5",
@@ -102,5 +102,8 @@
     "vitest": "^4.0.8",
     "vue-router-mock": "^2.0.2",
     "vue-tsc": "^3.2.7"
+  },
+  "patchedDependencies": {
+    "posthog-js@1.455.4": "patches/posthog-js@1.455.4.patch"
   }
 }

@@ -6,6 +6,8 @@ import { useGlobalStore } from '@store';
 import type { BrowserTelemetryBootstrapDTO } from '@dto';
 import { defineNuxtPlugin } from '#app';
 import { createTelemetry } from '@composables/telemetry/createTelemetry';
+// Bundle the version-pinned recorder adapter instead of downloading an unpatched recorder.
+import 'posthog-js/dist/reaparr-recorder.mjs';
 
 const exceptionAutocaptureConfig = {
 	capture_unhandled_errors: true,
