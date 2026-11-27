@@ -781,7 +781,7 @@ public class DownloadTaskUpdateDispatcherMovieUnitTests : BaseUnitTest<DownloadT
         var published = new TaskCompletionSource<(IReadOnlyCollection<DownloadPatchDTO> Patch, TimeSpan Elapsed)>(
             TaskCreationOptions.RunContinuationsAsynchronously
         );
-        long started = 0;
+        var stopwatch = new Stopwatch();
         var hub = Mock.Mock<IDownloadHubService>();
         hub.Setup(x =>
                 x.SendDownloadPatchAsync(
@@ -793,7 +793,7 @@ public class DownloadTaskUpdateDispatcherMovieUnitTests : BaseUnitTest<DownloadT
                 )
             )
             .Callback<int, long, IReadOnlyCollection<DownloadPatchDTO>, IReadOnlyCollection<Guid>?, CancellationToken>(
-                (_, _, upserts, _, _) => published.TrySetResult((upserts, Stopwatch.GetElapsedTime(started)))
+                (_, _, upserts, _, _) => published.TrySetResult((upserts, stopwatch.Elapsed))
             )
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
@@ -819,7 +819,7 @@ public class DownloadTaskUpdateDispatcherMovieUnitTests : BaseUnitTest<DownloadT
                 }
             );
         }
-        started = Stopwatch.GetTimestamp();
+        stopwatch.Start();
         await sut.StartAsync(CancellationToken);
         (IReadOnlyCollection<DownloadPatchDTO> Patch, TimeSpan Elapsed) publication;
         try
