@@ -51,7 +51,8 @@ public class BaseUnitTestUnitTests
         LogFactory.Create().Debug("After fixture disposal");
 
         // Assert
-        TestCorrelator.GetLogEventsFromCurrentContext()
+        TestCorrelator
+            .GetLogEventsFromCurrentContext()
             .Where(logEvent => logEvent.Level == LogEventLevel.Debug)
             .Select(logEvent => logEvent.MessageTemplate.Text)
             .ShouldBe(["Before fixture disposal", "After fixture disposal"]);

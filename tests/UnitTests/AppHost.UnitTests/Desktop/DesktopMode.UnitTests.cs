@@ -21,7 +21,9 @@ public class DesktopModeUnitTests : BaseUnitTest<DesktopMode>
         var result = await sut.StartAsync(CancellationToken);
         // Assert
         result.IsFailed.ShouldBeTrue();
-        result.Errors.ShouldContain(x => x.Message.Contains("could not determine the server address", StringComparison.OrdinalIgnoreCase));
+        result.Errors.ShouldContain(x =>
+            x.Message.Contains("could not determine the server address", StringComparison.OrdinalIgnoreCase)
+        );
         windowFactory.CreateCalls.ShouldBe(0);
     }
 
@@ -137,11 +139,13 @@ public class DesktopModeUnitTests : BaseUnitTest<DesktopMode>
         var sut = CreateSut(server, _ => windowFactory.Create());
         await sut.StartAsync(CancellationToken);
         // Act
-        window.ExternalLinkHandler!.Invoke(new DesktopMessageDTO
-        {
-            Type = DesktopMessageType.ExternalLink,
-            Value = "https://github.com/Reaparr/Reaparr",
-        });
+        window.ExternalLinkHandler!.Invoke(
+            new DesktopMessageDTO
+            {
+                Type = DesktopMessageType.ExternalLink,
+                Value = "https://github.com/Reaparr/Reaparr",
+            }
+        );
         // Assert
         window.OpenedExternalUrls.ShouldBe([new Uri("https://github.com/Reaparr/Reaparr")]);
     }
@@ -158,7 +162,9 @@ public class DesktopModeUnitTests : BaseUnitTest<DesktopMode>
         var sut = CreateSut(server, _ => windowFactory.Create());
         await sut.StartAsync(CancellationToken);
         // Act
-        window.ExternalLinkHandler!.Invoke(new DesktopMessageDTO { Type = DesktopMessageType.DesktopReady, Value = "ready" });
+        window.ExternalLinkHandler!.Invoke(
+            new DesktopMessageDTO { Type = DesktopMessageType.DesktopReady, Value = "ready" }
+        );
         // Assert
         window.OpenedExternalUrls.ShouldBeEmpty();
     }
@@ -202,9 +208,14 @@ public class DesktopModeUnitTests : BaseUnitTest<DesktopMode>
         await sut.CloseMainWindowAsync(CancellationToken);
         // Act
         var showResult = await sut.ShowMainWindowAsync(CancellationToken);
-        firstWindow.ExternalLinkHandler!.Invoke(new DesktopMessageDTO { Type = DesktopMessageType.DesktopReady, Value = "ready" });
+        firstWindow.ExternalLinkHandler!.Invoke(
+            new DesktopMessageDTO { Type = DesktopMessageType.DesktopReady, Value = "ready" }
+        );
         clock.Advance(TimeSpan.FromSeconds(5));
-        var opened = await secondWindow.ExternalBrowserOpened.Task.WaitAsync(TimeSpan.FromSeconds(2), CancellationToken);
+        var opened = await secondWindow.ExternalBrowserOpened.Task.WaitAsync(
+            TimeSpan.FromSeconds(2),
+            CancellationToken
+        );
         // Assert
         showResult.IsSuccess.ShouldBeTrue();
         windowFactory.CreateCalls.ShouldBe(2);
@@ -257,8 +268,12 @@ public class DesktopModeUnitTests : BaseUnitTest<DesktopMode>
     private sealed class FakeDesktopWindowFactory
     {
         private readonly Queue<MockDesktopWindow> _windows;
-        public FakeDesktopWindowFactory(params MockDesktopWindow[] windows) => _windows = new Queue<MockDesktopWindow>(windows);
+
+        public FakeDesktopWindowFactory(params MockDesktopWindow[] windows) =>
+            _windows = new Queue<MockDesktopWindow>(windows);
+
         public int CreateCalls { get; private set; }
+
         public IDesktopWindow Create()
         {
             CreateCalls++;
@@ -270,33 +285,48 @@ public class DesktopModeUnitTests : BaseUnitTest<DesktopMode>
     {
         private readonly List<ManualTimer> _timers = [];
         private DateTimeOffset _now = DateTimeOffset.UnixEpoch;
+
         public override DateTimeOffset GetUtcNow() => _now;
+
         public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
         {
             var timer = new ManualTimer(this, callback, state, dueTime, period);
             _timers.Add(timer);
             return timer;
         }
+
         public void Advance(TimeSpan amount)
         {
             _now += amount;
             foreach (var timer in _timers)
                 timer.FireIfDue();
         }
-        private sealed class ManualTimer(ManualTimeProvider provider, TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period) : ITimer
+
+        private sealed class ManualTimer(
+            ManualTimeProvider provider,
+            TimerCallback callback,
+            object? state,
+            TimeSpan dueTime,
+            TimeSpan period
+        ) : ITimer
         {
-            private DateTimeOffset _dueAt = dueTime == Timeout.InfiniteTimeSpan ? DateTimeOffset.MaxValue : provider._now + dueTime;
+            private DateTimeOffset _dueAt =
+                dueTime == Timeout.InfiniteTimeSpan ? DateTimeOffset.MaxValue : provider._now + dueTime;
+
             public bool Change(TimeSpan newDueTime, TimeSpan newPeriod)
             {
                 _dueAt = newDueTime == Timeout.InfiniteTimeSpan ? DateTimeOffset.MaxValue : provider._now + newDueTime;
                 return true;
             }
+
             public void Dispose() => _dueAt = DateTimeOffset.MaxValue;
+
             public ValueTask DisposeAsync()
             {
                 _dueAt = DateTimeOffset.MaxValue;
                 return ValueTask.CompletedTask;
             }
+
             public void FireIfDue()
             {
                 if (_dueAt > provider._now)

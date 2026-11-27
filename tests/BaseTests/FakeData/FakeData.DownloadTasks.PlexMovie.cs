@@ -18,8 +18,8 @@ public static partial class FakeData
             }
         );
 
-    public static Faker<DownloadTaskMovie> GetMovieDownloadTask(Seed seed, Action<FakeDataConfig>? options = null)
-        => GetMovieDownloadTask(seed, FakeDataConfig.FromOptions(options));
+    public static Faker<DownloadTaskMovie> GetMovieDownloadTask(Seed seed, Action<FakeDataConfig>? options = null) =>
+        GetMovieDownloadTask(seed, FakeDataConfig.FromOptions(options));
 
     internal static Faker<DownloadTaskMovie> GetMovieDownloadTask(Seed seed, FakeDataConfig config)
     {

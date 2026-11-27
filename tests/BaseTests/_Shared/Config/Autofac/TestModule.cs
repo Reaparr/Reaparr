@@ -182,12 +182,16 @@ public class TestModule : Module
             MockDatabase.GetMemoryReaparrDbContext(log, pathProvider, runtimeInfo, databaseName);
 
         public Task<IReaparrDbContext> CreateAsync() =>
-            Task.FromResult<IReaparrDbContext>(MockDatabase.GetMemoryReaparrDbContext(log, pathProvider, runtimeInfo, databaseName));
+            Task.FromResult<IReaparrDbContext>(
+                MockDatabase.GetMemoryReaparrDbContext(log, pathProvider, runtimeInfo, databaseName)
+            );
 
         IAuthDbContext IAuthDbContextFactory.Create() =>
             MockDatabase.GetMemoryAuthDbContext(log, pathProvider, runtimeInfo, databaseName);
 
         Task<IAuthDbContext> IAuthDbContextFactory.CreateAsync() =>
-            Task.FromResult<IAuthDbContext>(MockDatabase.GetMemoryAuthDbContext(log, pathProvider, runtimeInfo, databaseName));
+            Task.FromResult<IAuthDbContext>(
+                MockDatabase.GetMemoryAuthDbContext(log, pathProvider, runtimeInfo, databaseName)
+            );
     }
 }

@@ -289,7 +289,8 @@ public class DownloadQueue : IDownloadQueue
         return files.Count != activeKeys.Count
             || files.Any(file =>
                 file.PlexServerId != serverId
-                || file.DownloadStatus.ToDownloadTaskPhase() is not (DownloadTaskPhase.FileTransfer or DownloadTaskPhase.Completed)
+                || file.DownloadStatus.ToDownloadTaskPhase()
+                    is not (DownloadTaskPhase.FileTransfer or DownloadTaskPhase.Completed)
             );
     }
 

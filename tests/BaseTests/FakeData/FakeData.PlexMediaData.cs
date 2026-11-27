@@ -59,8 +59,8 @@ public static partial class FakeData
             .Ignore(x => x.Streams);
     }
 
-    public static Faker<PlexMovieMediaData> GetPlexMovieMediaData(Seed seed, Action<FakeDataConfig>? options = null)
-        => GetPlexMovieMediaData(seed, FakeDataConfig.FromOptions(options));
+    public static Faker<PlexMovieMediaData> GetPlexMovieMediaData(Seed seed, Action<FakeDataConfig>? options = null) =>
+        GetPlexMovieMediaData(seed, FakeDataConfig.FromOptions(options));
 
     private static Faker<PlexMovieMediaData> GetPlexMovieMediaData(Seed seed, FakeDataConfig config)
     {
@@ -80,10 +80,7 @@ public static partial class FakeData
         Action<FakeDataConfig>? options = null
     ) => GetPlexTvShowEpisodeMediaData(seed, FakeDataConfig.FromOptions(options));
 
-    private static Faker<PlexTvShowEpisodeMediaData> GetPlexTvShowEpisodeMediaData(
-        Seed seed,
-        FakeDataConfig config
-    )
+    private static Faker<PlexTvShowEpisodeMediaData> GetPlexTvShowEpisodeMediaData(Seed seed, FakeDataConfig config)
     {
         return _plexTvShowEpisodeMediaDataFaker
             .RuleFor(

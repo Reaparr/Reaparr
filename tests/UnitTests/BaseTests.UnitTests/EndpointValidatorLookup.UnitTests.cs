@@ -87,7 +87,8 @@ public sealed class EndpointValidatorLookupUnitTests
         {
             public override void Configure() { }
 
-            public override Task HandleAsync(ValidRequest request, CancellationToken cancellationToken) => Task.CompletedTask;
+            public override Task HandleAsync(ValidRequest request, CancellationToken cancellationToken) =>
+                Task.CompletedTask;
         }
     }
 }

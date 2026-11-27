@@ -32,8 +32,8 @@ public static partial class FakeData
             }
         );
 
-    public static Faker<DownloadTaskTvShow> GetDownloadTaskTvShow(Seed seed, Action<FakeDataConfig>? options = null)
-        => GetDownloadTaskTvShow(seed, FakeDataConfig.FromOptions(options));
+    public static Faker<DownloadTaskTvShow> GetDownloadTaskTvShow(Seed seed, Action<FakeDataConfig>? options = null) =>
+        GetDownloadTaskTvShow(seed, FakeDataConfig.FromOptions(options));
 
     internal static Faker<DownloadTaskTvShow> GetDownloadTaskTvShow(Seed seed, FakeDataConfig config)
     {

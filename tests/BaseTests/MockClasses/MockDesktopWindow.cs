@@ -16,7 +16,8 @@ public sealed class MockDesktopWindow : IDesktopWindow
 
     public TaskCompletionSource MessageLoopStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-    public TaskCompletionSource<Uri> ExternalBrowserOpened { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    public TaskCompletionSource<Uri> ExternalBrowserOpened { get; } =
+        new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     public Func<object?, EventArgs, bool>? WindowClosingHandler { get; private set; }
     public Action<DesktopMessageDTO>? ExternalLinkHandler { get; private set; }
