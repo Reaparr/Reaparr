@@ -237,6 +237,11 @@ export default defineNuxtPlugin({
 			mask_all_text: true,
 			mask_all_element_attributes: true,
 			session_recording: {
+				// Canvas pixels bypass DOM masking; only the decorative background is safe to capture.
+				captureCanvas: { recordCanvas: true, canvasFps: 4, canvasQuality: '0.9' },
+				canvasCapture: {
+					maskRegionsFn: (canvas) => canvas.classList.contains('vanta-canvas') ? [] : null,
+				},
 				maskAllInputs: true,
 				maskCapturedNetworkRequestFn: maskReplayNetworkRequest,
 				maskAttributeFn: maskReplayAttribute,

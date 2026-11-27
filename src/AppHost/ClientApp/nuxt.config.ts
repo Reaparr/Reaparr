@@ -106,6 +106,10 @@ export default defineNuxtConfig({
 	},
 
 	vite: {
+		build: {
+			// Inlined replay CSS must not refetch UI fonts from a private installation.
+			assetsInlineLimit: (filePath) => /\.(?:woff2?|ttf|otf)(?:\?.*)?$/i.test(filePath) ? true : undefined,
+		},
 		css: {
 			preprocessorOptions: {
 				scss: {

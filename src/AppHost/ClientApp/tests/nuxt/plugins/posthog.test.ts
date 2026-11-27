@@ -237,6 +237,14 @@ describe('PostHog browser plugin', () => {
 		}));
 		expect(posthogMock.client.register).toHaveBeenCalledWith(expect.objectContaining({ $geoip_disable: false }));
 		expect(posthogMock.client.set_config).toHaveBeenCalledWith(expect.objectContaining({ session_recording: expect.objectContaining({ recordBody: true, recordHeaders: true }) }));
+		const recording = posthogMock.client.set_config.mock.calls
+			.map(([config]) => config.session_recording)
+			.find((config) => config?.canvasCapture);
+		const background = document.createElement('canvas');
+		background.classList.add('vanta-canvas');
+		const privateCanvas = document.createElement('canvas');
+		expect(recording?.canvasCapture?.maskRegionsFn?.(background)).toEqual([]);
+		expect(recording?.canvasCapture?.maskRegionsFn?.(privateCanvas)).toBeNull();
 		expect(posthogMock.client.set_config).toHaveBeenCalledWith({
 			tracing_headers: [new URL(appConfig.baseUrl).hostname],
 		});

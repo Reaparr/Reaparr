@@ -16,6 +16,15 @@ export function setupBackgroundEffect() {
 	}
 
 	window.waveEffect = VANTA.WAVES({
+		// Vanta does not expose renderer options; preserve pixels for native replay frame sampling.
+		THREE: {
+			...window.THREE,
+			WebGLRenderer: class extends window.THREE.WebGLRenderer {
+				constructor(options) {
+					super({ ...options, preserveDrawingBuffer: true });
+				}
+			},
+		},
 		el: 'body',
 		mouseControls: true,
 		touchControls: true,

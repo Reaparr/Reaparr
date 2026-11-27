@@ -25,7 +25,7 @@ body {
 }
 
 body.body--dark {
-  background: #2a0909 url('/img/background/background.png') center / cover no-repeat fixed;
+  background: #2a0909 url('../../public/img/background/background.png?inline') center / cover no-repeat fixed;
 }
 
 body > .vanta-canvas {
