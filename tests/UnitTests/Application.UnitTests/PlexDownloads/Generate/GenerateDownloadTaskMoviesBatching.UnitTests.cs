@@ -63,7 +63,7 @@ public class GenerateDownloadTaskMoviesBatchingUnitTests : BaseCommandUnitTest<G
         reads.DuplicateSelects.ShouldBe(groupCount);
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
-        result.Value.ShouldBe(new DownloadTaskCreationReport { Movies = scenario.ExpectedNewMovies.Length });
+        result.Value.Movies.ShouldBe(scenario.ExpectedNewMovies.Length);
         result.Value.Total.ShouldBe(scenario.ExpectedNewMovies.Length);
         var after = await ReadState(dbContext);
         var parentIds = before.Parents.Select(x => x.Id).ToHashSet();
@@ -79,6 +79,7 @@ public class GenerateDownloadTaskMoviesBatchingUnitTests : BaseCommandUnitTest<G
             .ThenBy(x => x.PlexApiMediaId)
             .ThenBy(x => x.PlexApiPartId)
             .ToArray();
+        result.Value.RootTaskIds.Order().ShouldBe(newParents.Select(x => x.Id).Order());
         after
             .Parents.Where(x => parentIds.Contains(x.Id))
             .OrderBy(x => x.Id)

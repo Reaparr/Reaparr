@@ -99,14 +99,19 @@ public class GetAllMediaByTypeEndpointUnitTests
     }
 
     [Test]
-    public async Task ShouldProjectMediaQueryTelemetryWithoutChangingResponse()
+    [Arguments(PlexMediaType.Movie)]
+    [Arguments(PlexMediaType.TvShow)]
+    [Arguments(PlexMediaType.MusicArtist)]
+    [Arguments(PlexMediaType.PhotoAlbum)]
+    [Arguments(PlexMediaType.OtherVideos)]
+    public async Task ShouldProjectMediaQueryTelemetryWithoutChangingResponse(PlexMediaType mediaType)
     {
         // Arrange
         Mock.Mock<ICommandExecutor>()
             .Setup(x =>
                 x.Send(
                     It.Is<GetMediaOverviewCommand>(command =>
-                        command.Filter.MediaType == PlexMediaType.Movie
+                        command.Filter.MediaType == mediaType
                         && command.Filter.PlexLibraryId == 17
                         && command.Filter.Parameters.Page == 2
                         && command.Filter.Parameters.PageSize == 30
@@ -152,11 +157,11 @@ public class GetAllMediaByTypeEndpointUnitTests
         var endpointResult = await TestEndpointHandleAsync(
             new GetAllMediaByTypeRequest
             {
-                MediaType = PlexMediaType.Movie,
+                MediaType = mediaType,
                 PlexLibraryId = 17,
                 Page = 2,
                 PageSize = 30,
-                Search = "Alpha Beta",
+                Search = "  Alpha   Beta  ",
                 Sort = "title:desc",
             }
         );
@@ -177,11 +182,11 @@ public class GetAllMediaByTypeEndpointUnitTests
             (2, 30, 2, 2, 4096L)
         );
         telemetryRequest.ShouldNotBeNull();
-        telemetryRequest.MediaType.ShouldBe(PlexMediaType.Movie);
+        telemetryRequest.MediaType.ShouldBe(mediaType);
         telemetryRequest.PlexLibraryId.ShouldBe(17);
         telemetryRequest.Page.ShouldBe(2);
         telemetryRequest.PageSize.ShouldBe(30);
-        telemetryRequest.Search.ShouldBe("Alpha Beta");
+        telemetryRequest.Search.ShouldBe("  Alpha   Beta  ");
         telemetryRequest.Sort.ShouldBe("title:desc");
         telemetryFilter.ShouldBe("SearchTitle:contains:\"alpha\"&SearchTitle:contains:\"beta\"");
         telemetryResult.ShouldNotBeNull().IsSuccess.ShouldBeTrue();

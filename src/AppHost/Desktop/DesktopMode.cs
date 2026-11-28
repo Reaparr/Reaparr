@@ -210,7 +210,10 @@ public class DesktopMode : IDesktopMode
         if (_appRuntimeInfo.IsIntegrationTestMode)
             return;
 
-        using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(DESKTOP_READY_TIMEOUT_SECONDS), _timeProvider);
+        using var timeoutCts = new CancellationTokenSource(
+            TimeSpan.FromSeconds(DESKTOP_READY_TIMEOUT_SECONDS),
+            _timeProvider
+        );
         try
         {
             await desktopReadyCompletion.Task.WaitAsync(timeoutCts.Token);

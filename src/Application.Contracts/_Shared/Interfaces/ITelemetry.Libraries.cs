@@ -5,18 +5,14 @@ namespace Reaparr.Application.Contracts;
 public partial interface ITelemetry
 {
     /// <summary>
-    /// Records completion of a media query.
+    /// Records completion of a search-bearing media query; listing queries without effective terms are omitted.
     /// </summary>
     void MediaQueryFinished(MediaQueryTelemetryDTO request, string? filter, Result<PlexMediaStatisticsDTO> result);
 
     /// <summary>
     /// Records completion of a photo search.
     /// </summary>
-    void PhotoSearchFinished(
-        PhotoSearchTelemetryDTO query,
-        IReadOnlyList<string> searchTerms,
-        Result<PhotoAssetPageDTO> result
-    );
+    void PhotoSearchFinished(PhotoSearchTelemetryDTO query, Result<PhotoAssetPageDTO> result);
 
     /// <summary>
     /// Records a requested library refresh.

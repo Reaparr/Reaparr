@@ -16,10 +16,12 @@ public sealed partial class Telemetry : ITelemetry, IDisposable
 
     private readonly IPostHogClient _client;
     private readonly IAppBuildInfo _appBuildInfo;
+    private readonly IAppRuntimeInfo _appRuntimeInfo;
     private readonly IUserService _userService;
     private readonly ActivitySource _activitySource;
     private readonly IUserSettings _settings;
     private string _telemetryId = string.Empty;
+    private string _telemetryName = string.Empty;
     private IDisposable? _settingsSubscription;
     private bool IsAdmitted => _appBuildInfo.HasValidTelemetry && !string.IsNullOrEmpty(_telemetryId);
 
@@ -29,6 +31,7 @@ public sealed partial class Telemetry : ITelemetry, IDisposable
     public Telemetry(
         IPostHogClient client,
         IAppBuildInfo appBuildInfo,
+        IAppRuntimeInfo appRuntimeInfo,
         IUserService userService,
         ActivitySource activitySource,
         IUserSettings settings
@@ -36,6 +39,7 @@ public sealed partial class Telemetry : ITelemetry, IDisposable
     {
         _client = client;
         _appBuildInfo = appBuildInfo;
+        _appRuntimeInfo = appRuntimeInfo;
         _userService = userService;
         _activitySource = activitySource;
         _settings = settings;
@@ -57,6 +61,7 @@ public sealed partial class Telemetry : ITelemetry, IDisposable
             if (!IsAdmitted)
                 return;
 
+            _telemetryName = TelemetryNicknameGenerator.Generate(_telemetryId);
             PublishSettings(changed: false);
             _settingsSubscription = _settings.SettingsUpdated.Subscribe(_ => PublishSettings(changed: true));
         });
@@ -76,10 +81,11 @@ public sealed partial class Telemetry : ITelemetry, IDisposable
             ApiHost = _appBuildInfo.TelemetryHost,
             ProjectToken = _appBuildInfo.TelemetryProjectToken,
             DistinctId = _telemetryId,
-            Release = _appBuildInfo.InformationalVersion,
-            Environment = _appBuildInfo.IsDevRelease
+            ReleaseVersion = _appBuildInfo.InformationalVersion,
+            ReleaseChannel = _appBuildInfo.IsDevRelease
                 ? TelemetryProtocol.DevelopmentEnvironment
                 : TelemetryProtocol.StableEnvironment,
+            RuntimeEnvironment = _appRuntimeInfo.DotnetEnvironment,
             RuntimeMode = _appBuildInfo.RuntimeMode,
             RuntimeIdentifier = _appBuildInfo.RuntimeIdentifier,
             Platform = _appBuildInfo.CurrentOS.ToString(),
@@ -159,12 +165,19 @@ public sealed partial class Telemetry : ITelemetry, IDisposable
         if (!IsAdmitted)
             return null;
 
+        var activity = Activity.Current;
+        var previousIdentity = activity?.GetTagItem(TelemetryProtocol.DistinctIdTag);
+        var previousName = activity?.GetTagItem(TelemetryProperty.TelemetryName);
+        var previousSession = activity?.GetTagItem(TelemetryProtocol.SessionIdTag);
         Activity.Current?.SetTag(TelemetryProtocol.DistinctIdTag, _telemetryId);
+        Activity.Current?.SetTag(TelemetryProperty.TelemetryName, _telemetryName);
         Activity.Current?.SetTag(TelemetryProtocol.SessionIdTag, sessionId);
-        return LogContext.Push(
+        var logContext = LogContext.Push(
             new PropertyEnricher(TelemetryProtocol.DistinctIdTag, _telemetryId),
+            new PropertyEnricher(TelemetryProperty.TelemetryName, _telemetryName),
             new PropertyEnricher(TelemetryProtocol.SessionIdTag, sessionId)
         );
+        return new RequestTelemetryScope(activity, previousIdentity, previousName, previousSession, logContext);
     }
 
     /// <summary>
@@ -196,6 +209,7 @@ public sealed partial class Telemetry : ITelemetry, IDisposable
         );
         var logContext = LogContext.Push(
             new PropertyEnricher(TelemetryProtocol.DistinctIdTag, _telemetryId),
+            new PropertyEnricher(TelemetryProperty.TelemetryName, _telemetryName),
             new PropertyEnricher(TelemetryProtocol.SessionIdTag, context.SessionId),
             new PropertyEnricher(TelemetryProperty.JobName, context.JobKey),
             new PropertyEnricher(TelemetryProperty.FireInstanceId, context.FireInstanceId)
@@ -225,6 +239,7 @@ public sealed partial class Telemetry : ITelemetry, IDisposable
 
         var activity = _activitySource.StartActivity(operation.ToString(), kind, parentContext, tags);
         activity?.SetTag(TelemetryProtocol.DistinctIdTag, _telemetryId);
+        activity?.SetTag(TelemetryProperty.TelemetryName, _telemetryName);
         if (GetActivityTag(activity?.Parent, TelemetryProtocol.SessionIdTag) is { } sessionId)
             activity?.SetTag(TelemetryProtocol.SessionIdTag, sessionId);
         return activity;
@@ -272,12 +287,13 @@ public sealed partial class Telemetry : ITelemetry, IDisposable
         var captureResult = Result.Try(() =>
         {
             properties[TelemetryProtocol.ProcessPersonProfile] = true;
-            properties[TelemetryProtocol.DisableGeoIp] = true;
+            properties[TelemetryProperty.TelemetryName] = _telemetryName;
             properties.TryAdd(TelemetryProperty.Origin, TelemetryProtocol.BackendOrigin);
-            properties[TelemetryProperty.Environment] = _appBuildInfo.IsDevRelease
+            properties[TelemetryProtocol.ReleaseChannel] = _appBuildInfo.IsDevRelease
                 ? TelemetryProtocol.DevelopmentEnvironment
                 : TelemetryProtocol.StableEnvironment;
-            properties[TelemetryProperty.Release] = _appBuildInfo.InformationalVersion;
+            properties[TelemetryProtocol.RuntimeEnvironment] = _appRuntimeInfo.DotnetEnvironment;
+            properties[TelemetryProperty.ReleaseVersion] = _appBuildInfo.InformationalVersion;
             properties[TelemetryProperty.RuntimeMode] = _appBuildInfo.RuntimeMode;
             properties[TelemetryProperty.Platform] = _appBuildInfo.CurrentOS.ToString();
             properties[TelemetryProperty.RuntimeIdentifier] = _appBuildInfo.RuntimeIdentifier;
@@ -321,7 +337,7 @@ public sealed partial class Telemetry : ITelemetry, IDisposable
         var settingsResult = Result.Try(() =>
         {
             var settings = JsonSerializer.SerializeToElement(_settings.ToDTO(), _settingsJsonOptions);
-            var properties = new Dictionary<string, object>();
+            var properties = new Dictionary<string, object> { [TelemetryProfileProperty.Name] = _telemetryName };
             foreach (var module in settings.EnumerateObject())
             foreach (var property in module.Value.EnumerateObject())
                 properties[$"{TelemetryProfileProperty.SettingsPrefix}{module.Name}.{property.Name}"] = property.Value;
@@ -361,6 +377,23 @@ public sealed partial class Telemetry : ITelemetry, IDisposable
 
     /// <summary>Stops observing settings changes without taking ownership of the injected native SDK.</summary>
     public void Dispose() => _settingsSubscription?.Dispose();
+
+    private sealed class RequestTelemetryScope(
+        Activity? activity,
+        object? previousIdentity,
+        object? previousName,
+        object? previousSession,
+        IDisposable logContext
+    ) : IDisposable
+    {
+        public void Dispose()
+        {
+            logContext.Dispose();
+            activity?.SetTag(TelemetryProtocol.DistinctIdTag, previousIdentity);
+            activity?.SetTag(TelemetryProperty.TelemetryName, previousName);
+            activity?.SetTag(TelemetryProtocol.SessionIdTag, previousSession);
+        }
+    }
 
     private sealed class JobTelemetryScope : IDisposable
     {

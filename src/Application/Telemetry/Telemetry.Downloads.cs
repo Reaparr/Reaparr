@@ -66,6 +66,7 @@ public sealed partial class Telemetry
         {
             var report = result.Value;
             properties[TelemetryProperty.Downloads.CreatedTotal] = report.Total;
+            properties[TelemetryProperty.Downloads.RootTaskIds] = report.RootTaskIds;
             properties[TelemetryProperty.Downloads.CreatedReport] = new Dictionary<string, object>
             {
                 [TelemetryProperty.Downloads.Movies] = report.Movies,
@@ -173,10 +174,30 @@ public sealed partial class Telemetry
     }
 
     /// <inheritdoc/>
-    public void DownloadLifecycleChanged(DownloadTaskKey rootTaskKey, DownloadStatus status)
+    public void DownloadLifecycleChanged(
+        DownloadTaskKey rootTaskKey,
+        DownloadStatus status,
+        DateTime createdAt,
+        IntegrationIdentity? integrationIdentity,
+        DateTime observedAt
+    )
     {
         var properties = ToTaskKeyProperties(rootTaskKey);
         properties[TelemetryProperty.Status] = status.ToString();
+        properties[TelemetryProperty.CreatedAt] = createdAt;
+        if (integrationIdentity is not null)
+        {
+            properties[TelemetryProperty.IntegrationId] = integrationIdentity.Id;
+            properties[TelemetryProperty.Provider] = integrationIdentity.Type.ToString();
+        }
+        if (status == DownloadStatus.Completed)
+        {
+            properties[TelemetryProperty.Outcome] = nameof(TelemetryOutcome.Succeeded);
+            // Includes queueing, pauses and retries since root creation; this is not active transfer time.
+            properties[TelemetryProperty.Downloads.CompletionElapsedMilliseconds] = (
+                observedAt - createdAt
+            ).TotalMilliseconds;
+        }
         _ = Capture(TelemetryEvent.DownloadLifecycleChanged, properties);
     }
 

@@ -23,8 +23,14 @@ public class GenerateDownloadTaskPhotoImagesFolderSelectionUnitTests
         if (includeDirectSelection)
         {
             result.IsSuccess.ShouldBeTrue();
-            result.Value.ShouldBe(new DownloadTaskCreationReport { PhotoFolders = 2, PhotoImages = 1 });
             var queued = await dbContext.DownloadTaskPhotoImageFiles.SingleAsync(CancellationToken);
+            result.Value.PhotoFolders.ShouldBe(2);
+            result.Value.PhotoImages.ShouldBe(1);
+            var rootIds = await dbContext
+                .DownloadTaskPhotoFolders.Where(x => x.ParentId == null)
+                .Select(x => x.Id)
+                .ToListAsync(CancellationToken);
+            result.Value.RootTaskIds.Order().ShouldBe(rootIds.Order());
             queued.DirectoryMeta.KeepCompletedInDownloadFolder.ShouldBeFalse();
         }
         else
@@ -52,8 +58,15 @@ public class GenerateDownloadTaskPhotoImagesFolderSelectionUnitTests
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
-        result.Value.ShouldBe(new DownloadTaskCreationReport { PhotoFolders = 3, PhotoImages = 2 });
         (await dbContext.DownloadTaskPhotoImageFiles.CountAsync(CancellationToken)).ShouldBe(2);
+        result.Value.PhotoFolders.ShouldBe(3);
+        result.Value.PhotoImages.ShouldBe(2);
+        result.Value.RootTaskIds.ShouldBe(
+            await dbContext
+                .DownloadTaskPhotoFolders.Where(x => x.ParentId == null)
+                .Select(x => x.Id)
+                .ToArrayAsync(CancellationToken)
+        );
         (
             await dbContext.DownloadTaskPhotoFolders.Select(x => x.RelativePath).ToListAsync(CancellationToken)
         ).ShouldContain("Trips/Day 1");

@@ -56,7 +56,10 @@ public static partial class FakeData
         Action<FakeDataConfig>? options = null
     ) => GetDownloadTaskTvShowEpisodeFile(seed, FakeDataConfig.FromOptions(options));
 
-    private static Faker<DownloadTaskTvShowEpisodeFile> GetDownloadTaskTvShowEpisodeFile(Seed seed, FakeDataConfig config)
+    private static Faker<DownloadTaskTvShowEpisodeFile> GetDownloadTaskTvShowEpisodeFile(
+        Seed seed,
+        FakeDataConfig config
+    )
     {
         return _downloadTaskTvShowEpisodeFileFaker
             .RuleFor(

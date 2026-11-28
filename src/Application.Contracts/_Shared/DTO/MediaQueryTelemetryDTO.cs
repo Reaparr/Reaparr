@@ -9,7 +9,7 @@ namespace Reaparr.Application.Contracts;
 /// </remarks>
 public sealed record MediaQueryTelemetryDTO
 {
-    /// <summary>The requested search text, normalized into effective search terms by telemetry before capture.</summary>
+    /// <summary>The original requested search text, preserved unchanged when effective search terms exist.</summary>
     public string? Search { get; init; }
 
     /// <summary>The kind of media requested by the query.</summary>

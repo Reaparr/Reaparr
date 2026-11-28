@@ -374,7 +374,8 @@ public class BootUnitTests : BaseUnitTest<Boot>
         var queueStopping = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var releaseQueue = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var queue = Mock.Mock<IDownloadQueue>();
-        queue.Setup(x => x.WaitForShutdownAsync(CancellationToken.None))
+        queue
+            .Setup(x => x.WaitForShutdownAsync(CancellationToken.None))
             .Returns(() =>
             {
                 queueStopping.SetResult();

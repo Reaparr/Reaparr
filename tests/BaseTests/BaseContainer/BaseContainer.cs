@@ -87,10 +87,22 @@ public class BaseContainer : IDisposable
             await using (reaparrContext)
             await using (authContext)
             {
-                await (reaparrContext, authContext).Setup(seed, mockPathProvider, mockAppRuntimeInfo, config.DatabaseOptions);
+                await (reaparrContext, authContext).Setup(
+                    seed,
+                    mockPathProvider,
+                    mockAppRuntimeInfo,
+                    config.DatabaseOptions
+                );
             }
 
-            factory = new ReaparrWebApplicationFactory(seed, memoryDbName, config, mockAppBuildInfo, mockAppRuntimeInfo, useTestAuthentication);
+            factory = new ReaparrWebApplicationFactory(
+                seed,
+                memoryDbName,
+                config,
+                mockAppBuildInfo,
+                mockAppRuntimeInfo,
+                useTestAuthentication
+            );
             container = new BaseContainer(
                 log,
                 factory,
@@ -181,7 +193,9 @@ public class BaseContainer : IDisposable
 
     private async Task SetDownloadSpeedLimit(int downloadSpeedLimitInKib)
     {
-        var machineIdentifiers = await ReaparrDbContext.PlexServers.Select(server => server.MachineIdentifier).ToListAsync();
+        var machineIdentifiers = await ReaparrDbContext
+            .PlexServers.Select(server => server.MachineIdentifier)
+            .ToListAsync();
         var settings = GetServerSettings;
         foreach (var machineIdentifier in machineIdentifiers)
             settings.SetDownloadSpeedLimit(machineIdentifier, downloadSpeedLimitInKib);
@@ -222,7 +236,8 @@ public class BaseContainer : IDisposable
             catch (Exception exception)
             {
                 if (firstFailure is not null)
-                    _log.Here().Error(exception, "Failed to close the memory database for {DatabaseName}", DatabaseName);
+                    _log.Here()
+                        .Error(exception, "Failed to close the memory database for {DatabaseName}", DatabaseName);
                 firstFailure ??= exception;
             }
         }

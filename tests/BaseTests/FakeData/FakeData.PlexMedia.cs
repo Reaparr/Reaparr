@@ -78,8 +78,8 @@ public static partial class FakeData
             }
         );
 
-    public static Faker<PlexMovie> GetPlexMovies(Seed seed, Action<FakeDataConfig>? options = null)
-        => GetPlexMovies(seed, FakeDataConfig.FromOptions(options));
+    public static Faker<PlexMovie> GetPlexMovies(Seed seed, Action<FakeDataConfig>? options = null) =>
+        GetPlexMovies(seed, FakeDataConfig.FromOptions(options));
 
     internal static Faker<PlexMovie> GetPlexMovies(Seed seed, FakeDataConfig config)
     {
@@ -147,8 +147,8 @@ public static partial class FakeData
             }
         );
 
-    public static Faker<PlexTvShow> GetPlexTvShows(Seed seed, Action<FakeDataConfig>? options = null)
-        => GetPlexTvShows(seed, FakeDataConfig.FromOptions(options));
+    public static Faker<PlexTvShow> GetPlexTvShows(Seed seed, Action<FakeDataConfig>? options = null) =>
+        GetPlexTvShows(seed, FakeDataConfig.FromOptions(options));
 
     internal static Faker<PlexTvShow> GetPlexTvShows(Seed seed, FakeDataConfig config)
     {
@@ -192,8 +192,8 @@ public static partial class FakeData
             }
         );
 
-    public static Faker<PlexTvShowSeason> GetPlexTvShowSeason(Seed seed, Action<FakeDataConfig>? options = null)
-        => GetPlexTvShowSeason(seed, FakeDataConfig.FromOptions(options));
+    public static Faker<PlexTvShowSeason> GetPlexTvShowSeason(Seed seed, Action<FakeDataConfig>? options = null) =>
+        GetPlexTvShowSeason(seed, FakeDataConfig.FromOptions(options));
 
     private static Faker<PlexTvShowSeason> GetPlexTvShowSeason(Seed seed, FakeDataConfig config)
     {

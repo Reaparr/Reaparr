@@ -161,7 +161,7 @@ public class TelemetryProxyUnitTests : BaseUnitTest
         var runtime = new MockAppRuntimeInfo();
 
         // Act
-        var euContext = CreateContext(HttpMethods.Get, "/static/app.js");
+        var euContext = CreateContext(HttpMethods.Get, "/static/1.447.12/lazy-recorder.js");
         euContext.Request.Headers[HeaderNames.Accept] = "application/javascript";
         euContext.Request.Headers[HeaderNames.AcceptEncoding] = "gzip";
 
@@ -189,7 +189,9 @@ public class TelemetryProxyUnitTests : BaseUnitTest
         ).InvokeAsync(customContext);
 
         // Assert
-        euHandler.Request!.RequestUri!.AbsoluteUri.ShouldBe("https://eu-assets.i.posthog.com/static/app.js");
+        euHandler.Request!.RequestUri!.AbsoluteUri.ShouldBe(
+            "https://eu-assets.i.posthog.com/static/1.447.12/lazy-recorder.js"
+        );
         euHandler.Request.Headers.GetValues(HeaderNames.Accept).Single().ShouldBe("application/javascript");
         euHandler.Request.Headers.GetValues(HeaderNames.AcceptEncoding).Single().ShouldBe("gzip");
         usHandler.Request!.RequestUri!.AbsoluteUri.ShouldBe("https://us-assets.i.posthog.com/array/config.js");
@@ -350,7 +352,12 @@ public class TelemetryProxyUnitTests : BaseUnitTest
     }
 
     [Test]
-    public async Task ShouldBypassBusinessTelemetryForProxyBranch_AndKeepOrdinaryPathsInPipeline()
+    [Arguments("https://previously-unlisted.example.test", "/reaparr")]
+    [Arguments("http://192.0.2.42:7000", "")]
+    public async Task ShouldBypassBusinessTelemetryForProxyBranch_AndKeepOrdinaryPathsInPipeline(
+        string origin,
+        string pathBase
+    )
     {
         // Arrange
         var handler = new RecordingHandler(
@@ -390,7 +397,11 @@ public class TelemetryProxyUnitTests : BaseUnitTest
 
             var proxyContext = CreateContext(HttpMethods.Post, "/e/submit/", [1, 2, 3]);
             proxyContext.RequestServices = services;
-            proxyContext.Request.PathBase = "/client";
+            proxyContext.Request.PathBase = pathBase;
+            proxyContext.Request.Scheme = new Uri(origin).Scheme;
+            proxyContext.Request.Host = HostString.FromUriComponent(origin);
+            proxyContext.Request.Headers[HeaderNames.Origin] = origin;
+            proxyContext.Request.Headers[HeaderNames.Referer] = $"{origin}{pathBase}/library";
             var ordinaryContext = CreateContext(HttpMethods.Get, "/api/work");
             ordinaryContext.RequestServices = services;
 
@@ -401,6 +412,9 @@ public class TelemetryProxyUnitTests : BaseUnitTest
             // Assert
             handler.CallCount.ShouldBe(1);
             handler.Request!.RequestUri!.AbsoluteUri.ShouldBe("https://telemetry.example.test/i/v0/e/");
+            handler.Request.Headers.Contains(HeaderNames.Host).ShouldBeFalse();
+            handler.Request.Headers.Contains(HeaderNames.Origin).ShouldBeFalse();
+            handler.Request.Headers.Contains(HeaderNames.Referer).ShouldBeFalse();
             ordinaryPathReached.ShouldBeTrue();
             telemetry.Verify();
         }

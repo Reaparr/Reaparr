@@ -1,0 +1,16 @@
+diff --git a/dist/reaparr-recorder.mjs b/dist/reaparr-recorder.mjs
+new file mode 100644
+index 0000000000000000000000000000000000000000..eecf3120b9ccece9a5181f075b1981165e7a46c4
+--- /dev/null
++++ b/dist/reaparr-recorder.mjs
+@@ -0,0 +1,10 @@
++import './posthog-recorder.js';
++
++// Version-pinned adapter until PostHog exposes rrweb's inlineImages option.
++// Preserve record's static API and leave application image URLs/cache unchanged.
++const recorder = window.__PosthogExtensions__.rrweb;
++recorder.record = new Proxy(recorder.record, {
++    apply(record, thisArg, [options]) {
++        return Reflect.apply(record, thisArg, [{ ...options, inlineImages: true }]);
++    },
++});

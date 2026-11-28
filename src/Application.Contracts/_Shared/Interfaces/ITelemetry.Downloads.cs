@@ -64,7 +64,16 @@ public partial interface ITelemetry
     /// <summary>Records a download lifecycle change.</summary>
     /// <param name="rootTaskKey">The root task whose lifecycle changed.</param>
     /// <param name="status">The new lifecycle status.</param>
-    void DownloadLifecycleChanged(DownloadTaskKey rootTaskKey, DownloadStatus status);
+    /// <param name="createdAt">The persisted creation time of the root task.</param>
+    /// <param name="integrationIdentity">The integration that owns the root task, when attributed.</param>
+    /// <param name="observedAt">The time the persisted lifecycle transition was observed.</param>
+    void DownloadLifecycleChanged(
+        DownloadTaskKey rootTaskKey,
+        DownloadStatus status,
+        DateTime createdAt,
+        IntegrationIdentity? integrationIdentity,
+        DateTime observedAt
+    );
 
     /// <summary>Starts telemetry for a direct download.</summary>
     /// <param name="downloadTask">The task being downloaded.</param>

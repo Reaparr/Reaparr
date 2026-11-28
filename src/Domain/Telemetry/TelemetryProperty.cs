@@ -16,11 +16,11 @@ public static partial class TelemetryProperty
     public const string Health = "health";
     public const string Status = "status";
     public const string Origin = "origin";
-    public const string Environment = "environment";
-    public const string Release = "release";
+    public const string ReleaseVersion = "release_version";
     public const string RuntimeMode = "runtime_mode";
     public const string Platform = "platform";
     public const string RuntimeIdentifier = "runtime_identifier";
+    public const string TelemetryName = "telemetry_name";
     public const string Provider = "provider";
     public const string AccountId = "account_id";
     public const string ServerId = "server_id";

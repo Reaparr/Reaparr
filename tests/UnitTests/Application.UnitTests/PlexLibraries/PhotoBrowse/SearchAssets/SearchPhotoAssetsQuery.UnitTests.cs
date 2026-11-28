@@ -119,22 +119,13 @@ public class SearchPhotoAssetsQueryUnitTests : BaseCommandUnitTest<SearchPhotoAs
             .PlexPhotoMediaData.Where(x => x.Id == assets[2].Id)
             .ExecuteUpdateAsync(x => x.SetProperty(y => y.SearchTitle, "unrelated"), CancellationToken);
 
-        var telemetryCalls =
-            new List<(
-                PhotoSearchTelemetryDTO Query,
-                IReadOnlyList<string> SearchTerms,
-                Result<PhotoAssetPageDTO> Result
-            )>();
+        var telemetryCalls = new List<(PhotoSearchTelemetryDTO Query, Result<PhotoAssetPageDTO> Result)>();
         Mock.Mock<ITelemetry>()
             .Setup(x =>
-                x.PhotoSearchFinished(
-                    It.IsAny<PhotoSearchTelemetryDTO>(),
-                    It.IsAny<IReadOnlyList<string>>(),
-                    It.IsAny<Result<PhotoAssetPageDTO>>()
-                )
+                x.PhotoSearchFinished(It.IsAny<PhotoSearchTelemetryDTO>(), It.IsAny<Result<PhotoAssetPageDTO>>())
             )
-            .Callback<PhotoSearchTelemetryDTO, IReadOnlyList<string>, Result<PhotoAssetPageDTO>>(
-                (query, searchTerms, result) => telemetryCalls.Add((query, searchTerms, result))
+            .Callback<PhotoSearchTelemetryDTO, Result<PhotoAssetPageDTO>>(
+                (query, result) => telemetryCalls.Add((query, result))
             )
             .Verifiable(Times.Exactly(3));
 
@@ -164,13 +155,7 @@ public class SearchPhotoAssetsQueryUnitTests : BaseCommandUnitTest<SearchPhotoAs
         telemetryCalls
             .Select(call => call.Query.Direction)
             .ShouldBe([SortDirection.Asc, SortDirection.Asc, SortDirection.Asc]);
-        telemetryCalls[0].SearchTerms.ShouldBe(["cafe", "resume"]);
-        telemetryCalls[0].Result.IsSuccess.ShouldBeTrue();
-        telemetryCalls[0].Result.Errors.Count.ShouldBe(0);
-        telemetryCalls[1].SearchTerms.ShouldBe(["resume"]);
-        telemetryCalls[1].Result.IsSuccess.ShouldBeTrue();
-        telemetryCalls[1].Result.Errors.Count.ShouldBe(0);
-        telemetryCalls[2].SearchTerms.ShouldBeEmpty();
+        telemetryCalls.Select(call => call.Query.Search).ShouldBe(["The Café, résumé!", "résumé", "a"]);
         telemetryCalls[2].Result.IsFailed.ShouldBeTrue();
         telemetryCalls[2].Result.Errors.Count.ShouldBe(1);
         Mock.Mock<ITelemetry>().Verify();

@@ -194,6 +194,7 @@ public sealed partial class Telemetry
         if (creationReport is not null)
         {
             properties[TelemetryProperty.Integrations.CreatedTotal] = creationReport.Total;
+            properties[TelemetryProperty.Downloads.RootTaskIds] = creationReport.RootTaskIds;
             properties[TelemetryProperty.Integrations.CreatedReport] = new Dictionary<string, object>
             {
                 [TelemetryProperty.Integrations.CreatedMovies] = creationReport.Movies,

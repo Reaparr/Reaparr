@@ -118,13 +118,14 @@ public class GetMusicDownloadPreviewCommandUnitTests : BaseCommandUnitTest<GetMu
         );
         created.IsSuccess.ShouldBeTrue();
         created.Errors.Count.ShouldBe(0);
-        created.Value.ShouldBe(new DownloadTaskCreationReport { MusicTracks = 1 });
         var artistTask = await dbContext
             .DownloadTaskMusicArtists.AsTracking()
             .Include(x => x.Children)
                 .ThenInclude(x => x.Children)
                     .ThenInclude(x => x.Children)
             .SingleAsync(CancellationToken);
+        created.Value.ShouldBe(new DownloadTaskCreationReport { MusicTracks = 1 } with { RootTaskIds = created.Value.RootTaskIds });
+        created.Value.RootTaskIds.ShouldBe([artistTask.Id]);
         var albumTask = artistTask.Children.Single();
         var trackTask = albumTask.Children.Single();
         var fileTask = trackTask.Children.Single();

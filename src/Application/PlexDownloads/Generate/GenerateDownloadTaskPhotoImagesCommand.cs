@@ -92,6 +92,7 @@ public class GenerateDownloadTaskPhotoImagesCommandHandler
                     )
                     .ToDictionary(x => x.Key, x => x.OrderBy(y => y.CreatedAt).First(), FolderKeyComparer.Instance);
                 var createdFolders = 0;
+                var touchedRootIds = new HashSet<Guid>();
                 var filesToCreate = new List<DownloadTaskPhotoImageFile>();
                 DownloadTaskPhotoFolder GetOrCreateFolder(
                     PhotoDownloadCandidate photo,
@@ -139,12 +140,15 @@ public class GenerateDownloadTaskPhotoImagesCommandHandler
                     existingFolders.Add(folder);
                     existingFolderByKey.Add(key, folder);
                     createdFolders++;
+                    if (folder.ParentId is null)
+                        touchedRootIds.Add(folder.Id);
                     return folder;
                 }
 
                 foreach (var photo in accepted)
                 {
                     var parent = GetOrCreateFolder(photo, null, photo.RootName, string.Empty);
+                    touchedRootIds.Add(parent.Id);
                     var relativeSegments = photo.PhotoFolder.Split('/', StringSplitOptions.RemoveEmptyEntries).Skip(1);
                     var cumulative = string.Empty;
                     foreach (var segment in relativeSegments)
@@ -180,6 +184,7 @@ public class GenerateDownloadTaskPhotoImagesCommandHandler
                 {
                     PhotoFolders = createdFolders,
                     PhotoImages = filesToCreate.Count,
+                    RootTaskIds = touchedRootIds.ToArray(),
                 };
             },
             cancellationToken

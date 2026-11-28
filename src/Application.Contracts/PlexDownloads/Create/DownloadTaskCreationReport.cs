@@ -16,6 +16,12 @@ public sealed record DownloadTaskCreationReport
     public int MusicTracks { get; init; }
     public int OtherVideos { get; init; }
 
+    /// <summary>
+    /// Persisted root task identities touched or created by this request. Counts above
+    /// continue to describe newly created hierarchy nodes, not reused roots.
+    /// </summary>
+    public Guid[] RootTaskIds { get; init; } = [];
+
     public int Total =>
         Movies
         + TvShows
@@ -44,5 +50,6 @@ public sealed record DownloadTaskCreationReport
             MusicAlbums = left.MusicAlbums + right.MusicAlbums,
             MusicTracks = left.MusicTracks + right.MusicTracks,
             OtherVideos = left.OtherVideos + right.OtherVideos,
+            RootTaskIds = left.RootTaskIds.Concat(right.RootTaskIds).Distinct().ToArray(),
         };
 }

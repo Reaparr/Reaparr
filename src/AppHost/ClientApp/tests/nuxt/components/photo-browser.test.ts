@@ -12,6 +12,7 @@ import { generateLibrarySyncJobQueue, generatePlexLibrary, generateResultDTO, Se
 import PhotoBrowser from '@/components/Photos/PhotoBrowser.vue';
 import messages from '@/lang/en-US.json';
 import { createDefaultMediaOverviewSort, toggleMediaOverviewSort } from '@composables';
+import { createTelemetry } from '@composables/telemetry/createTelemetry';
 
 const titleDescending = toggleMediaOverviewSort(createDefaultMediaOverviewSort(), SortType.Title);
 
@@ -21,6 +22,8 @@ const navigation = vi.hoisted(() => ({
 }));
 mockNuxtImport('useRoute', () => () => navigation.route);
 mockNuxtImport('useRouter', () => () => ({ push: navigation.push, replace: navigation.replace, back: navigation.back }));
+const searchCapture = vi.hoisted(() => vi.fn());
+mockNuxtImport('useTelemetry', () => () => createTelemetry({ capture: searchCapture }));
 
 describe('PhotoBrowser - unified route context', () => {
 	let { mock } = baseVars();
@@ -37,6 +40,7 @@ describe('PhotoBrowser - unified route context', () => {
 		navigation.push.mockReset().mockResolvedValue(undefined);
 		navigation.replace.mockReset().mockResolvedValue(undefined);
 		navigation.back.mockReset();
+		searchCapture.mockClear();
 		await subscribeSpyTo(usePhotoBrowsingStore().setup()).onComplete();
 		useGlobalStore().pageReadyObservable.next(false);
 	});
@@ -225,6 +229,24 @@ describe('PhotoBrowser - unified route context', () => {
 
 		// Assert
 		expect(navigation.replace).toHaveBeenCalledWith({ query: { view: 'folders' } });
+	});
+
+	test('Should retain original photo search telemetry while normalizing the navigation query', async () => {
+		// Arrange
+		const query = '  "夏の  写真" café  ';
+		navigation.route.query = { view: 'assets' };
+		const searchBar = defineComponent({
+			name: 'MediaOverviewBar', emits: ['photo-search'],
+			setup(_, { emit }) {
+				return () => h('button', { 'data-cy': 'test-submit-search', onClick: () => emit('photo-search', query) });
+			},
+		});
+		const wrapper = await render(4, undefined, true, searchBar);
+		// Act
+		await wrapper.get('[data-cy="test-submit-search"]').trigger('click');
+		// Assert
+		expect(searchCapture).toHaveBeenCalledWith('FrontendPhotoInteraction', expect.objectContaining({ query, library_id: 4 }));
+		expect(navigation.replace).toHaveBeenCalledWith({ query: { view: 'assets', q: '"夏の  写真" café' } });
 	});
 
 	test.each([undefined, 'albums'])('Should redirect an albumless library to folders for view %s', async (view) => {

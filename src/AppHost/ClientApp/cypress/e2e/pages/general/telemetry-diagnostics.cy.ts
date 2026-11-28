@@ -1,3 +1,4 @@
+import { gunzipSync, strFromU8 } from 'fflate';
 import { route } from '@fixtures';
 import { AuthenticationPaths, DebugPaths, TelemetryPaths } from '@api-urls';
 import { TelemetryDiagnosticOrigin, type BrowserTelemetryBootstrapDTO, type UserClaimsDTO } from '@dto';
@@ -20,9 +21,7 @@ async function decodePartialSnapshotJson(value: string): Promise<unknown> {
 		? binaryBytes
 		: Uint8Array.from(atob(value.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - value.length % 4) % 4)), (character) => character.charCodeAt(0));
 	const bytes = encoded;
-	const text = bytes[0] === 0x1F && bytes[1] === 0x8B
-		? await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).text()
-		: new TextDecoder().decode(bytes);
+	const text = strFromU8(bytes[0] === 0x1F && bytes[1] === 0x8B ? gunzipSync(bytes) : bytes);
 	return JSON.parse(text);
 }
 
@@ -113,9 +112,7 @@ async function decodeNativeCaptures(body: unknown): Promise<NativeCapture[]> {
 		}
 	}
 	if (bytes) {
-		const text = bytes[0] === 0x1F && bytes[1] === 0x8B
-			? await new Response(new Blob([Uint8Array.from(bytes)]).stream().pipeThrough(new DecompressionStream('gzip'))).text()
-			: new TextDecoder().decode(bytes);
+		const text = strFromU8(bytes[0] === 0x1F && bytes[1] === 0x8B ? gunzipSync(bytes) : bytes);
 		value = JSON.parse(text);
 	}
 	let captures: NativeCapture[];
@@ -288,7 +285,191 @@ describe('Telemetry diagnostics', () => {
 		}
 	});
 
-	(isolatedNativeBuild ? it : it.skip)('Should collect masked native signals from public bootstrap before login and across logout', () => {
+	(isolatedNativeBuild ? it : it.skip)('Should embed the loaded Quasar stylesheet in native replay snapshots', () => {
+		cy.intercept('GET', TelemetryPaths.getBrowserTelemetryBootstrapEndpoint(), {
+			body: generateResultDTO<BrowserTelemetryBootstrapDTO>({
+				apiHost: 'https://posthog.isolated.test', projectToken: 'phc_cypress',
+				distinctId: 'c8b4b3fa-a606-477a-9079-79833ea61558', releaseVersion: 'isolated-test',
+				releaseChannel: 'dev', runtimeEnvironment: 'Production', runtimeMode: 'docker', runtimeIdentifier: 'browser', platform: 'browser',
+			}),
+		});
+		cy.visit(route('/'));
+		cy.getCy('account-selector-btn').should('be.visible');
+		cy.getCy('account-selector-btn').click();
+		cy.document().should((document) => {
+			expect([...document.styleSheets].some((sheet) => [...sheet.cssRules].some((rule) => rule.cssText.includes('.q-layout'))), 'Quasar stylesheet loaded and readable').to.equal(true);
+		});
+		cy.wrap(null, { timeout: 30000 }).should(() => {
+			const nodes: Array<Record<string, unknown>> = [];
+			for (const capture of nativeCaptures) {
+				if (capture.event === '$snapshot') collectSnapshotNodes(capture.properties.$snapshot_data, nodes);
+			}
+			expect(nodes.some((node) => {
+				const css = asRecord(node.attributes)?._cssText;
+				return typeof css === 'string' && css.includes('.q-layout');
+			}), 'Quasar layout CSS embedded in emitted full snapshot').to.equal(true);
+		});
+	});
+
+	(isolatedNativeBuild ? it : it.skip)('Should retain native network debug data without credential values', () => {
+		cy.intercept('GET', TelemetryPaths.getBrowserTelemetryBootstrapEndpoint(), {
+			body: generateResultDTO<BrowserTelemetryBootstrapDTO>({ apiHost: 'https://posthog.isolated.test', projectToken: 'phc_cypress', distinctId: 'c8b4b3fa-a606-477a-9079-79833ea61558', releaseVersion: 'isolated-test', releaseChannel: 'dev', runtimeEnvironment: 'Production', runtimeMode: 'docker', runtimeIdentifier: 'browser', platform: 'browser' }),
+		});
+		cy.intercept('POST', '**/debug-network?*', {
+			body: { result: 'debug-result', accessToken: 'network-credential-sentinel' },
+			headers: { 'content-type': 'application/json', 'x-debug-response': 'response-value' },
+		});
+		cy.visit(route('/').replace('localhost', 'reaparr.localhost'));
+		cy.getCy('account-selector-btn').should('be.visible').click();
+		cy.wait('@native-lazy-recorder');
+		cy.window().then((window) => {
+			const request = new window.XMLHttpRequest();
+			request.open('POST', '/debug-network?search=movie&token=network-credential-sentinel');
+			request.setRequestHeader('content-type', 'application/json');
+			request.setRequestHeader('authorization', 'Bearer network-credential-sentinel');
+			request.setRequestHeader('x-debug-request', 'request-value');
+			request.send(JSON.stringify({ search: 'exact movie search', password: 'network-credential-sentinel' }));
+		});
+		cy.wrap(null, { timeout: 30000 }).should(() => {
+			const requests: unknown[] = [];
+			for (const capture of nativeCaptures) {
+				if (capture.event !== '$snapshot' || !Array.isArray(capture.properties.$snapshot_data)) continue;
+				for (const event of capture.properties.$snapshot_data) {
+					const data = asRecord(asRecord(event)?.data);
+					const payload = asRecord(data?.payload) ?? data;
+					if (Array.isArray(payload?.requests)) requests.push(...payload.requests);
+				}
+			}
+			const request = requests.map(asRecord).find((entry) => String(entry?.name).includes('/debug-network'));
+			const serialized = JSON.stringify(request ?? {});
+			expect(serialized).to.contain('exact movie search');
+			expect(serialized).to.contain('debug-result');
+			expect(serialized).to.contain('request-value');
+			expect(serialized).to.contain('response-value');
+			expect(serialized).not.to.contain('network-credential-sentinel');
+			const pageview = nativeCaptures.find((capture) => capture.event === '$pageview');
+			expect(pageview?.properties.$current_url).to.contain('/');
+			expect(pageview?.properties.$geoip_disable).to.equal(false);
+			expect(pageview?.properties.release_channel).to.equal('dev');
+			expect(pageview?.properties.runtime_environment).to.equal('Production');
+			expect(pageview?.properties.release_version).to.equal('isolated-test');
+			expect(pageview?.properties).not.to.have.property('release');
+			expect(pageview?.properties).not.to.have.property('environment');
+			expect(pageview?.properties).not.to.have.property('$internal_or_test_user');
+		});
+	});
+
+	(isolatedNativeBuild ? it : it.skip)('Should capture a dead click after the native observation window', () => {
+		cy.intercept('GET', TelemetryPaths.getBrowserTelemetryBootstrapEndpoint(), {
+			body: generateResultDTO<BrowserTelemetryBootstrapDTO>({
+				apiHost: 'https://posthog.isolated.test', projectToken: 'phc_cypress',
+				distinctId: 'c8b4b3fa-a606-477a-9079-79833ea61558', releaseVersion: 'isolated-test',
+				releaseChannel: 'dev', runtimeEnvironment: 'Production', runtimeMode: 'docker', runtimeIdentifier: 'browser', platform: 'browser',
+			}),
+		});
+		cy.visit(route('/'));
+		cy.getCy('account-selector-btn').should('be.visible');
+		cy.wait('@native-dead-clicks-autocapture');
+		cy.document().then((document) => {
+			const probe = document.createElement('button');
+			probe.type = 'button';
+			probe.textContent = 'Dead click probe';
+			probe.style.cssText = 'position:fixed;top:80px;left:20px;z-index:10000;user-select:none';
+			probe.dataset.cy = 'native-dead-click-probe';
+			document.body.append(probe);
+		});
+		cy.getCy('account-selector-btn').click();
+		cy.wrap(null, { timeout: 30000 }).should(() => {
+			expect(nativeCaptures.some((event) => event.event === '$autocapture'), 'native collectors are active').to.equal(true);
+		});
+		cy.getCy('native-dead-click-probe').then((probe) => {
+			const element = probe[0];
+			if (!element) throw new Error('native dead click probe was not found');
+			cy.clock(Date.now(), ['Date', 'setTimeout', 'clearTimeout']).then((clock) => {
+				for (const type of ['mousedown', 'mouseup', 'click']) {
+					element.dispatchEvent(new MouseEvent(type, { bubbles: true, button: 0, detail: 1 }));
+				}
+				// Keep the native observation window free of unrelated asynchronous page mutations.
+				clock.tick(6000);
+				clock.restore();
+			});
+		});
+		cy.wrap(null, { timeout: 15000 }).should(() => {
+			const event = nativeCaptures.find((capture) => capture.event === '$dead_click');
+			expect(event?.properties.distinct_id, 'native dead click identity').to.equal('c8b4b3fa-a606-477a-9079-79833ea61558');
+			expect(event?.properties.$session_id, 'native dead click session').to.be.a('string').and.not.equal('');
+		});
+	});
+	(isolatedNativeBuild ? it : it.skip)('Should preserve native identity and session across an authenticated reload', () => {
+		const identity = 'c8b4b3fa-a606-477a-9079-79833ea61558';
+		cy.intercept('GET', TelemetryPaths.getBrowserTelemetryBootstrapEndpoint(), {
+			body: generateResultDTO<BrowserTelemetryBootstrapDTO>({ apiHost: 'https://posthog.isolated.test', projectToken: 'phc_cypress', distinctId: identity, releaseVersion: 'isolated-test', releaseChannel: 'dev', runtimeEnvironment: 'Production', runtimeMode: 'docker', runtimeIdentifier: 'browser', platform: 'browser' }),
+			headers: { 'cache-control': 'no-store' },
+		}).as('reloadBootstrap');
+		cy.visit(route('/'));
+		cy.getCy('account-selector-btn').should('be.visible').click();
+		let originalSession = '';
+		cy.wrap(null, { timeout: 15000 }).should(() => {
+			const pageviews = nativeCaptures.filter((event) => event.event === '$pageview');
+			expect(pageviews).to.have.length(1);
+			expect(pageviews[0]?.properties.distinct_id).to.equal(identity);
+			expect(pageviews[0]?.properties.$session_id).to.be.a('string').and.not.equal('');
+			originalSession = String(pageviews[0]?.properties.$session_id);
+		});
+		cy.wait('@reloadBootstrap');
+		cy.reload();
+		cy.wait('@reloadBootstrap');
+		cy.getCy('account-selector-btn').should('be.visible');
+		cy.wrap(null, { timeout: 15000 }).should(() => {
+			const pageviews = nativeCaptures.filter((event) => event.event === '$pageview');
+			expect(pageviews).to.have.length(2);
+			pageviews.forEach((event) => {
+				expect(event.properties.distinct_id).to.equal(identity);
+				expect(event.properties.$session_id).to.equal(originalSession);
+			});
+			expect(nativeCaptures.some((event) => event.event === '$pageleave')).to.equal(true);
+		});
+	});
+
+	(isolatedNativeBuild ? it : it.skip)('Should preserve identity and masked replay input after logout', () => {
+		const identity = 'c8b4b3fa-a606-477a-9079-79833ea61558';
+		cy.intercept('GET', TelemetryPaths.getBrowserTelemetryBootstrapEndpoint(), {
+			body: generateResultDTO<BrowserTelemetryBootstrapDTO>({ apiHost: 'https://posthog.isolated.test', projectToken: 'phc_cypress', distinctId: identity, releaseVersion: 'isolated-test', releaseChannel: 'dev', runtimeEnvironment: 'Production', runtimeMode: 'docker', runtimeIdentifier: 'browser', platform: 'browser' }),
+		});
+		let authenticated = true;
+		cy.intercept('GET', AuthenticationPaths.authenticationStatusEndpoint(), (request) => request.reply({
+			statusCode: authenticated ? 200 : 401,
+			body: authenticated ? generateResultDTO<UserClaimsDTO>({ isLoggedIn: true, userName: 'admin', claims: ['Admin'] }) : generateFailedResultDTO({ statusCode: 401 }),
+		}));
+		cy.intercept('POST', AuthenticationPaths.appUserLogOutEndpoint(), (request) => {
+			authenticated = false;
+			request.reply({ body: generateResultDTO(null) });
+		}).as('logout');
+		cy.visit(route('/'));
+		cy.getCy('account-selector-btn').should('be.visible').click();
+		let session = '';
+		cy.wrap(null, { timeout: 15000 }).should(() => {
+			const pageview = nativeCaptures.find((event) => event.event === '$pageview');
+			expect(pageview?.properties.$session_id).to.be.a('string').and.not.equal('');
+			session = String(pageview?.properties.$session_id);
+		});
+		cy.contains('Logout').click();
+		cy.wait('@logout');
+		cy.getCy('login-username-input').should('be.visible').click().type('post-logout-input-secret').blur();
+		cy.wrap(null, { timeout: 30000 }).should(() => {
+			const { mutations } = loginInputEvidence(nativeCaptures);
+			expect(mutations.some((mutation) => mutation.text === '*'.repeat('post-logout-input-secret'.length)), 'native masked input after logout').to.equal(true);
+			expect(JSON.stringify(nativeCaptures.filter((event) => event.event === '$snapshot'))).not.to.contain('post-logout-input-secret');
+			const pageviews = nativeCaptures.filter((event) => event.event === '$pageview');
+			expect(pageviews.at(-1)?.properties.$current_url).to.contain('/login');
+			pageviews.forEach((event) => {
+				expect(event.properties.distinct_id).to.equal(identity);
+				expect(event.properties.$session_id).to.equal(session);
+			});
+		});
+	});
+
+	(isolatedNativeBuild ? it : it.skip)('Should collect masked native signals from public bootstrap before login', () => {
 		let authenticated = false;
 		const expectedExceptionMessage = 'isolated-native-exception-secret';
 		cy.on('uncaught:exception', (error) => error.message.includes(expectedExceptionMessage) ? false : undefined);
@@ -296,8 +477,9 @@ describe('Telemetry diagnostics', () => {
 			apiHost: 'https://posthog.isolated.test',
 			projectToken: 'phc_cypress',
 			distinctId: 'c8b4b3fa-a606-477a-9079-79833ea61558',
-			release: 'isolated-test',
-			environment: 'test',
+			releaseVersion: 'isolated-test',
+			releaseChannel: 'dev',
+			runtimeEnvironment: 'Production',
 			runtimeMode: 'docker',
 			runtimeIdentifier: 'browser',
 			platform: 'browser',
@@ -306,6 +488,7 @@ describe('Telemetry diagnostics', () => {
 		cy.intercept('GET', TelemetryPaths.getBrowserTelemetryBootstrapEndpoint(), {
 			statusCode: 200,
 			body: generateResultDTO(bootstrap),
+			headers: { 'cache-control': 'no-store' },
 		}).as('nativeBootstrap');
 		cy.intercept('GET', AuthenticationPaths.authenticationStatusEndpoint(), (request) => request.reply({
 			statusCode: authenticated ? 200 : 401,
@@ -337,7 +520,7 @@ describe('Telemetry diagnostics', () => {
 			}, 0);
 		});
 		cy.wrap(null, { timeout: 15000 }).should(() => {
-			const pageviews = nativeCaptures.filter((event) => event.event === '$pageview');
+			const pageviews = nativeCaptures.filter((event) => event.event === '$pageview' && String(event.properties.$current_url).endsWith('/login'));
 			expect(pageviews, 'fresh login startup pageview').to.have.length(1);
 			expect(pageviews[0]?.properties.$current_url, 'login startup pageview').to.contain('/login');
 			expect(pageviews[0]?.properties.distinct_id, 'public bootstrap identity').to.equal(bootstrap.distinctId);
@@ -358,7 +541,7 @@ describe('Telemetry diagnostics', () => {
 			probe.dataset.probeSecret = 'native-attribute-secret';
 			probe.setAttribute('role', 'button');
 			probe.textContent = 'native-rendered-text-secret';
-			probe.style.cssText = 'position:fixed;top:80px;left:20px;z-index:10000;cursor:pointer';
+			probe.style.cssText = 'position:fixed;top:80px;left:20px;z-index:10000;cursor:pointer;user-select:none';
 			const rageProbe = document.createElement('button');
 			rageProbe.type = 'button';
 			rageProbe.dataset.cy = 'native-rage-probe';
@@ -369,15 +552,6 @@ describe('Telemetry diagnostics', () => {
 		cy.getCy('native-rage-probe').should('be.visible').click().click().click();
 		cy.wrap(null, { timeout: 15000 }).should(() => {
 			expect(nativeCaptures.some((event) => event.event === '$rageclick'), 'rage interaction completed before dead-click probe').to.equal(true);
-		});
-		cy.getCy('native-interaction-probe').should('be.visible').then((probe) => {
-			const element = probe[0];
-			if (!element) throw new Error('native interaction probe was not found');
-			for (let click = 1; click <= 3; click++) {
-				element.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0, detail: click }));
-				element.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, button: 0, detail: click }));
-				element.dispatchEvent(new MouseEvent('click', { bubbles: true, button: 0, detail: click }));
-			}
 		});
 		cy.wrap(null, { timeout: 30000 }).should(() => {
 			const interactions = nativeCaptures.filter((event) => event.event === '$autocapture');
@@ -415,50 +589,9 @@ describe('Telemetry diagnostics', () => {
 					&& list.some((exception) => asRecord(exception)?.value === expectedExceptionMessage);
 			}), 'native original exception').to.equal(true);
 			expect(nativeCaptures.some((event) => event.event === '$rageclick'), 'native rageclick').to.equal(true);
-			expect(nativeCaptures.some((event) => event.event === '$dead_click'), 'native dead click').to.equal(true);
 			expect(nativeCaptures.some((event) => event.event === '$$heatmap'), 'native heatmap').to.equal(true);
-			const vitals = nativeCaptures.find((event) => event.event === '$web_vitals');
+			const vitals = nativeCaptures.find((event) => event.event === '$web_vitals' && typeof event.properties.$web_vitals_FCP_value === 'number');
 			expect(vitals?.properties.$web_vitals_FCP_value, 'native web vitals FCP').to.be.a('number').and.greaterThan(0);
-		});
-		let pageviewsBeforeReload = 0;
-		cy.then(() => {
-			pageviewsBeforeReload = nativeCaptures.filter((event) => event.event === '$pageview').length;
-		});
-		cy.reload();
-		cy.wait('@nativeBootstrap');
-		cy.getCy('account-selector-btn').should('be.visible');
-		cy.wrap(null, { timeout: 15000 }).should(() => {
-			const pageviews = nativeCaptures.filter((event) => event.event === '$pageview');
-			expect(pageviews).to.have.length(pageviewsBeforeReload + 1);
-			pageviews.forEach((event) => expect(event.properties.distinct_id, 'reload preserves bootstrap identity').to.equal(bootstrap.distinctId));
-			expect(nativeCaptures.some((event) => event.event === '$pageleave')).to.equal(true);
-		});
-		cy.getCy('account-selector-btn').click();
-		cy.contains('Logout').click();
-		cy.wait('@nativeLogout');
-		cy.getCy('login-submit-button').should('be.visible');
-		let capturesBeforeLogout = 0;
-		let sessionIdBeforeLogout = '';
-		cy.then(() => {
-			const sessionIds = nativeCaptures
-				.map((event) => event.properties.$session_id)
-				.filter((value): value is string => typeof value === 'string' && value.length > 0);
-			expect(sessionIds.length, 'session before logout').to.be.greaterThan(0);
-			sessionIdBeforeLogout = sessionIds[0]!;
-			expect([...new Set(sessionIds)], 'reload keeps the original session').to.deep.equal([sessionIdBeforeLogout]);
-			capturesBeforeLogout = nativeCaptures.length;
-		});
-		cy.getCy('login-username-input').clear().type('post-logout-input-secret');
-		cy.wrap(null, { timeout: 15000 }).should(() => {
-			const postLogoutCaptures = nativeCaptures.slice(capturesBeforeLogout);
-			expect(postLogoutCaptures.length, 'post-logout native capture').to.be.greaterThan(0);
-			postLogoutCaptures.forEach((event) => {
-				expect(event.properties.distinct_id, 'logout keeps identity').to.equal(bootstrap.distinctId);
-				expect(event.properties.$session_id, 'logout keeps session').to.equal(sessionIdBeforeLogout);
-			});
-			expect(JSON.stringify(postLogoutCaptures), 'post-logout input is masked').not.to.contain('post-logout-input-secret');
-			const { mutations } = loginInputEvidence(nativeCaptures);
-			expect(mutations.some((mutation) => mutation.text === '*'.repeat('post-logout-input-secret'.length)), 'replay continues masking inputs after logout').to.equal(true);
 		});
 	});
 });

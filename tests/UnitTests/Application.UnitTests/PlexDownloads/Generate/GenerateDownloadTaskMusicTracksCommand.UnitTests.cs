@@ -59,12 +59,12 @@ public class GenerateDownloadTaskMusicTracksCommandUnitTests
         // Assert
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
-        result.Value.ShouldBe(new DownloadTaskCreationReport { MusicTracks = 1 });
         var artistTask = await dbContext
             .DownloadTaskMusicArtists.Include(x => x.Children)
                 .ThenInclude(x => x.Children)
                     .ThenInclude(x => x.Children)
             .SingleAsync(CancellationToken);
+        result.Value.RootTaskIds.ShouldBe([artistTask.Id]);
         var albumTask = artistTask.Children.Single();
         var trackTask = albumTask.Children.Single();
         trackTask.PlexApiRatingKey.ShouldBe(track.PlexApiRatingKey);
@@ -151,7 +151,9 @@ public class GenerateDownloadTaskMusicTracksCommandUnitTests
         );
         first.IsSuccess.ShouldBeTrue();
         first.Errors.Count.ShouldBe(0);
-        first.Value.ShouldBe(new DownloadTaskCreationReport { MusicTracks = 1 });
+        first.Value.MusicTracks.ShouldBe(1);
+        var firstArtist = await dbContext.DownloadTaskMusicArtists.SingleAsync(CancellationToken);
+        first.Value.RootTaskIds.ShouldBe([firstArtist.Id]);
 
         // Act
         var repeated = await TestHandlerExecuteAsync<DownloadTaskCreationReport>(
@@ -164,6 +166,7 @@ public class GenerateDownloadTaskMusicTracksCommandUnitTests
         repeated.IsSuccess.ShouldBeTrue();
         repeated.Errors.Count.ShouldBe(0);
         repeated.Value.ShouldBe(new DownloadTaskCreationReport());
+        repeated.Value.RootTaskIds.ShouldBeEmpty();
         var files = await dbContext.DownloadTaskMusicTrackFiles.ToListAsync(CancellationToken);
         files.Count.ShouldBe(1);
         files.Single().PlexApiMediaId.ShouldBe(alternate.PlexApiMediaId);
@@ -256,12 +259,13 @@ public class GenerateDownloadTaskMusicTracksCommandUnitTests
         // Assert
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
-        result.Value.ShouldBe(new DownloadTaskCreationReport { MusicTracks = 1 });
+        result.Value.MusicTracks.ShouldBe(1);
         var artistTask = await dbContext
             .DownloadTaskMusicArtists.Include(x => x.Children)
                 .ThenInclude(x => x.Children)
                     .ThenInclude(x => x.Children)
             .SingleAsync(CancellationToken);
+        result.Value.RootTaskIds.ShouldBe([artistTask.Id]);
         artistTask.PlexApiRatingKey.ShouldBe(target.PlexAlbum!.PlexArtist!.PlexApiRatingKey);
         var albumTask = artistTask.Children.Single();
         albumTask.PlexApiRatingKey.ShouldBe(target.PlexAlbum.PlexApiRatingKey);
@@ -391,9 +395,12 @@ public class GenerateDownloadTaskMusicTracksCommandUnitTests
         // Assert
         first.IsSuccess.ShouldBeTrue();
         first.Errors.Count.ShouldBe(0);
-        first.Value.ShouldBe(new DownloadTaskCreationReport { MusicTracks = 2 });
+        first.Value.MusicTracks.ShouldBe(2);
+        var rootId = await dbContext.DownloadTaskMusicArtists.Select(x => x.Id).SingleAsync(CancellationToken);
+        first.Value.RootTaskIds.ShouldBe([rootId]);
         repeated.IsSuccess.ShouldBeTrue();
         repeated.Errors.Count.ShouldBe(0);
+        repeated.Value.RootTaskIds.ShouldBeEmpty();
         repeated.Value.ShouldBe(new DownloadTaskCreationReport());
 
         var files = await dbContext
@@ -468,7 +475,9 @@ public class GenerateDownloadTaskMusicTracksCommandUnitTests
         // Assert
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
-        result.Value.ShouldBe(new DownloadTaskCreationReport { MusicTracks = 1 });
+        result.Value.MusicTracks.ShouldBe(1);
+        var rootId = await IDbContext.DownloadTaskMusicArtists.Select(x => x.Id).SingleAsync(CancellationToken);
+        result.Value.RootTaskIds.ShouldBe([rootId]);
         (await IDbContext.DownloadTaskMusicTrackFiles.SingleAsync(CancellationToken)).PlexApiMediaId.ShouldBe(
             automatic.PlexApiMediaId
         );

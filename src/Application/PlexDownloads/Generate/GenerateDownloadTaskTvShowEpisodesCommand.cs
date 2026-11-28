@@ -93,6 +93,7 @@ public class GenerateDownloadTaskTvShowEpisodesCommandHandler
             _log.Here().Warning("No episodes found for media IDs: {MediaIds}", string.Join(", ", episodeIds));
         }
 
+        var rootTaskIds = new HashSet<Guid>();
         var downloadTasks = new List<DownloadTaskTvShowEpisodeFile>();
         foreach (var tvShowEpisode in plexEpisodes)
         {
@@ -116,6 +117,7 @@ public class GenerateDownloadTaskTvShowEpisodesCommandHandler
             {
                 return Result.Fail("Failed to create or retrieve TV Show download task for {Title}", plexTvShow.Title);
             }
+            rootTaskIds.Add(downloadTaskTvShow.Id);
 
             // Get or create season download task
             var downloadTaskTvShowSeason = GetOrCreateSeasonDownloadTask(plexSeason, downloadTaskTvShow);
@@ -200,7 +202,11 @@ public class GenerateDownloadTaskTvShowEpisodesCommandHandler
         await _dbContext.CreateDownloadClientLogs(logs, ct);
 
         return Result.Ok(
-            new DownloadTaskCreationReport { Episodes = downloadTasks.DistinctBy(x => x.ParentId).Count() }
+            new DownloadTaskCreationReport
+            {
+                Episodes = downloadTasks.DistinctBy(x => x.ParentId).Count(),
+                RootTaskIds = rootTaskIds.ToArray(),
+            }
         );
     }
 

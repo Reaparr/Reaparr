@@ -60,13 +60,15 @@ public class ReaparrWebApplicationFactory : WebApplicationFactory<Program>
     {
         builder.ConfigureContainer<ContainerBuilder>(autoFacBuilder =>
         {
-            autoFacBuilder.RegisterModule(new TestModule
-            {
-                MemoryDbName = MemoryDbName,
-                Config = _config,
-                BuildInfo = _buildInfo,
-                RuntimeInfo = _runtimeInfo,
-            });
+            autoFacBuilder.RegisterModule(
+                new TestModule
+                {
+                    MemoryDbName = MemoryDbName,
+                    Config = _config,
+                    BuildInfo = _buildInfo,
+                    RuntimeInfo = _runtimeInfo,
+                }
+            );
             // Allow per-test overrides last so they win.
             _config.OverrideServices?.Invoke(autoFacBuilder);
         });

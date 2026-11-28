@@ -58,6 +58,7 @@ public class GenerateDownloadTaskMusicTracksCommandHandler
         var createdTrackIds = new HashSet<int>();
         var artistTasks = new Dictionary<(int ServerId, int LibraryId, int RatingKey), DownloadTaskMusicArtist>();
         var createdFiles = new List<DownloadTaskMusicTrackFile>();
+        var touchedArtistTasks = new HashSet<DownloadTaskMusicArtist>();
         foreach (var selection in trackSelections)
         {
             var library = await _dbContext.PlexLibraries.GetAsync(selection.PlexLibraryId, cancellationToken);
@@ -136,6 +137,7 @@ public class GenerateDownloadTaskMusicTracksCommandHandler
                     }
                     artistTasks.Add(artistKey, artistTask);
                 }
+                touchedArtistTasks.Add(artistTask);
                 var albumTask = artistTask.Children.SingleOrDefault(x => x.PlexApiRatingKey == album.PlexApiRatingKey);
                 if (albumTask is null)
                 {
@@ -211,6 +213,12 @@ public class GenerateDownloadTaskMusicTracksCommandHandler
         _dbContext.DownloadTaskTrackFileLogs.AddRange(logs);
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        return Result.Ok(new DownloadTaskCreationReport { MusicTracks = createdTrackIds.Count });
+        return Result.Ok(
+            new DownloadTaskCreationReport
+            {
+                MusicTracks = createdTrackIds.Count,
+                RootTaskIds = touchedArtistTasks.Select(x => x.Id).ToArray(),
+            }
+        );
     }
 }

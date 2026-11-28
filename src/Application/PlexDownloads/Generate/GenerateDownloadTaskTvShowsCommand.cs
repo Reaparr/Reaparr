@@ -65,7 +65,6 @@ public class GenerateDownloadTaskTvShowsCommandHandler
             );
 
         var report = new DownloadTaskCreationReport();
-
         var request = command.Request;
 
         foreach (var downloadMediaDto in plexTvShowList)
@@ -112,9 +111,13 @@ public class GenerateDownloadTaskTvShowsCommandHandler
             }
 
             // Insert the tvShowDownloadTask into the database
-            report = report with { TvShows = report.TvShows + tvShowsToInsert.Count };
             _dbContext.DownloadTaskTvShow.AddRange(tvShowsToInsert);
             await _dbContext.SaveChangesAsync(cancellationToken);
+            report = report with
+            {
+                TvShows = report.TvShows + tvShowsToInsert.Count,
+                RootTaskIds = report.RootTaskIds.Concat(tvShowsToInsert.Select(x => x.Id)).Distinct().ToArray(),
+            };
 
             if (seasonsIds.Count == 0)
                 continue;

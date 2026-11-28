@@ -12,7 +12,154 @@ namespace Reaparr.Application.UnitTests;
 public class TelemetryUnitTests : BaseUnitTest
 {
     private const string IDENTITY = "5e2c5c48-aa0f-4f21-8c65-94e72b2bd389";
+    private const string IDENTITY_NAME = "Amber Meadow Marill · 5e2c5c48";
     private const string HOST = "https://telemetry.example.test";
+
+    [Test]
+    public async Task ShouldKeepCreatedNodeCountSeparateFromCorrelatedRoots_WhenCreationIsReported()
+    {
+        // Arrange
+        SetAppBuildInfo(build =>
+        {
+            build.TelemetryHost = HOST;
+            build.TelemetryProjectToken = "phc_test";
+        });
+        var rootTaskIds = new[] { Guid.Parse("2179daa8-5226-448e-b132-f407d3568b41") };
+        var report = new DownloadTaskCreationReport
+        {
+            TvShows = 1,
+            Seasons = 2,
+            Episodes = 5,
+            RootTaskIds = rootTaskIds,
+        };
+        var events = new List<(string Name, Dictionary<string, object> Properties)>();
+        var user = new Mock<IUserService>(MockBehavior.Strict);
+        using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
+        var client = new Mock<IPostHogClient>(MockBehavior.Strict);
+        user.Setup(x => x.GetTelemetryId()).ReturnsAsync(IDENTITY).Verifiable(Times.Once());
+        client
+            .Setup(x =>
+                x.Capture(IDENTITY, It.IsAny<string>(), It.IsAny<Dictionary<string, object>>(), null, null, null)
+            )
+            .Callback<string, string, Dictionary<string, object>?, GroupCollection?, object?, DateTimeOffset?>(
+                (_, name, properties, _, _, _) => events.Add((name, properties!))
+            )
+            .Returns(true)
+            .Verifiable(Times.Exactly(2));
+        using var telemetry = new Telemetry(
+            client.Object,
+            Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
+            user.Object,
+            source,
+            new UserSettings()
+        );
+        await telemetry.InitializeAsync();
+        events.Clear();
+
+        // Act
+        telemetry.DownloadCreationProcessed(new CreateDownloadTasksRequest([]), Result.Ok(report));
+
+        // Assert
+        var captured = events.Single();
+        captured.Name.ShouldBe(nameof(TelemetryEvent.DownloadCreationProcessed));
+        captured.Properties[TelemetryProperty.Outcome].ShouldBe(nameof(TelemetryOutcome.Succeeded));
+        captured.Properties[TelemetryProperty.Downloads.CreatedTotal].ShouldBe(8);
+        ((IEnumerable<Guid>)captured.Properties[TelemetryProperty.Downloads.RootTaskIds]).ShouldBe(rootTaskIds);
+        captured.Properties.ShouldNotContainKey(TelemetryProperty.Downloads.CompletionElapsedMilliseconds);
+        user.Verify();
+        client.Verify();
+    }
+
+    [Test]
+    [Arguments(DownloadStatus.Completed, true)]
+    [Arguments(DownloadStatus.Downloading, false)]
+    [Arguments(DownloadStatus.DownloadFinished, true)]
+    [Arguments(DownloadStatus.ServerUnreachable, false)]
+    [Arguments(DownloadStatus.Stopped, true)]
+    public async Task ShouldDescribePersistedRootWithoutInventingTerminalFailures_WhenLifecycleChanges(
+        DownloadStatus status,
+        bool attributed
+    )
+    {
+        // Arrange
+        SetAppBuildInfo(build =>
+        {
+            build.TelemetryHost = HOST;
+            build.TelemetryProjectToken = "phc_test";
+        });
+        var key = new DownloadTaskKey
+        {
+            Id = Guid.Parse("2179daa8-5226-448e-b132-f407d3568b41"),
+            Type = DownloadTaskType.Movie,
+            PlexServerId = 11,
+            PlexLibraryId = 22,
+        };
+        var createdAt = new DateTime(2026, 11, 20, 10, 0, 0, DateTimeKind.Utc);
+        var observedAt = createdAt.AddMinutes(12);
+        var integration = attributed
+            ? new IntegrationIdentity(IntegrationType.Radarr, Guid.Parse("06fdf6ef-e3fc-457d-b35f-e3619e498d47"))
+            : null;
+        var events = new List<(string Name, Dictionary<string, object> Properties)>();
+        var user = new Mock<IUserService>(MockBehavior.Strict);
+        using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
+        var client = new Mock<IPostHogClient>(MockBehavior.Strict);
+        user.Setup(x => x.GetTelemetryId()).ReturnsAsync(IDENTITY).Verifiable(Times.Once());
+        client
+            .Setup(x =>
+                x.Capture(IDENTITY, It.IsAny<string>(), It.IsAny<Dictionary<string, object>>(), null, null, null)
+            )
+            .Callback<string, string, Dictionary<string, object>?, GroupCollection?, object?, DateTimeOffset?>(
+                (_, name, properties, _, _, _) => events.Add((name, properties!))
+            )
+            .Returns(true)
+            .Verifiable(Times.Exactly(2));
+        using var telemetry = new Telemetry(
+            client.Object,
+            Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
+            user.Object,
+            source,
+            new UserSettings()
+        );
+        await telemetry.InitializeAsync();
+        events.Clear();
+
+        // Act
+        telemetry.DownloadLifecycleChanged(key, status, createdAt, integration, observedAt);
+
+        // Assert
+        var captured = events.Single();
+        captured.Name.ShouldBe(nameof(TelemetryEvent.DownloadLifecycleChanged));
+        captured.Properties[TelemetryProperty.TaskId].ShouldBe(key.Id);
+        captured.Properties[TelemetryProperty.Downloads.TaskType].ShouldBe(nameof(DownloadTaskType.Movie));
+        captured.Properties[TelemetryProperty.ServerId].ShouldBe(11);
+        captured.Properties[TelemetryProperty.LibraryId].ShouldBe(22);
+        captured.Properties[TelemetryProperty.Status].ShouldBe(status.ToString());
+        captured.Properties[TelemetryProperty.CreatedAt].ShouldBe(createdAt);
+        if (attributed)
+        {
+            captured.Properties[TelemetryProperty.IntegrationId].ShouldBe(integration!.Id);
+            captured.Properties[TelemetryProperty.Provider].ShouldBe(nameof(IntegrationType.Radarr));
+        }
+        else
+        {
+            captured.Properties.ShouldNotContainKey(TelemetryProperty.IntegrationId);
+            captured.Properties.ShouldNotContainKey(TelemetryProperty.Provider);
+        }
+        if (status == DownloadStatus.Completed)
+        {
+            captured.Properties[TelemetryProperty.Outcome].ShouldBe(nameof(TelemetryOutcome.Succeeded));
+            captured.Properties[TelemetryProperty.Downloads.CompletionElapsedMilliseconds].ShouldBe(720000d);
+        }
+        else
+        {
+            captured.Properties.ShouldNotContainKey(TelemetryProperty.Outcome);
+            captured.Properties.ShouldNotContainKey(TelemetryProperty.Downloads.CompletionElapsedMilliseconds);
+        }
+        user.Verify();
+        client.Verify();
+    }
 
     [Test]
     [Arguments(TelemetryDiagnosticOrigin.Backend, TelemetryProtocol.BackendOrigin)]
@@ -51,7 +198,7 @@ public class TelemetryUnitTests : BaseUnitTest
                 (_, name, properties, _, _, _) => events.Enqueue((name, properties!))
             )
             .Returns(true)
-            .Verifiable(Times.Exactly(2));
+            .Verifiable(Times.Exactly(3));
         client
             .Setup(x =>
                 x.Capture(
@@ -68,6 +215,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             new UserSettings()
@@ -78,7 +226,7 @@ public class TelemetryUnitTests : BaseUnitTest
             .Start();
         const string session = "0197af2c-8533-71b3-a351-80da30db084a";
         ITelemetry facade = telemetry;
-        using var requestContext = facade.BeginRequest(session);
+        var requestContext = facade.BeginRequest(session);
 
         // Act
         var diagnostic = telemetry.SendDiagnostic(origin);
@@ -90,18 +238,34 @@ public class TelemetryUnitTests : BaseUnitTest
         diagnostic.Successes.Single().Message.ShouldBe("Diagnostic event accepted for sending");
         var properties = events.Single(x => x.Name == TelemetryProtocol.DiagnosticEvent).Properties;
         properties[TelemetryProperty.Origin].ShouldBe(expectedOrigin);
-        properties[TelemetryProperty.Environment].ShouldBe(TelemetryProtocol.DevelopmentEnvironment);
-        properties[TelemetryProperty.Release].ShouldBe("0.40.0-dev.1");
+        properties[TelemetryProtocol.ReleaseChannel].ShouldBe(TelemetryProtocol.DevelopmentEnvironment);
+        properties[TelemetryProtocol.RuntimeEnvironment]
+            .ShouldBe(Mock.Container.Resolve<IAppRuntimeInfo>().DotnetEnvironment);
+        properties.ShouldNotContainKey("environment");
+        properties.ShouldNotContainKey("$internal_or_test_user");
+        properties[TelemetryProperty.ReleaseVersion].ShouldBe("0.40.0-dev.1");
         properties[TelemetryProperty.RuntimeMode].ShouldBe("docker");
         properties[TelemetryProperty.Platform].ShouldBe("Linux");
         properties[TelemetryProperty.RuntimeIdentifier].ShouldBe("linux-x64");
         properties[TelemetryProtocol.ProcessPersonProfile].ShouldBe(true);
-        properties[TelemetryProtocol.DisableGeoIp].ShouldBe(true);
+        properties[TelemetryProperty.TelemetryName].ShouldBe(IDENTITY_NAME);
+        request.GetTagItem(TelemetryProperty.TelemetryName).ShouldBe(IDENTITY_NAME);
+        properties.ShouldNotContainKey("$geoip_disable");
         properties[TelemetryProtocol.TraceId].ShouldBe(request.TraceId.ToHexString());
+
         properties[TelemetryProtocol.SpanId].ShouldBe(request.SpanId.ToHexString());
         properties[TelemetryProtocol.SessionId].ShouldBe(session);
         var businessEvent = events.Single(x => x.Name == nameof(TelemetryEvent.NotificationsCleared));
         businessEvent.Properties[TelemetryProperty.DeletedCount].ShouldBe(3);
+        // Completed request scopes must not attribute later background work to the browser session.
+        requestContext?.Dispose();
+        request.GetTagItem(TelemetryProtocol.DistinctIdTag).ShouldBeNull();
+        request.GetTagItem(TelemetryProperty.TelemetryName).ShouldBeNull();
+        request.GetTagItem(TelemetryProtocol.SessionIdTag).ShouldBeNull();
+        events.Clear();
+        telemetry.NotificationsCleared(1);
+        events.Single().Properties.ShouldNotContainKey(TelemetryProtocol.SessionId);
+        new { Queue = "scheduled" }.ToJobDataMap().ContainsKey(TelemetryProtocol.SessionIdMetadata).ShouldBeFalse();
         user.Verify();
         client.Verify();
         client.Verify(x => x.FlushAsync(), Times.Never());
@@ -109,7 +273,30 @@ public class TelemetryUnitTests : BaseUnitTest
     }
 
     [Test]
-    public async Task ShouldReturnBrowserBootstrap_WhenTelemetryIsConfiguredAndStartupIdentityIsCached()
+    public void ShouldProvideCompleteOfflineSpeciesVocabulary()
+    {
+        // Arrange / Act
+        var names = TelemetrySpecies.Names.Value;
+        var ordered = TelemetryNicknameDataset.OrderedSpecies.Value;
+        // Assert
+        names.Count.ShouldBe(1313);
+        names.ShouldContain("Bulbasaur");
+        names.ShouldContain("Pecharunt");
+        names.ShouldContain("Lamball");
+        names.ShouldContain("Chillet");
+        names.ShouldContain("Depresso");
+        names.ShouldNotContain("Eye of Cthulhu");
+        ordered.ShouldBe(names.Order(StringComparer.Ordinal).ToArray());
+    }
+
+    [Test]
+    [Arguments(IDENTITY, IDENTITY_NAME)]
+    [Arguments("5E2C5C48-AA0F-4F21-8C65-94E72B2BD389", IDENTITY_NAME)]
+    [Arguments("5e2c5c48-aa0f-4f21-8c65-94e72b2bd388", "Swift Cloud Goomy · 5e2c5c48")]
+    public async Task ShouldReturnBrowserBootstrap_WhenTelemetryIsConfiguredAndStartupIdentityIsCached(
+        string identity,
+        string expectedName
+    )
     {
         // Arrange
         SetAppBuildInfo(build =>
@@ -122,15 +309,17 @@ public class TelemetryUnitTests : BaseUnitTest
             build.CurrentOS = OperatingSystemPlatform.Linux;
         });
         var user = new Mock<IUserService>(MockBehavior.Strict);
-        user.Setup(x => x.GetTelemetryId()).ReturnsAsync(IDENTITY).Verifiable(Times.Once());
+        user.Setup(x => x.GetTelemetryId()).ReturnsAsync(identity).Verifiable(Times.Once());
         using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
         var client = new Mock<IPostHogClient>(MockBehavior.Strict);
         client
             .Setup(x =>
                 x.Capture(
-                    IDENTITY,
+                    identity,
                     TelemetryProtocol.ProfileEvent,
-                    It.IsAny<Dictionary<string, object>>(),
+                    It.Is<Dictionary<string, object>>(properties =>
+                        (string)properties[TelemetryProfileProperty.Name] == expectedName
+                    ),
                     null,
                     null,
                     null
@@ -141,6 +330,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             new UserSettings()
@@ -154,9 +344,10 @@ public class TelemetryUnitTests : BaseUnitTest
         bootstrap.ShouldNotBeNull();
         bootstrap.ApiHost.ShouldBe(HOST);
         bootstrap.ProjectToken.ShouldBe("phc_test");
-        bootstrap.DistinctId.ShouldBe(IDENTITY);
-        bootstrap.Release.ShouldBe("0.40.0-dev.1");
-        bootstrap.Environment.ShouldBe(TelemetryProtocol.DevelopmentEnvironment);
+        bootstrap.DistinctId.ShouldBe(identity);
+        bootstrap.ReleaseVersion.ShouldBe("0.40.0-dev.1");
+        bootstrap.ReleaseChannel.ShouldBe(TelemetryProtocol.DevelopmentEnvironment);
+        bootstrap.RuntimeEnvironment.ShouldBe(Mock.Container.Resolve<IAppRuntimeInfo>().DotnetEnvironment);
         bootstrap.RuntimeMode.ShouldBe("desktop");
         bootstrap.RuntimeIdentifier.ShouldBe("linux-x64");
         bootstrap.Platform.ShouldBe(nameof(OperatingSystemPlatform.Linux));
@@ -188,7 +379,13 @@ public class TelemetryUnitTests : BaseUnitTest
             PlexApiPartId = 66,
             VideoQuality = VideoQuality.HD,
         };
-        var report = new DownloadTaskCreationReport { Movies = 2, Episodes = 3 };
+        var rootTaskId = Guid.Parse("2ed7cf50-6983-45f4-9d91-bca1c401b292");
+        var report = new DownloadTaskCreationReport
+        {
+            Movies = 2,
+            Episodes = 3,
+            RootTaskIds = [rootTaskId],
+        };
         var associationFailed = Result.Fail<int>("association failed");
         var associationCancelled = Result.Fail<int>(new ExceptionalError(new OperationCanceledException()));
         var associationFailedWithoutCreation = Result.Fail<int>(
@@ -214,6 +411,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             new UserSettings()
@@ -315,6 +513,7 @@ public class TelemetryUnitTests : BaseUnitTest
         accepted[TelemetryProperty.Stage].ShouldBe(nameof(TelemetryStage.HashAssociation));
         accepted[TelemetryProperty.Integrations.AssociatedTaskCount].ShouldBe(5);
         accepted[TelemetryProperty.Integrations.CreatedTotal].ShouldBe(5);
+        ((IEnumerable<Guid>)accepted[TelemetryProperty.Downloads.RootTaskIds]).ShouldBe([rootTaskId]);
         var created = (Dictionary<string, object>)accepted[TelemetryProperty.Integrations.CreatedReport];
         created[TelemetryProperty.Integrations.CreatedMovies].ShouldBe(2);
         created[TelemetryProperty.Integrations.CreatedEpisodes].ShouldBe(3);
@@ -366,6 +565,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             new UserSettings()
@@ -412,6 +612,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             new UserSettings()
@@ -539,6 +740,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             settings
@@ -674,6 +876,7 @@ public class TelemetryUnitTests : BaseUnitTest
         var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             settings
@@ -717,9 +920,10 @@ public class TelemetryUnitTests : BaseUnitTest
             .GetProperty("10:00")
             .GetInt32()
             .ShouldBe(456);
+        firstProfile[TelemetryProfileProperty.Name].ShouldBe(IDENTITY_NAME);
         firstProfile
-            .Keys.All(key => key.StartsWith(TelemetryProfileProperty.SettingsPrefix, StringComparison.Ordinal))
-            .ShouldBeTrue();
+            .Keys.Where(key => key != TelemetryProfileProperty.Name)
+            .ShouldAllBe(key => key.StartsWith(TelemetryProfileProperty.SettingsPrefix, StringComparison.Ordinal));
         changes.Count.ShouldBe(countAtDisposal);
         user.Verify();
         client.Verify();
@@ -758,6 +962,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             new UserSettings()
@@ -790,6 +995,7 @@ public class TelemetryUnitTests : BaseUnitTest
             if (hasParent)
                 worker.TraceId.ShouldBe(parent.TraceId);
             worker.GetTagItem(TelemetryProtocol.DistinctIdTag).ShouldBe(IDENTITY);
+            worker.GetTagItem(TelemetryProperty.TelemetryName).ShouldBe(IDENTITY_NAME);
             worker.GetTagItem(TelemetryProtocol.SessionIdTag).ShouldBe(session);
             worker.GetTagItem(TelemetryProperty.JobName).ShouldBe("sync.17.42");
             worker.GetTagItem(TelemetryProperty.FireInstanceId).ShouldBe("fire-1");
@@ -862,6 +1068,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             new UserSettings()
@@ -934,6 +1141,10 @@ public class TelemetryUnitTests : BaseUnitTest
         ambient.Status.ShouldBe(ActivityStatusCode.Unset);
         var terminalLog = logs.Single(x => x.MessageTemplate.Text == capturedLogMessage);
         terminalLog.Properties[TelemetryProtocol.DistinctIdTag].ShouldBeOfType<ScalarValue>().Value.ShouldBe(IDENTITY);
+        terminalLog
+            .Properties[TelemetryProperty.TelemetryName]
+            .ShouldBeOfType<ScalarValue>()
+            .Value.ShouldBe(IDENTITY_NAME);
         terminalLog.Properties[TelemetryProtocol.SessionIdTag].ShouldBeOfType<ScalarValue>().Value.ShouldBe(session);
         terminalLog
             .Properties[TelemetryProperty.JobName]
@@ -947,6 +1158,7 @@ public class TelemetryUnitTests : BaseUnitTest
         restoredLog.Properties[TelemetryProperty.JobName].ShouldBeOfType<ScalarValue>().Value.ShouldBe("scheduler");
         restoredLog.Properties.ContainsKey(TelemetryProtocol.SessionIdTag).ShouldBeFalse();
         restoredLog.Properties.ContainsKey(TelemetryProtocol.DistinctIdTag).ShouldBeFalse();
+        restoredLog.Properties.ContainsKey(TelemetryProperty.TelemetryName).ShouldBeFalse();
         user.Verify();
         client.Verify();
         executor.Verify();
@@ -986,6 +1198,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             new UserSettings()
@@ -1070,6 +1283,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             new UserSettings()
@@ -1159,6 +1373,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             new UserSettings()
@@ -1250,6 +1465,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             new UserSettings()
@@ -1350,6 +1566,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             new UserSettings()
@@ -1440,6 +1657,7 @@ public class TelemetryUnitTests : BaseUnitTest
         };
         var photoRequest = new PhotoSearchTelemetryDTO
         {
+            Search = "  \"Café au lait\"   café  résumé 😀 ",
             Page = 3,
             PageSize = 40,
             Sort = SortType.Title,
@@ -1458,6 +1676,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             new UserSettings()
@@ -1467,11 +1686,7 @@ public class TelemetryUnitTests : BaseUnitTest
 
         // Act
         telemetry.MediaQueryFinished(mediaRequest, "owned", Result.Fail<PlexMediaStatisticsDTO>("media query failed"));
-        telemetry.PhotoSearchFinished(
-            photoRequest,
-            ["cafe", "sunset"],
-            Result.Fail<PhotoAssetPageDTO>("photo search failed")
-        );
+        telemetry.PhotoSearchFinished(photoRequest, Result.Fail<PhotoAssetPageDTO>("photo search failed"));
         telemetry.LibraryRefreshRequested(
             new LibraryRefreshTelemetryDTO
             {
@@ -1506,8 +1721,10 @@ public class TelemetryUnitTests : BaseUnitTest
         );
         telemetry.LibrarySyncCancellationProcessed(42, Result.Ok(), interrupted: false, noOp: true);
         telemetry.PhotoSearchFinished(
-            photoRequest,
-            [],
+            photoRequest with
+            {
+                Search = " \"quoted phrase\"  repeated   spaces résumé 😀 ",
+            },
             ResultExtensions
                 .Create400BadRequestResult("Search requires an effective title term")
                 .ToResult<PhotoAssetPageDTO>()
@@ -1528,16 +1745,15 @@ public class TelemetryUnitTests : BaseUnitTest
             ]);
         var media = events[0].Properties;
         media[TelemetryProperty.MediaType].ShouldBe(nameof(PlexMediaType.Movie));
-        media[TelemetryProperty.Libraries.Search].ShouldBe("alpha beta");
         media[TelemetryProperty.Libraries.Filter].ShouldBe("owned");
         media[TelemetryProperty.Page].ShouldBe(2);
         media[TelemetryProperty.PageSize].ShouldBe(30);
-        media[TelemetryProperty.Outcome].ShouldBe(nameof(TelemetryOutcome.Rejected));
+        media[TelemetryProperty.Libraries.Search].ShouldBe("  alpha   beta ");
         media.ContainsKey(TelemetryProperty.TotalCount).ShouldBeFalse();
         media.ContainsKey(TelemetryProperty.Libraries.MediaCount).ShouldBeFalse();
         media.ContainsKey(TelemetryProperty.Libraries.TotalMediaSize).ShouldBeFalse();
         var photo = events[1].Properties;
-        photo[TelemetryProperty.Query].ShouldBe("cafe sunset");
+        photo[TelemetryProperty.Query].ShouldBe("  \"Café au lait\"   café  résumé 😀 ");
         photo[TelemetryProperty.Page].ShouldBe(3);
         photo[TelemetryProperty.PageSize].ShouldBe(40);
         photo[TelemetryProperty.Libraries.Sort].ShouldBe(nameof(SortType.Title));
@@ -1580,7 +1796,7 @@ public class TelemetryUnitTests : BaseUnitTest
         cancellation[TelemetryProperty.Outcome].ShouldBe(nameof(TelemetryOutcome.NoOp));
         cancellation.ContainsKey(TelemetryProperty.CreatedAt).ShouldBeFalse();
         var rejectedPhoto = events[7].Properties;
-        rejectedPhoto[TelemetryProperty.Query].ShouldBe(string.Empty);
+        rejectedPhoto[TelemetryProperty.Query].ShouldBe(" \"quoted phrase\"  repeated   spaces résumé 😀 ");
         rejectedPhoto[TelemetryProperty.Outcome].ShouldBe(nameof(TelemetryOutcome.Rejected));
         rejectedPhoto.ContainsKey(TelemetryProperty.ReturnedItemCount).ShouldBeFalse();
         user.Verify();
@@ -1614,6 +1830,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             new UserSettings()
@@ -1708,6 +1925,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             new UserSettings()
@@ -1770,6 +1988,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             new UserSettings()
@@ -1907,6 +2126,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             new UserSettings()
@@ -2011,6 +2231,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             new UserSettings()
@@ -2077,6 +2298,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             new UserSettings()
@@ -2147,6 +2369,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             new UserSettings()
@@ -2214,6 +2437,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             new UserSettings()
@@ -2295,6 +2519,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             new UserSettings()
@@ -2374,6 +2599,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             new UserSettings()
@@ -2482,6 +2708,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             new UserSettings()

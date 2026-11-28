@@ -189,7 +189,13 @@ public class GenerateDownloadTaskMoviesCommandHandler
         _dbContext.DownloadTaskMovieFileLogs.AddRange(logs);
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        return Result.Ok(new DownloadTaskCreationReport { Movies = allDownloadTasks.Count });
+        return Result.Ok(
+            new DownloadTaskCreationReport
+            {
+                Movies = allDownloadTasks.Count,
+                RootTaskIds = allDownloadTasks.Select(x => x.Id).ToArray(),
+            }
+        );
     }
 
     /// <summary>

@@ -37,8 +37,10 @@ public class GenerateDownloadTaskPhotoImagesCommandUnitTests
         // Assert
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
-        result.Value.ShouldBe(new DownloadTaskCreationReport { PhotoFolders = 1, PhotoImages = 1 });
         var folder = await dbContext.DownloadTaskPhotoFolders.Include(x => x.Files).SingleAsync(CancellationToken);
+        result.Value.PhotoFolders.ShouldBe(1);
+        result.Value.PhotoImages.ShouldBe(1);
+        result.Value.RootTaskIds.ShouldBe([folder.Id]);
         var file = folder.Files.Single();
         folder.ParentId.ShouldBeNull();
         folder.PlexServerId.ShouldBe(media.PlexServerId);
@@ -102,13 +104,14 @@ public class GenerateDownloadTaskPhotoImagesCommandUnitTests
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
-        result.Errors.Count.ShouldBe(0);
-        result.Value.ShouldBe(new DownloadTaskCreationReport { PhotoFolders = 1, PhotoImages = 1 });
+        result.Value.PhotoFolders.ShouldBe(1);
+        result.Value.PhotoImages.ShouldBe(1);
         (await dbContext.PlexPhotoAlbumMemberships.CountAsync(CancellationToken)).ShouldBe(0);
         (await dbContext.PlexPhotoFolders.Select(x => x.RelativePath).ToListAsync(CancellationToken)).ShouldBe([""]);
         var folder = await dbContext.DownloadTaskPhotoFolders.Include(x => x.Files).SingleAsync(CancellationToken);
         folder.ParentId.ShouldBeNull();
         folder.RelativePath.ShouldBeEmpty();
+        result.Value.RootTaskIds.ShouldBe([folder.Id]);
         folder.Title.ShouldBe(expectedRootName);
         folder.Files.Count.ShouldBe(1);
         var file = folder.Files.Single();
@@ -172,14 +175,15 @@ public class GenerateDownloadTaskPhotoImagesCommandUnitTests
         );
 
         // Assert
-        result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
-        result.Value.ShouldBe(new DownloadTaskCreationReport { PhotoFolders = 1, PhotoImages = 2 });
+        result.Value.PhotoFolders.ShouldBe(1);
+        result.Value.PhotoImages.ShouldBe(2);
         (
             await dbContext.PlexPhotoFolders.Select(x => x.RelativePath).OrderBy(x => x).ToListAsync(CancellationToken)
         ).ShouldBe(["", "Old"]);
         var folder = await dbContext.DownloadTaskPhotoFolders.Include(x => x.Files).SingleAsync(CancellationToken);
         folder.RelativePath.ShouldBeEmpty();
+        result.Value.RootTaskIds.ShouldBe([folder.Id]);
         folder
             .Files.Select(x => (x.PlexApiPartId, x.DirectoryMeta.PhotoFolder, x.FileName))
             .OrderBy(x => x.PlexApiPartId)
@@ -218,15 +222,16 @@ public class GenerateDownloadTaskPhotoImagesCommandUnitTests
             )
         );
 
-        // Assert
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
-        result.Value.ShouldBe(new DownloadTaskCreationReport { PhotoFolders = 2, PhotoImages = 2 });
+        result.Value.PhotoFolders.ShouldBe(2);
+        result.Value.PhotoImages.ShouldBe(2);
         (
             await dbContext.PlexPhotoFolders.Select(x => x.RelativePath).OrderBy(x => x).ToListAsync(CancellationToken)
         ).ShouldBe(["", "Trips"]);
         var taskFolders = await dbContext.DownloadTaskPhotoFolders.Include(x => x.Files).ToListAsync(CancellationToken);
         taskFolders.Select(x => x.RelativePath).OrderBy(x => x).ShouldBe(["", "Trips"]);
+        result.Value.RootTaskIds.Order().ShouldBe(taskFolders.Where(x => x.ParentId is null).Select(x => x.Id).Order());
         var expectedPaths = new[]
         {
             ($"Home Plex - Photos/Trips/{files[0].OriginalFilename.GetFileName()}", files[0].Size),
@@ -366,7 +371,8 @@ public class GenerateDownloadTaskPhotoImagesCommandUnitTests
         {
             result.IsSuccess.ShouldBeTrue();
             result.Errors.Count.ShouldBe(0);
-            result.Value.ShouldBe(new DownloadTaskCreationReport { PhotoFolders = 1, PhotoImages = files.Count });
+            result.Value.PhotoFolders.ShouldBe(1);
+            result.Value.PhotoImages.ShouldBe(files.Count);
             var queued = await dbContext
                 .DownloadTaskPhotoImageFiles.OrderBy(x => x.PlexApiRatingKey)
                 .ToListAsync(CancellationToken);
@@ -375,6 +381,7 @@ public class GenerateDownloadTaskPhotoImagesCommandUnitTests
                 .ShouldBe(files.OrderBy(x => x.PlexApiRatingKey).Select(x => (x.PlexApiRatingKey, false)));
             var folder = await dbContext.DownloadTaskPhotoFolders.SingleAsync(CancellationToken);
             queued.Select(x => x.ParentId).Distinct().ShouldBe([folder.Id]);
+            result.Value.RootTaskIds.ShouldBe([folder.Id]);
             var logs = await dbContext.DownloadTaskPhotoImageFileLogs.ToListAsync(CancellationToken);
             logs.Select(x => x.DownloadTaskFileId).Order().ShouldBe(queued.Select(x => x.Id).Order());
         }
@@ -470,8 +477,12 @@ public class GenerateDownloadTaskPhotoImagesCommandUnitTests
         );
 
         // Assert
-        first.Value.ShouldBe(new DownloadTaskCreationReport { PhotoFolders = 1, PhotoImages = 1 });
+        first.Value.PhotoFolders.ShouldBe(1);
+        first.Value.PhotoImages.ShouldBe(1);
         second.Value.ShouldBe(new DownloadTaskCreationReport());
+        first.Value.RootTaskIds.ShouldBe([
+            (await IDbContext.DownloadTaskPhotoFolders.SingleAsync(CancellationToken)).Id,
+        ]);
         (await IDbContext.DownloadTaskPhotoFolders.CountAsync(CancellationToken)).ShouldBe(1);
         (await IDbContext.DownloadTaskPhotoImageFiles.CountAsync(CancellationToken)).ShouldBe(1);
         (await IDbContext.DownloadTaskPhotoImageFileLogs.CountAsync(CancellationToken)).ShouldBe(1);
@@ -525,8 +536,12 @@ public class GenerateDownloadTaskPhotoImagesCommandUnitTests
         var second = await Queue("/equivalent-target/./");
 
         // Assert
-        first.Value.ShouldBe(new DownloadTaskCreationReport { PhotoFolders = 1, PhotoImages = 1 });
+        first.Value.PhotoFolders.ShouldBe(1);
+        first.Value.PhotoImages.ShouldBe(1);
         second.Value.ShouldBe(new DownloadTaskCreationReport());
+        first.Value.RootTaskIds.ShouldBe([
+            (await dbContext.DownloadTaskPhotoFolders.SingleAsync(CancellationToken)).Id,
+        ]);
         (await dbContext.DownloadTaskPhotoFolders.CountAsync(CancellationToken)).ShouldBe(1);
         (await dbContext.DownloadTaskPhotoImageFiles.CountAsync(CancellationToken)).ShouldBe(1);
         var file = await dbContext.DownloadTaskPhotoImageFiles.SingleAsync(CancellationToken);
@@ -659,8 +674,8 @@ public class GenerateDownloadTaskPhotoImagesCommandUnitTests
         );
 
         // Assert
-        result.Value.ShouldBe(new DownloadTaskCreationReport());
         (await dbContext.DownloadTaskPhotoFolders.CountAsync(CancellationToken)).ShouldBe(0);
+        result.Value.RootTaskIds.ShouldBeEmpty();
         (await dbContext.DownloadTaskPhotoImageFiles.CountAsync(CancellationToken)).ShouldBe(0);
         (await dbContext.DownloadTaskPhotoImageFileLogs.CountAsync(CancellationToken)).ShouldBe(0);
     }
@@ -712,7 +727,11 @@ public class GenerateDownloadTaskPhotoImagesCommandUnitTests
         }
         else
         {
-            result.Value.ShouldBe(new DownloadTaskCreationReport { PhotoFolders = 1, PhotoImages = 2 });
+            result.Value.PhotoFolders.ShouldBe(1);
+            result.Value.PhotoImages.ShouldBe(2);
+            result.Value.RootTaskIds.ShouldBe([
+                (await dbContext.DownloadTaskPhotoFolders.SingleAsync(CancellationToken)).Id,
+            ]);
             (await dbContext.DownloadTaskPhotoImageFiles.Select(x => x.FileName).ToListAsync(CancellationToken))
                 .OrderBy(x => x, StringComparer.Ordinal)
                 .ShouldBe(["A.jpg", "a.jpg"]);
@@ -771,8 +790,12 @@ public class GenerateDownloadTaskPhotoImagesCommandUnitTests
         );
 
         // Assert
-        first.Value.ShouldBe(new DownloadTaskCreationReport { PhotoFolders = 1, PhotoImages = 1 });
+        first.Value.PhotoFolders.ShouldBe(1);
+        first.Value.PhotoImages.ShouldBe(1);
         second.Value.ShouldBe(new DownloadTaskCreationReport());
+        first.Value.RootTaskIds.ShouldBe([
+            (await dbContext.DownloadTaskPhotoFolders.SingleAsync(CancellationToken)).Id,
+        ]);
         (await dbContext.DownloadTaskPhotoImageFiles.CountAsync(CancellationToken)).ShouldBe(1);
         (await dbContext.DownloadTaskPhotoImageFiles.SingleAsync(CancellationToken)).DirectoryMeta.PhotoFolder.ShouldBe(
             capturedPath

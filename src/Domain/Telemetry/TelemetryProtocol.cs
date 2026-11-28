@@ -19,7 +19,6 @@ public static class TelemetryProtocol
     public const string ExceptionEvent = "$exception";
     public const string PersonProperties = "$set";
     public const string ProcessPersonProfile = "$process_person_profile";
-    public const string DisableGeoIp = "$geoip_disable";
     public const string TraceId = "$trace_id";
     public const string SpanId = "$span_id";
     public const string SessionId = "$session_id";

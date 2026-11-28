@@ -137,6 +137,7 @@ public class TelemetryLogConfigUnitTests : BaseUnitTest
                 }
             );
             builder.Services.AddSingleton(build.Object);
+            builder.Services.AddSingleton(runtime);
             builder.Services.AddScoped(_ => user.Object);
             builder.Services.AddSingleton(_ => new ActivitySource(TelemetryProtocol.ActivitySourceName));
             builder.Services.AddSingleton<IUserSettings>(new UserSettings());
@@ -326,6 +327,7 @@ public class TelemetryLogConfigUnitTests : BaseUnitTest
                 }
             );
             builder.Services.AddSingleton(build.Object);
+            builder.Services.AddSingleton(runtime);
             builder.Services.AddScoped(_ => user.Object);
             builder.Services.AddSingleton(_ => new ActivitySource(TelemetryProtocol.ActivitySourceName));
             builder.Services.AddSingleton<IUserSettings>(new UserSettings());

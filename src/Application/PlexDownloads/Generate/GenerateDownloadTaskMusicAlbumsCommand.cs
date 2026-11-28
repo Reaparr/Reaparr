@@ -53,6 +53,7 @@ public class GenerateDownloadTaskMusicAlbumsCommandHandler
             .Debug("Creating {AlbumCount} Music album download tasks", albumSelections.Sum(x => x.MediaIds.Count));
         var artistTasks = new Dictionary<(int ServerId, int LibraryId, int RatingKey), DownloadTaskMusicArtist>();
 
+        var touchedArtistTasks = new HashSet<DownloadTaskMusicArtist>();
         var createdAlbums = 0;
         var trackSelections = new List<DownloadMediaDTO>();
         foreach (var selection in albumSelections)
@@ -110,6 +111,7 @@ public class GenerateDownloadTaskMusicAlbumsCommandHandler
                     }
                     artistTasks.Add(artistKey, artistTask);
                 }
+                touchedArtistTasks.Add(artistTask);
                 var albumTask = artistTask.Children.SingleOrDefault(x => x.PlexApiRatingKey == album.PlexApiRatingKey);
                 if (albumTask is null)
                 {
@@ -146,7 +148,13 @@ public class GenerateDownloadTaskMusicAlbumsCommandHandler
 
         await _dbContext.SaveChangesAsync(cancellationToken);
         if (trackSelections.Count == 0)
-            return Result.Ok(new DownloadTaskCreationReport { MusicAlbums = createdAlbums });
+            return Result.Ok(
+                new DownloadTaskCreationReport
+                {
+                    MusicAlbums = createdAlbums,
+                    RootTaskIds = touchedArtistTasks.Select(x => x.Id).ToArray(),
+                }
+            );
 
         var tracksResult = await _commandExecutor.Send(
             new GenerateDownloadTaskMusicTracksCommand(
@@ -162,6 +170,12 @@ public class GenerateDownloadTaskMusicAlbumsCommandHandler
         if (tracksResult.IsFailed)
             return tracksResult.LogIfFailed();
 
-        return Result.Ok(new DownloadTaskCreationReport { MusicAlbums = createdAlbums } + tracksResult.Value);
+        return Result.Ok(
+            new DownloadTaskCreationReport
+            {
+                MusicAlbums = createdAlbums,
+                RootTaskIds = touchedArtistTasks.Select(x => x.Id).ToArray(),
+            } + tracksResult.Value
+        );
     }
 }

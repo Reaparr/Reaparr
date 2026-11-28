@@ -15,10 +15,13 @@ public sealed record BrowserTelemetryBootstrapDTO
     public required string DistinctId { get; init; }
 
     /// <summary>Application informational release version.</summary>
-    public required string Release { get; init; }
+    public required string ReleaseVersion { get; init; }
 
-    /// <summary>Application release environment.</summary>
-    public required string Environment { get; init; }
+    /// <summary>Application release channel.</summary>
+    public required string ReleaseChannel { get; init; }
+
+    /// <summary>.NET runtime environment.</summary>
+    public required string RuntimeEnvironment { get; init; }
 
     /// <summary>Application runtime mode.</summary>
     public required string RuntimeMode { get; init; }

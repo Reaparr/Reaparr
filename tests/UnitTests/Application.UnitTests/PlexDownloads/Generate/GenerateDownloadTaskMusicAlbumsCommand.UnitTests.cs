@@ -45,10 +45,13 @@ public partial class GenerateDownloadTaskMusicAlbumsCommandUnitTests
         // Assert
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
-        result.Value.ShouldBe(new DownloadTaskCreationReport { MusicAlbums = 1, MusicTracks = 2 });
+        result.Value.MusicAlbums.ShouldBe(1);
+        result.Value.MusicTracks.ShouldBe(2);
+        result.Value.Total.ShouldBe(3);
         var artistTask = await IDbContext
             .DownloadTaskMusicArtists.Include(x => x.Children)
             .SingleAsync(CancellationToken);
+        result.Value.RootTaskIds.ShouldBe([artistTask.Id]);
         artistTask.PlexApiRatingKey.ShouldBe(album.PlexArtist!.PlexApiRatingKey);
         artistTask.Children.Single().PlexApiRatingKey.ShouldBe(album.PlexApiRatingKey);
         forwarded.ShouldNotBeNull();
@@ -171,7 +174,8 @@ public partial class GenerateDownloadTaskMusicAlbumsCommandUnitTests
         // Assert
         first.IsSuccess.ShouldBeTrue();
         first.Errors.Count.ShouldBe(0);
-        first.Value.ShouldBe(new DownloadTaskCreationReport { MusicAlbums = 1, MusicTracks = 2 });
+        first.Value.MusicAlbums.ShouldBe(1);
+        first.Value.MusicTracks.ShouldBe(2);
         repeated.IsSuccess.ShouldBeTrue();
         repeated.Errors.Count.ShouldBe(0);
         repeated.Value.ShouldBe(new DownloadTaskCreationReport());
@@ -267,7 +271,11 @@ public partial class GenerateDownloadTaskMusicAlbumsCommandUnitTests
         // Assert
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
-        result.Value.ShouldBe(new DownloadTaskCreationReport());
+        result.Value.MusicAlbums.ShouldBe(0);
+        result.Value.MusicTracks.ShouldBe(0);
+        result.Value.RootTaskIds.ShouldBe([
+            await dbContext.DownloadTaskMusicArtists.Select(x => x.Id).SingleAsync(CancellationToken),
+        ]);
         (await dbContext.DownloadTaskMusicArtists.CountAsync(CancellationToken)).ShouldBe(1);
         (await dbContext.DownloadTaskMusicAlbums.CountAsync(CancellationToken)).ShouldBe(1);
         Mock.Mock<ICommandExecutor>().Verify();

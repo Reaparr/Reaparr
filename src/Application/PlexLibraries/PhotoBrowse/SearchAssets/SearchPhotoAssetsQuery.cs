@@ -56,7 +56,7 @@ public sealed class SearchPhotoAssetsQueryHandler : ICommandHandler<SearchPhotoA
             var invalid = ResultExtensions
                 .Create400BadRequestResult("Search query must contain an effective title term.")
                 .ToResult<PhotoAssetPageDTO>();
-            _telemetry.PhotoSearchFinished(ToTelemetryDTO(query), searchTerms, invalid);
+            _telemetry.PhotoSearchFinished(ToTelemetryDTO(query), invalid);
             return invalid;
         }
 
@@ -65,7 +65,7 @@ public sealed class SearchPhotoAssetsQueryHandler : ICommandHandler<SearchPhotoA
         if (scopeResult.IsCancelledOrFailed)
         {
             var failed = scopeResult.ToResult<PhotoAssetPageDTO>();
-            _telemetry.PhotoSearchFinished(ToTelemetryDTO(query), searchTerms, failed);
+            _telemetry.PhotoSearchFinished(ToTelemetryDTO(query), failed);
             return failed;
         }
 
@@ -87,13 +87,14 @@ public sealed class SearchPhotoAssetsQueryHandler : ICommandHandler<SearchPhotoA
                 TotalBytes = totalBytes,
             }
         );
-        _telemetry.PhotoSearchFinished(ToTelemetryDTO(query), searchTerms, result);
+        _telemetry.PhotoSearchFinished(ToTelemetryDTO(query), result);
         return result;
     }
 
     private static PhotoSearchTelemetryDTO ToTelemetryDTO(SearchPhotoAssetsQuery query) =>
         new()
         {
+            Search = query.Query,
             Page = query.Page,
             PageSize = query.PageSize,
             Sort = query.Sort,

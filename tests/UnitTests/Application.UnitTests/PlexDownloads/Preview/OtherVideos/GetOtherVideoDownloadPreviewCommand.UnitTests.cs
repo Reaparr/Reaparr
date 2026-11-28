@@ -82,11 +82,12 @@ public class GetOtherVideoDownloadPreviewCommandUnitTests : BaseCommandUnitTest<
         );
         created.IsSuccess.ShouldBeTrue();
         created.Errors.Count.ShouldBe(0);
-        created.Value.ShouldBe(new DownloadTaskCreationReport { OtherVideos = 1 });
         var task = await dbContext
             .DownloadTaskOtherVideos.AsTracking()
             .Include(x => x.Children)
             .SingleAsync(CancellationToken);
+        created.Value.ShouldBe(new DownloadTaskCreationReport { OtherVideos = 1 } with { RootTaskIds = created.Value.RootTaskIds });
+        created.Value.RootTaskIds.ShouldBe([task.Id]);
         var data = video.MediaDataList.Single();
         task.PlexApiRatingKey.ShouldBe(video.PlexApiRatingKey);
         task.PlexServerId.ShouldBe(video.PlexServerId);

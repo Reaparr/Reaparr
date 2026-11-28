@@ -28,8 +28,8 @@ public static partial class FakeData
             }
         );
 
-    public static Faker<PlexOtherVideo> GetPlexOtherVideos(Seed seed, Action<FakeDataConfig>? options = null)
-        => GetPlexOtherVideos(seed, FakeDataConfig.FromOptions(options));
+    public static Faker<PlexOtherVideo> GetPlexOtherVideos(Seed seed, Action<FakeDataConfig>? options = null) =>
+        GetPlexOtherVideos(seed, FakeDataConfig.FromOptions(options));
 
     internal static Faker<PlexOtherVideo> GetPlexOtherVideos(Seed seed, FakeDataConfig config)
     {
@@ -60,10 +60,7 @@ public static partial class FakeData
         Action<FakeDataConfig>? options = null
     ) => GetPlexOtherVideoMediaData(seed, FakeDataConfig.FromOptions(options));
 
-    private static Faker<PlexOtherVideoMediaData> GetPlexOtherVideoMediaData(
-        Seed seed,
-        FakeDataConfig config
-    )
+    private static Faker<PlexOtherVideoMediaData> GetPlexOtherVideoMediaData(Seed seed, FakeDataConfig config)
     {
         return _plexOtherVideoMediaData
             .Clone() // Clone to isolate per-call size rules and caller overrides.

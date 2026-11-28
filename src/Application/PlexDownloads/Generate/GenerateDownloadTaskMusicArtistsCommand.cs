@@ -61,6 +61,7 @@ public class GenerateDownloadTaskMusicArtistsCommandHandler
         _log.Here()
             .Debug("Creating {ArtistCount} Music artist download tasks", artistSelections.Sum(x => x.MediaIds.Count));
         var createdArtists = 0;
+        var createdArtistTasks = new List<DownloadTaskMusicArtist>();
         var albumSelections = new List<DownloadMediaDTO>();
         foreach (var selection in artistSelections)
         {
@@ -107,7 +108,9 @@ public class GenerateDownloadTaskMusicArtistsCommandHandler
                     );
                 if (!existing)
                 {
-                    _dbContext.DownloadTaskMusicArtists.Add(artist.MapToDownloadTask(null));
+                    var artistTask = artist.MapToDownloadTask(null);
+                    _dbContext.DownloadTaskMusicArtists.Add(artistTask);
+                    createdArtistTasks.Add(artistTask);
                     createdArtists++;
                 }
 
@@ -150,7 +153,13 @@ public class GenerateDownloadTaskMusicArtistsCommandHandler
         if (createdArtists > 0)
             await _dbContext.SaveChangesAsync(cancellationToken);
         if (albumSelections.Count == 0)
-            return Result.Ok(new DownloadTaskCreationReport { MusicArtists = createdArtists });
+            return Result.Ok(
+                new DownloadTaskCreationReport
+                {
+                    MusicArtists = createdArtists,
+                    RootTaskIds = createdArtistTasks.Select(x => x.Id).ToArray(),
+                }
+            );
 
         var albumsResult = await _commandExecutor.Send(
             new GenerateDownloadTaskMusicAlbumsCommand(
@@ -166,6 +175,12 @@ public class GenerateDownloadTaskMusicArtistsCommandHandler
         if (albumsResult.IsFailed)
             return albumsResult.LogIfFailed();
 
-        return Result.Ok(new DownloadTaskCreationReport { MusicArtists = createdArtists } + albumsResult.Value);
+        return Result.Ok(
+            new DownloadTaskCreationReport
+            {
+                MusicArtists = createdArtists,
+                RootTaskIds = createdArtistTasks.Select(x => x.Id).ToArray(),
+            } + albumsResult.Value
+        );
     }
 }

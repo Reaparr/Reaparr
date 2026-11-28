@@ -69,6 +69,7 @@ public class TelemetryNativeCaptureUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             Mock.Mock<IUserService>().Object,
             source,
             settings
@@ -139,8 +140,10 @@ public class TelemetryNativeCaptureUnitTests : BaseUnitTest
             .GetString()
             .ShouldBe("http://192.168.1.5:5000/reaparr?section=42");
         profile.GetRawText().ShouldNotContain("excluded-legacy-api-key");
+        profile.GetProperty(TelemetryProfileProperty.Name).GetString().ShouldNotBeNullOrWhiteSpace();
         profile
             .EnumerateObject()
+            .Where(property => property.Name != TelemetryProfileProperty.Name)
             .All(property =>
                 property.Name.StartsWith(TelemetryProfileProperty.SettingsPrefix, StringComparison.Ordinal)
             )
@@ -223,6 +226,7 @@ public class TelemetryNativeCaptureUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             new UserSettings()
@@ -345,6 +349,7 @@ public class TelemetryNativeCaptureUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             new UserSettings()
@@ -435,6 +440,7 @@ public class TelemetryNativeCaptureUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             new Mock<IPostHogClient>().Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
             user.Object,
             source,
             new UserSettings()
