@@ -112,8 +112,7 @@ public class GetPhotoDownloadPreviewCommandUnitTests : BaseCommandUnitTest<GetPh
             .ShouldBe([(media.Id, media.OriginalFilename, PlexMediaType.PhotoImage, media.Size)]);
         duplicate.IsSuccess.ShouldBeTrue();
         duplicate.Errors.Count.ShouldBe(0);
-        (duplicate.Value with { RootTaskIds = [] }).ShouldBe(new DownloadTaskCreationReport());
-        duplicate.Value.RootTaskIds.ShouldBe(created.Value.RootTaskIds);
+        duplicate.Value.ShouldBe(new DownloadTaskCreationReport());
         var retained = await dbContext.DownloadTaskPhotoImageFiles.SingleAsync(CancellationToken);
         retained.Id.ShouldBe(queued.Id);
         retained.DownloadStatus.ShouldBe(status);
