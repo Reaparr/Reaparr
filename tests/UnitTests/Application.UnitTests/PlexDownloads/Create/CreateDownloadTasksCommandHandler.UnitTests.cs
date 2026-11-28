@@ -2,8 +2,6 @@ namespace Reaparr.Application.UnitTests;
 
 public class DownloadTaskCreationReportUnitTests
 {
-    public DownloadTaskCreationReportUnitTests() { }
-
     [Test]
     public void ShouldAddCountsAndUnionRootIds_WhenReportsAreCombined()
     {

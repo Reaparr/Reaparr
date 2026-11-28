@@ -70,11 +70,11 @@ public class DownloadScheduleThrottleUnitTests : BaseCommandUnitTest<UpdateSched
         var limited = await TestHandlerExecuteAsync(new UpdateScheduledDownloadLimitsCommand(localTime.AddMinutes(30)));
         var limitedRate = await MeasureRateAsync(progressSamples.Reader, 128 * 1024, CancellationToken);
         var increased = await TestHandlerExecuteAsync(new UpdateScheduledDownloadLimitsCommand(localTime.AddHours(1)));
-        var increasedRate = await MeasureRateAsync(progressSamples.Reader, 256 * 1024, CancellationToken);
+        var increasedRate = await MeasureRateAsync(progressSamples.Reader, 1024 * 1024, CancellationToken);
         var released = await TestHandlerExecuteAsync(
             new UpdateScheduledDownloadLimitsCommand(localTime.AddMinutes(90))
         );
-        var releasedRate = await MeasureRateAsync(progressSamples.Reader, 256 * 1024, CancellationToken);
+        var releasedRate = await MeasureRateAsync(progressSamples.Reader, 1024 * 1024, CancellationToken);
         await using var downloaded = await transfer.WaitAsync(TimeSpan.FromSeconds(20), CancellationToken);
         using var contents = new MemoryStream();
         await downloaded.CopyToAsync(contents, CancellationToken);

@@ -226,7 +226,7 @@ public class TelemetryUnitTests : BaseUnitTest
             .Start();
         const string session = "0197af2c-8533-71b3-a351-80da30db084a";
         ITelemetry facade = telemetry;
-        using var requestContext = facade.BeginRequest(session);
+        var requestContext = facade.BeginRequest(session);
 
         // Act
         var diagnostic = telemetry.SendDiagnostic(origin);

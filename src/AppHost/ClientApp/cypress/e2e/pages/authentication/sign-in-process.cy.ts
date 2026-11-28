@@ -60,7 +60,7 @@ describe('sign-in-process', () => {
 			cy.viewport(width, height);
 			cy.document().should((document) => {
 				const style = document.defaultView!.getComputedStyle(document.body);
-				expect(style.backgroundImage).to.contain('/img/background/background.png');
+				expect(style.backgroundImage).to.match(/^url\(["']?data:image\/png[;,]/);
 				expect(style.backgroundSize).to.equal('cover');
 				expect(style.backgroundAttachment).to.equal('fixed');
 				const canvas = document.querySelector('body > .vanta-canvas')!;

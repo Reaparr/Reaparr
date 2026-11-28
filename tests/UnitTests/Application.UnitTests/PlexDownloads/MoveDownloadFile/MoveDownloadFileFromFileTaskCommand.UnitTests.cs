@@ -447,7 +447,13 @@ public class MoveDownloadFileFromFileTaskCommandUnitTests : BaseCommandUnitTest<
         ).ExecuteAsync(new GenerateDownloadTaskMusicAlbumsCommand(request), CancellationToken);
         generation.IsSuccess.ShouldBeTrue();
         generation.Errors.Count.ShouldBe(0);
-        generation.Value.ShouldBe(new DownloadTaskCreationReport { MusicAlbums = 1, MusicTracks = 2 });
+        generation.Value.ShouldBe(new DownloadTaskCreationReport
+        {
+            MusicAlbums = 1,
+            MusicTracks = 2,
+            RootTaskIds = generation.Value.RootTaskIds,
+        });
+        generation.Value.RootTaskIds.ShouldBe([await dbContext.DownloadTaskMusicArtists.Select(x => x.Id).SingleAsync(CancellationToken)]);
         executor.Verify();
 
         var generatedFiles = await dbContext
